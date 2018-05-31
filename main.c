@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include <openssl/err.h>
@@ -8,6 +9,58 @@
 
 // Install (on Ubuntu): sudo apt-get install libssl-dev uuid-dev
 // Uses API as of OpenSSL 1.0.2g
+
+int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+/// Dynamic programming version of "n choose k"
+/// Taken from https://www.geeksforgeeks.org/dynamic-programming-set-9-binomial-coefficient/
+/// \param n
+/// \param k
+/// \return The binomial coefficient, aka. n choose k
+long long binomialCoeff(int n, int k)
+{
+    long long C[k+1];
+    memset(C, 0, sizeof(C));
+
+    C[0] = 1;  // nC0 is 1
+
+    for(int i = 1; i <= n; ++i)
+    {
+        // Compute next row of pascal triangle using
+        // the previous row
+        for(int j = min(i, k); j > 0; --j)
+            C[j] = C[j] + C[j - 1];
+    }
+
+    return C[k];
+}
+
+void fillKeyspaceRec(unsigned char *keySpace, size_t keySize, size_t mismatches, size_t *count, size_t *values,
+                 size_t startValue, size_t startIndex) {
+    size_t i = startIndex, j;
+
+    for(values[i] = startValue; values[i] <= (keySize * 8) - mismatches + startIndex; values[i]++) {
+        if(startIndex == mismatches - 1) {
+            for(int k = 0; k < mismatches; ++k) {
+                keySpace[(*count * keySize) + (values[k] / 8)] |= 0x1 << (values[k] % 8);
+            }
+            ++(*count);
+        }
+        else {
+            fillKeyspaceRec(keySpace, keySize, mismatches, count, values, values[i] + 1, startIndex + 1);
+        }
+    }
+}
+
+void fillKeyspace(unsigned char* keySpace, size_t keySize, size_t mismatches) {
+//    size_t keySpaceLength = (size_t)binomialCoeff(keySize * 8, mismatches);
+    size_t values[mismatches];
+    size_t count = 0;
+
+    fillKeyspaceRec(keySpace, keySize, mismatches, &count, values, 0, 0);
+}
 
 /// Encrypts some message data using AES-256-ECB w/ PCKS#7 padding
 /// \param key The key data, must be at least 32 bytes long.
@@ -54,25 +107,27 @@ int encrypt(const unsigned char* key, const unsigned char* msg, size_t msgLen, u
 int main() {
     const int ITERATIONS = 100;
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 3;
+    const size_t MISMATCHES = 4;
 
-    const size_t KEY_SPACE_LENGTH = 2763520;
+    size_t keySpaceLength = (size_t)binomialCoeff(KEY_SIZE * 8, MISMATCHES);
 
     unsigned char* keySpace;
     // Allocate and initialize the whole key space as 0 (necessary to set bits later).
-    keySpace = calloc(KEY_SIZE * KEY_SPACE_LENGTH, sizeof(*keySpace));
+    keySpace = calloc(KEY_SIZE * keySpaceLength, sizeof(*keySpace));
 
     // Pre-generate all possible key derivatives that are 3-bits apart.
     // TODO: Generalize key space generation to any # of mismatches
-    for(size_t i = 0, index = 0; i < KEY_SIZE - 2; ++i) {
-        for(size_t j = i + 1; j < KEY_SIZE - 1; ++j) {
-            for(size_t k = j + 1; k < KEY_SIZE; ++k, ++index) {
-                keySpace[(index * KEY_SIZE) + (i / 8)] |= (unsigned char)0x1 << (i % 8);
-                keySpace[(index * KEY_SIZE) + (j / 8)] |= (unsigned char)0x1 << (j % 8);
-                keySpace[(index * KEY_SIZE) + (k / 8)] |= (unsigned char)0x1 << (k % 8);
-            }
-        }
-    }
+//    for(size_t i = 0, index = 0; i < KEY_SIZE - 2; ++i) {
+//        for(size_t j = i + 1; j < KEY_SIZE - 1; ++j) {
+//            for(size_t k = j + 1; k < KEY_SIZE; ++k, ++index) {
+//                keySpace[(index * KEY_SIZE) + (i / 8)] |= (unsigned char)0x1 << (i % 8);
+//                keySpace[(index * KEY_SIZE) + (j / 8)] |= (unsigned char)0x1 << (j % 8);
+//                keySpace[(index * KEY_SIZE) + (k / 8)] |= (unsigned char)0x1 << (k % 8);
+//            }
+//        }
+//    }
+
+    fillKeyspace(keySpace, KEY_SIZE, MISMATCHES);
 
     uuid_t userId;
     char uuid[37];
@@ -89,12 +144,11 @@ int main() {
 
         // Ensures that UUID generation / "un"parsing isn't included in the benchmarking
         startTime = clock();
-        for(size_t index = 0; index < KEY_SPACE_LENGTH; ++index) {
+        for(size_t index = 0; index < keySpaceLength; ++index) {
             encrypt(&(keySpace[index * KEY_SIZE]), userId, sizeof(userId), cipher, &outlen);
         }
         duration += clock() - startTime;
     }
-    clock_t endTime = clock();
 
     printf("Clock time: %f s\n", (double)duration / CLOCKS_PER_SEC / ITERATIONS);
 
