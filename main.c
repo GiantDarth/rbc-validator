@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <openssl/opensslv.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <uuid/uuid.h>
@@ -69,8 +70,10 @@ void fillKeyspace(unsigned char* keySpace, size_t keySize, size_t mismatches) {
 /// \param cipher The output data's length (not NULL-terminated).
 /// \return Returns 1 on success or 0 on error (typically OpenSSL error).
 int encrypt(const unsigned char* key, const unsigned char* msg, size_t msgLen, unsigned char* cipher, int* outlen) {
-    EVP_CIPHER_CTX *ctx;
     int tmplen;
+
+#if OPENSSL_VERSION_AT_LEAST(1,1)
+    EVP_CIPHER_CTX *ctx;
 
     if((ctx = EVP_CIPHER_CTX_new()) == NULL) {
         return 0;
@@ -98,6 +101,39 @@ int encrypt(const unsigned char* key, const unsigned char* msg, size_t msgLen, u
     *outlen += tmplen;
 
     EVP_CIPHER_CTX_free(ctx);
+#else
+    EVP_CIPHER_CTX ctx;
+
+    EVP_CIPHER_CTX_init(&ctx);
+
+    if(!EVP_EncryptInit_ex(&ctx, EVP_aes_256_ecb(), NULL, key, NULL)) {
+        fprintf(stderr, "ERROR: EVP_EncryptInit_ex failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_cleanup(&ctx);
+        return 0;
+    }
+
+    if(!EVP_EncryptUpdate(&ctx, cipher, outlen, msg, (int)msgLen)) {
+        fprintf(stderr, "ERROR: EVP_EncryptUpdate failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_cleanup(&ctx);
+        return 0;
+    }
+    if(!EVP_EncryptFinal_ex(&ctx, cipher + *outlen, &tmplen)) {
+        fprintf(stderr, "ERROR: EVP_EncryptFinal_ex failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_cleanup(&ctx);
+        return 0;
+    }
+    *outlen += tmplen;
+
+    if(!EVP_CIPHER_CTX_cleanup(&ctx)) {
+        fprintf(stderr, "ERROR: EVP_CIPHER_CTX_cleanup failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        return 0;
+    }
+#endif
+
 
     return 1;
 }
