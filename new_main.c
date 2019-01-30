@@ -11,6 +11,67 @@
 #include <gmp.h>
 #include <omp.h>
 
+/// Generate a new random permutation based on mismatches and a maximum key_size.
+/// \param perm The pre-allocated permutation to fill.
+/// \param mismatches The hamming distance to base on (equivalent to # of bits set).
+/// \param key_size The # of bytes the permutation will be.
+void generate_random_permutation(mpz_t *perm, size_t mismatches, size_t key_size) {
+    if(mismatches > key_size * 8) {
+        fprintf(stderr, "ERROR: key_size too large to fit into random permutation.\n");
+        return;
+    }
+
+    // Use an unsigned char array as equivalently to an array of unique random 0-255 values
+    // Each value basically tells which bit index to set on the permutation, so each value must be unique.
+    unsigned char indices[mismatches];
+    size_t count = 0;
+    // Assumes using a UNIX platform (more specifically Linux).
+    FILE *fd = fopen("/dev/urandom", "r");
+
+    int found = 0;
+    while(count < mismatches) {
+        // Fill in a new random byte (equivalent to a random 0 - 255 integer).
+        fread(&(indices[count]), sizeof(indices[count]), 1, fd);
+        // Iterate through every previous index and ensure the new one is unique.
+        for(size_t i = 0; i < count; i++) {
+            if(indices[count] == indices[i]) {
+                found = 1;
+            }
+        }
+
+        // Only increment the count when a unique index is found.
+        if(!found) {
+            count++;
+        }
+        else {
+            found = 0;
+        }
+    }
+
+    // Initialize the permutation to 0.
+    mpz_set_ui(*perm, 0);
+    // Go through every index and set that bit on the permutation.
+    for(size_t i = 0; i < mismatches; i++) {
+        mpz_setbit(*perm, indices[i]);
+    }
+}
+
+/// Use simple insertion sort to sort the permutations.
+/// \param perms A preallocated array of permutations. This will be swapped in-place.
+/// \param perms_size How big the array is.
+void sort_permutations(mpz_t *perms, size_t perms_size) {
+    mpz_t tmp;
+    mpz_init(tmp);
+
+    for(size_t i = 1; i < perms_size; i++) {
+        for(size_t j = i; j > 0 && mpz_cmp(perms[j - 1], perms[j]) > 0; j--) {
+            mpz_set(tmp, perms[j - 1]);
+            mpz_set(perms[j - 1], perms[j]);
+            mpz_set(perms[j], tmp);
+        }
+    }
+}
+
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
 /// \param mismatches The hamming distance that you want to base the permutation on.
@@ -97,10 +158,9 @@ void int_progression(size_t mismatches) {
 /// Given a starting permutation, iterate forward through every possible permutation until one that's matching
 /// last_perm is found. With each new permutation, encrypt the given userId.
 /// \param starting_perm The permutation to start iterating from.
-/// \param last_perm The final permutation to stop iterating at.
-/// \param key
-/// \param key_size
-/// \param mismatches
+/// \param last_perm The final permutation to stop iterating at, inclusively.
+/// \param key The original AES key.
+/// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 void gmp_progression(mpz_t starting_perm, mpz_t last_perm, const unsigned char *key, size_t key_size, uuid_t userId) {
     unsigned char *corrupted_key;
@@ -164,6 +224,41 @@ int main() {
     unsigned char *key;
     key = malloc(sizeof(*key) * KEY_SIZE);
 
+    size_t starting_perms_count = 512ULL;
+
+    mpz_t *starting_perms;
+    starting_perms = malloc(sizeof(*starting_perms) * starting_perms_count);
+    for(size_t i = 0; i < starting_perms_count; i++) {
+        mpz_init(starting_perms[i]);
+    }
+
+    mpz_t last_perm;
+    mpz_init(last_perm);
+    assign_last_permutation(&last_perm, MISMATCHES, KEY_SIZE);
+
+    // Always set the first one to the global first permutation
+    assign_first_permutation(&(starting_perms[0]), MISMATCHES);
+    size_t perm_count = 1;
+    int perm_found = 0;
+    while(perm_count < starting_perms_count) {
+        generate_random_permutation(&(starting_perms[perm_count]), MISMATCHES, KEY_SIZE);
+        for(size_t i = 0; i < perm_count; i++) {
+            if(mpz_cmp(starting_perms[i], starting_perms[perm_count]) == 0) {
+                perm_found = 1;
+                break;
+            }
+        }
+
+        if(!perm_found) {
+            perm_count++;
+        }
+        else {
+            perm_found = 0;
+        }
+    }
+
+    sort_permutations(starting_perms, starting_perms_count);
+
     uuid_t userId;
     char uuid[37];
 
@@ -171,20 +266,33 @@ int main() {
     uuid_unparse(userId, uuid);
     printf("Using UUID: %s\n", uuid);
 
-    mpz_t starting_perm, last_perm;
-    mpz_inits(starting_perm, last_perm, NULL);
-
-    assign_first_permutation(&starting_perm, MISMATCHES);
-    assign_last_permutation(&last_perm, MISMATCHES, KEY_SIZE);
-
     clock_t startTime = clock();
     // int_progression(MISMATCHES);
-    gmp_progression(starting_perm, last_perm, key, KEY_SIZE, userId);
+    // Loop through every starting_perms, assuming that the array is already sorted.
+    // Apparently the loop variable needs to be declared first and set as 'private(n)' for pure C?
+    // (Needs to be checked on)
+    size_t n;
+    #pragma omp parallel for private(n)
+    for(n = 0; n < starting_perms_count; n++) {
+        // If not the last of the starting_perms, set the last_perm to be the next item in the array
+        if(n < starting_perms_count - 1) {
+            gmp_progression(starting_perms[n], starting_perms[n + 1], key, KEY_SIZE, userId);
+        }
+            // Else, assume the last starting_perm will continue until last_perm.
+        else {
+            gmp_progression(starting_perms[n], last_perm, key, KEY_SIZE, userId);
+        }
+    }
+
     clock_t duration = clock() - startTime;
 
     printf("Clock time: %f s\n", (double)duration / CLOCKS_PER_SEC);
 
-    mpz_clears(starting_perm, last_perm, NULL);
+    for(size_t i = 0; i < 4; i++) {
+        mpz_clear(starting_perms[i]);
+    }
+    free(starting_perms);
+    mpz_clear(last_perm);
     free(key);
 
     return 0;
