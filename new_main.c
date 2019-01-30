@@ -3,7 +3,54 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+
+#include <openssl/opensslv.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <uuid/uuid.h>
 #include <gmp.h>
+#include <omp.h>
+
+/// Encrypts some message data using AES-256-ECB w/ PCKS#7 padding
+/// \param key The key data, must be at least 32 bytes long.
+/// \param msg The message to be encrypted, designated to be msgLen bytes long.
+/// \param msgLen Denotes the size of the message (not NULL-terminated).
+/// \param cipher The output data's length (not NULL-terminated).
+/// \return Returns 1 on success or 0 on error (typically OpenSSL error).
+int encrypt(const unsigned char* key, const unsigned char* msg, size_t msgLen, unsigned char* cipher, int* outlen) {
+    int tmplen;
+
+    EVP_CIPHER_CTX *ctx;
+
+    if((ctx = EVP_CIPHER_CTX_new()) == NULL) {
+        return 0;
+    }
+
+    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, NULL)) {
+        fprintf(stderr, "ERROR: EVP_EncryptInit_ex failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_free(ctx);
+        return 0;
+    }
+
+    if(!EVP_EncryptUpdate(ctx, cipher, outlen, msg, (int)msgLen)) {
+        fprintf(stderr, "ERROR: EVP_EncryptUpdate failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_free(ctx);
+        return 0;
+    }
+    if(!EVP_EncryptFinal_ex(ctx, cipher + *outlen, &tmplen)) {
+        fprintf(stderr, "ERROR: EVP_EncryptFinal_ex failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+        EVP_CIPHER_CTX_free(ctx);
+        return 0;
+    }
+    *outlen += tmplen;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return 1;
+}
 
 void int_progression(size_t mismatches) {
     // Starting mismatch key
@@ -26,6 +73,15 @@ void int_progression(size_t mismatches) {
 void gmp_progression(unsigned char *key, size_t key_size, size_t mismatches) {
     unsigned char *corrupted_key;
     corrupted_key = malloc(sizeof(*corrupted_key) * key_size);
+
+    uuid_t userId;
+    char uuid[37];
+    unsigned char cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
+    int outlen;
+
+    uuid_generate(userId);
+    uuid_unparse(userId, uuid);
+    printf("Using UUID: %s\n", uuid);
 
     // Starting mismatch key
     mpz_t perm, t, tmp, next_perm, max_perm, key_mpz, corrupted_key_mpz;
@@ -66,10 +122,13 @@ void gmp_progression(unsigned char *key, size_t key_size, size_t mismatches) {
         mpz_ior(perm, t, next_perm);
 
         // gmp_printf("%Zd\n", perm);
+
         // Convert from mpz to an unsigned char array
         mpz_and(corrupted_key_mpz, key_mpz, perm);
         mpz_neg(corrupted_key_mpz, key_mpz);
         mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, corrupted_key_mpz);
+
+        encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen);
     }
 
     mpz_clears(perm, t, tmp, next_perm, max_perm, key_mpz, corrupted_key_mpz, NULL);
@@ -78,7 +137,7 @@ void gmp_progression(unsigned char *key, size_t key_size, size_t mismatches) {
 
 int main() {
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 5;
+    const size_t MISMATCHES = 4;
 
     unsigned char *key;
     key = malloc(sizeof(*key) * KEY_SIZE);
