@@ -11,6 +11,30 @@
 #include <gmp.h>
 #include <omp.h>
 
+/// Assigns the first possible permutation for a given # of mismatches.
+/// \param perm A pre-allocated mpz_t to fill the permutation to.
+/// \param mismatches The hamming distance that you want to base the permutation on.
+void assign_first_permutation(mpz_t *perm, size_t mismatches) {
+    // Set perm to first key
+    // Equivalent to: (perm << mismatches) - 1
+    mpz_set_ui(*perm, 1);
+    mpz_mul_2exp(*perm, *perm, mismatches);
+    mpz_sub_ui(*perm, *perm, 1);
+}
+
+/// Assigns the first possible permutation for a given # of mismatches and key size
+/// \param perm A pre-allocated mpz_t to fill the permutation to.
+/// \param mismatches The hamming distance that you want to base the permutation on.
+/// \param key_size How big the relevant key is in # of bytes.
+void assign_last_permutation(mpz_t *perm, size_t mismatches, size_t key_size) {
+    // First set the value to the first permutation.
+    assign_first_permutation(perm, mismatches);
+    // Equivalent to: perm << ((key_size * 8) - mismatches)
+    // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
+    // Then we want to shift left 256 - 5 = 251 times.
+    mpz_mul_2exp(*perm, *perm, (key_size * 8) - mismatches);
+}
+
 /// Encrypts some message data using AES-256-ECB w/ PCKS#7 padding
 /// \param key The key data, must be at least 32 bytes long.
 /// \param msg The message to be encrypted, designated to be msgLen bytes long.
@@ -70,38 +94,33 @@ void int_progression(size_t mismatches) {
     }
 }
 
-void gmp_progression(unsigned char *key, size_t key_size, size_t mismatches) {
+/// Given a starting permutation, iterate forward through every possible permutation until one that's matching
+/// last_perm is found. With each new permutation, encrypt the given userId.
+/// \param starting_perm The permutation to start iterating from.
+/// \param last_perm The final permutation to stop iterating at.
+/// \param key
+/// \param key_size
+/// \param mismatches
+/// \param userId A uuid_t that's used to as the message to encrypt.
+void gmp_progression(mpz_t starting_perm, mpz_t last_perm, const unsigned char *key, size_t key_size, uuid_t userId) {
     unsigned char *corrupted_key;
     corrupted_key = malloc(sizeof(*corrupted_key) * key_size);
 
-    uuid_t userId;
-    char uuid[37];
     unsigned char cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
     int outlen;
 
-    uuid_generate(userId);
-    uuid_unparse(userId, uuid);
-    printf("Using UUID: %s\n", uuid);
-
     // Starting mismatch key
-    mpz_t perm, t, tmp, next_perm, max_perm, key_mpz, corrupted_key_mpz;
-    mpz_inits(perm, t, tmp, next_perm, max_perm, key_mpz, corrupted_key_mpz, NULL);
+    mpz_t perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz;
+    mpz_inits(perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz, NULL);
+
+    // Copy the initial perm from starting_perm
+    mpz_set(perm, starting_perm);
 
     // Convert key as unsigned char array to mpz
     mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 
-    // Set perm to first key
-    // Equivalent to: (perm << mismatches) - 1
-    mpz_set_ui(tmp, 1);
-    mpz_mul_2exp(tmp, tmp, mismatches);
-    mpz_sub_ui(perm, tmp, 1);
-
-    // Set max_perm to maximum possible permutation
-    mpz_set(max_perm, perm);
-    mpz_mul_2exp(max_perm, max_perm, (key_size * 8) - mismatches);
-
     // gmp_printf("%Zd\n", perm);
-    while(mpz_cmp(perm, max_perm) != 0) {
+    while(mpz_cmp(perm, last_perm) < 0) {
         // Equivalent to: t = (perm | (perm - 1)) + 1
         mpz_sub_ui(next_perm, perm, 1);
         mpz_ior(t, perm, next_perm);
@@ -131,7 +150,7 @@ void gmp_progression(unsigned char *key, size_t key_size, size_t mismatches) {
         encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen);
     }
 
-    mpz_clears(perm, t, tmp, next_perm, max_perm, key_mpz, corrupted_key_mpz, NULL);
+    mpz_clears(perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz, NULL);
     free(corrupted_key);
 }
 
@@ -142,13 +161,27 @@ int main() {
     unsigned char *key;
     key = malloc(sizeof(*key) * KEY_SIZE);
 
+    uuid_t userId;
+    char uuid[37];
+
+    uuid_generate(userId);
+    uuid_unparse(userId, uuid);
+    printf("Using UUID: %s\n", uuid);
+
+    mpz_t starting_perm, last_perm;
+    mpz_inits(starting_perm, last_perm, NULL);
+
+    assign_first_permutation(&starting_perm, MISMATCHES);
+    assign_last_permutation(&last_perm, MISMATCHES, KEY_SIZE);
+
     clock_t startTime = clock();
     // int_progression(MISMATCHES);
-    gmp_progression(key, KEY_SIZE, MISMATCHES);
+    gmp_progression(starting_perm, last_perm, key, KEY_SIZE, userId);
     clock_t duration = clock() - startTime;
 
     printf("Clock time: %f s\n", (double)duration / CLOCKS_PER_SEC);
 
+    mpz_clears(starting_perm, last_perm, NULL);
     free(key);
 
     return 0;
