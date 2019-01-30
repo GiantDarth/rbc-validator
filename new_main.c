@@ -120,7 +120,7 @@ void gmp_progression(mpz_t starting_perm, mpz_t last_perm, const unsigned char *
     mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 
     // gmp_printf("%Zd\n", perm);
-    while(mpz_cmp(perm, last_perm) < 0) {
+    while(mpz_cmp(perm, last_perm) <= 0) {
         // Equivalent to: t = (perm | (perm - 1)) + 1
         mpz_sub_ui(next_perm, perm, 1);
         mpz_ior(t, perm, next_perm);
@@ -147,7 +147,10 @@ void gmp_progression(mpz_t starting_perm, mpz_t last_perm, const unsigned char *
         mpz_neg(corrupted_key_mpz, key_mpz);
         mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, corrupted_key_mpz);
 
-        encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen);
+        // If encryption fails for some reason, break prematurely.
+        if(!encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen)) {
+            break;
+        }
     }
 
     mpz_clears(perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz, NULL);
