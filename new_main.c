@@ -269,7 +269,7 @@ int main() {
     uuid_unparse(userId, uuid);
     printf("Using UUID: %s\n", uuid);
 
-    clock_t startTime = clock();
+    double startTime = omp_get_wtime();
     // int_progression(MISMATCHES);
     // Loop through every starting_perms, assuming that the array is already sorted.
     // Apparently the loop variable needs to be declared first and set as 'private(n)' for pure C?
@@ -287,9 +287,9 @@ int main() {
         }
     }
 
-    clock_t duration = clock() - startTime;
+    double duration = omp_get_wtime() - startTime;
 
-    printf("Clock time: %f s\n", (double)duration / CLOCKS_PER_SEC);
+    printf("Clock time: %f s\n", duration);
 
     mpz_clear(last_perm);
     for(size_t i = 0; i < starting_perms_size; i++) {
