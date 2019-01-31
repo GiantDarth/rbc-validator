@@ -224,11 +224,11 @@ int main() {
     unsigned char *key;
     key = malloc(sizeof(*key) * KEY_SIZE);
 
-    size_t starting_perms_count = 512ULL;
+    size_t starting_perms_size = 512ULL;
 
     mpz_t *starting_perms;
-    starting_perms = malloc(sizeof(*starting_perms) * starting_perms_count);
-    for(size_t i = 0; i < starting_perms_count; i++) {
+    starting_perms = malloc(sizeof(*starting_perms) * starting_perms_size);
+    for(size_t i = 0; i < starting_perms_size; i++) {
         mpz_init(starting_perms[i]);
     }
 
@@ -240,7 +240,7 @@ int main() {
     assign_first_permutation(&(starting_perms[0]), MISMATCHES);
     size_t perm_count = 1;
     int perm_found = 0;
-    while(perm_count < starting_perms_count) {
+    while(perm_count < starting_perms_size) {
         generate_random_permutation(&(starting_perms[perm_count]), MISMATCHES, KEY_SIZE);
         for(size_t i = 0; i < perm_count; i++) {
             if(mpz_cmp(starting_perms[i], starting_perms[perm_count]) == 0) {
@@ -257,7 +257,7 @@ int main() {
         }
     }
 
-    sort_permutations(starting_perms, starting_perms_count);
+    sort_permutations(starting_perms, starting_perms_size);
 
     uuid_t userId;
     char uuid[37];
@@ -272,10 +272,10 @@ int main() {
     // Apparently the loop variable needs to be declared first and set as 'private(n)' for pure C?
     // (Needs to be checked on)
     size_t n;
-    #pragma omp parallel for private(n)
-    for(n = 0; n < starting_perms_count; n++) {
+    // #pragma omp parallel for private(n)
+    for(n = 0; n < starting_perms_size; n++) {
         // If not the last of the starting_perms, set the last_perm to be the next item in the array
-        if(n < starting_perms_count - 1) {
+        if(n < starting_perms_size - 1) {
             gmp_progression(starting_perms[n], starting_perms[n + 1], key, KEY_SIZE, userId);
         }
             // Else, assume the last starting_perm will continue until last_perm.
@@ -288,11 +288,11 @@ int main() {
 
     printf("Clock time: %f s\n", (double)duration / CLOCKS_PER_SEC);
 
-    for(size_t i = 0; i < 4; i++) {
+    mpz_clear(last_perm);
+    for(size_t i = 0; i < starting_perms_size; i++) {
         mpz_clear(starting_perms[i]);
     }
     free(starting_perms);
-    mpz_clear(last_perm);
     free(key);
 
     return 0;
