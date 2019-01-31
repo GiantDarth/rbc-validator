@@ -48,6 +48,9 @@ void generate_random_permutation(mpz_t *perm, size_t mismatches, size_t key_size
         }
     }
 
+    // Ensure to close the file stream first.
+    fclose(fd);
+
     // Initialize the permutation to 0.
     mpz_set_ui(*perm, 0);
     // Go through every index and set that bit on the permutation.
