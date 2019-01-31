@@ -272,7 +272,7 @@ int main() {
     // Apparently the loop variable needs to be declared first and set as 'private(n)' for pure C?
     // (Needs to be checked on)
     size_t n;
-    // #pragma omp parallel for private(n)
+    #pragma omp parallel for private(n)
     for(n = 0; n < starting_perms_size; n++) {
         // If not the last of the starting_perms, set the last_perm to be the next item in the array
         if(n < starting_perms_size - 1) {
