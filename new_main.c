@@ -151,59 +151,41 @@ void int_progression(size_t mismatches) {
 /// \param key The original AES key.
 /// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
-void gmp_progression(mpz_t starting_perm, mpz_t last_perm, const unsigned char *key, size_t key_size, uuid_t userId) {
+void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
+        size_t key_size, uuid_t userId) {
+    mpz_t key_mpz;
     unsigned char *corrupted_key;
-    corrupted_key = malloc(sizeof(*corrupted_key) * key_size);
-
     unsigned char cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
     int outlen;
 
-    // Starting mismatch key
-    mpz_t perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz;
-    mpz_inits(perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz, NULL);
+    // Initialization
+    gmp_key_iter iter;
+    gmp_key_iter_create(&iter, key, key_size, starting_perm, last_perm);
 
-    // Copy the initial perm from starting_perm
-    mpz_set(perm, starting_perm);
+    // Memory allocation
+    mpz_init(key_mpz);
+    corrupted_key = malloc(sizeof(*corrupted_key) * key_size);
 
     // Convert key as unsigned char array to mpz
     mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 
-    // gmp_printf("%Zd\n", perm);
-    while(mpz_cmp(perm, last_perm) <= 0) {
-        // Equivalent to: t = (perm | (perm - 1)) + 1
-        mpz_sub_ui(next_perm, perm, 1);
-        mpz_ior(t, perm, next_perm);
-        mpz_add_ui(t, t, 1);
-
-        // Equivalent to: perm = t | ((((t & -t) / (perm & -perm)) >> 1) - 1)
-        mpz_neg(next_perm, perm);
-        mpz_and(next_perm, perm, next_perm);
-
-        mpz_neg(tmp, t);
-        mpz_and(tmp, t, tmp);
-
-        // Truncate divide
-        mpz_tdiv_q(next_perm, tmp, next_perm);
-        // Right shift by 1
-        mpz_tdiv_q_2exp(next_perm, next_perm, 1);
-        mpz_sub_ui(next_perm, next_perm, 1);
-        mpz_ior(perm, t, next_perm);
-
-        // gmp_printf("%Zd\n", perm);
-
-        // Convert from mpz to an unsigned char array
-        mpz_and(corrupted_key_mpz, key_mpz, perm);
-        mpz_neg(corrupted_key_mpz, key_mpz);
-        mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, corrupted_key_mpz);
-
+    // Do a do-while so that we don't skip the first, initial corrupted key.
+    do {
+        gmp_key_iter_get(&iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen)) {
             break;
         }
-    }
 
-    mpz_clears(perm, t, tmp, next_perm, key_mpz, corrupted_key_mpz, NULL);
+        gmp_key_iter_next(&iter);
+    }
+    // While we haven't reached the end of iteration
+    while(!gmp_key_iter_check(&iter));
+
+    // Cleanup
     free(corrupted_key);
+    mpz_clear(key_mpz);
+    gmp_key_iter_destroy(&iter);
 }
 
 int main() {
@@ -223,7 +205,7 @@ int main() {
 
     mpz_t last_perm;
     mpz_init(last_perm);
-    assign_last_permutation(&last_perm, MISMATCHES, KEY_SIZE);
+    gmp_assign_last_permutation(last_perm, MISMATCHES, KEY_SIZE);
 
     generate_starting_permutations(starting_perms, starting_perms_size, MISMATCHES, KEY_SIZE);
 
@@ -240,7 +222,7 @@ int main() {
     // Apparently the loop variable needs to be declared first and set as 'private(n)' for pure C?
     // (Needs to be checked on)
     size_t n;
-    #pragma omp parallel for private(n)
+    #pragma omp parallel for private(n) schedule(dynamic)
     for(n = 0; n < starting_perms_size; n++) {
         // If not the last of the starting_perms, set the last_perm to be the next item in the array
         if(n < starting_perms_size - 1) {
