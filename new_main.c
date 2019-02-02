@@ -73,6 +73,8 @@ void sort_permutations(mpz_t *perms, size_t perms_size) {
             mpz_set(perms[j], tmp);
         }
     }
+
+    mpz_clear(tmp);
 }
 
 /// Assigns the first possible permutation for a given # of mismatches.
