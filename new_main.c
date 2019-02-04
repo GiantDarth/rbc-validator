@@ -169,8 +169,8 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
     // Convert key as unsigned char array to mpz
     mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 
-    // Do a do-while so that we don't skip the first, initial corrupted key.
-    do {
+    // While we haven't reached the end of iteration
+    while(!gmp_key_iter_check(&iter)) {
         gmp_key_iter_get(&iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen)) {
@@ -179,8 +179,6 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
 
         gmp_key_iter_next(&iter);
     }
-    // While we haven't reached the end of iteration
-    while(!gmp_key_iter_check(&iter));
 
     // Cleanup
     free(corrupted_key);
