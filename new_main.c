@@ -11,6 +11,30 @@
 #include <gmp.h>
 #include <omp.h>
 
+/// Based on https://cs.stackexchange.com/a/67669
+/// \param perm The permutation to set.
+/// \param ordinal The ordinal as the input.
+/// \param mismatches How many bits to set.
+/// \param key_size How big the bit string is (in bytes)
+void decode_ordinal(mpz_t perm, mpz_t ordinal, size_t mismatches, size_t key_size) {
+    mpz_t binom;
+    mpz_init(binom);
+
+    mpz_set_ui(perm, 0);
+    for (unsigned long bit = key_size * 8 - 1; mismatches > 0; bit--)
+    {
+        mpz_bin_uiui(binom, bit, mismatches);
+        if (mpz_cmp(ordinal, binom) >= 0)
+        {
+            mpz_sub(ordinal, ordinal, binom);
+            mpz_setbit(perm, bit);
+            mismatches--;
+        }
+    }
+
+    mpz_clear(binom);
+}
+
 /// Generate a new random permutation based on mismatches and a maximum key_size.
 /// \param perm The pre-allocated permutation to fill.
 /// \param mismatches The hamming distance to base on (equivalent to # of bits set).
