@@ -3,7 +3,7 @@ project(hamming_benchmark C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(hamming_benchmark new_main.c)
+add_executable(hamming_benchmark new_main.c gmp_key_iter.c gmp_key_iter.h)
 add_executable(lookupwork lookupwork.c)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
