@@ -8,9 +8,13 @@ void gmp_key_iter_create(gmp_key_iter *iter, const unsigned char *key, size_t ke
         const mpz_t first_perm, const mpz_t last_perm) {
     mpz_inits(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->next_perm,
             iter->key_mpz, iter->corrupted_key_mpz, NULL);
+
     mpz_set(iter->curr_perm, first_perm);
     mpz_set(iter->last_perm, last_perm);
+
+    mpz_import(iter->key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 }
+
 
 void gmp_key_iter_destroy(gmp_key_iter *iter) {
     mpz_clears(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->next_perm,
