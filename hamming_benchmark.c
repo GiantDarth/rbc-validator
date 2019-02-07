@@ -130,7 +130,6 @@ void int_progression(size_t mismatches) {
 /// \param userId A uuid_t that's used to as the message to encrypt.
 void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
         size_t key_size, uuid_t userId) {
-    mpz_t key_mpz;
     unsigned char *corrupted_key;
     unsigned char cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
     int outlen;
@@ -140,11 +139,7 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
     gmp_key_iter_create(&iter, key, key_size, starting_perm, last_perm);
 
     // Memory allocation
-    mpz_init(key_mpz);
     corrupted_key = malloc(sizeof(*corrupted_key) * key_size);
-
-    // Convert key as unsigned char array to mpz
-    mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 
     // While we haven't reached the end of iteration
     while(!gmp_key_iter_end(&iter)) {
@@ -159,7 +154,6 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
 
     // Cleanup
     free(corrupted_key);
-    mpz_clear(key_mpz);
     gmp_key_iter_destroy(&iter);
 }
 
