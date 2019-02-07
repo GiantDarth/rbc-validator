@@ -55,7 +55,6 @@ void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms
 
     for(size_t i = 0; i < starting_perms_size; i++) {
         mpz_mul_ui(ordinal, chunk_size, i);
-        gmp_printf("%Zd\n", ordinal);
 
         decode_ordinal(starting_perms[i], ordinal, mismatches, key_size);
     }
