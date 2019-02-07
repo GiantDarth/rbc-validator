@@ -49,9 +49,6 @@ void gmp_key_iter_next(gmp_key_iter *iter) {
 }
 
 int gmp_key_iter_check(const gmp_key_iter *iter) {
-    return mpz_cmp(iter->curr_perm, iter->last_perm) > 0;
-}
-
 void gmp_key_iter_get(gmp_key_iter *iter, unsigned char *corrupted_key) {
     // Convert from mpz to an unsigned char array
 

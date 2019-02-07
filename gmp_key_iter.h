@@ -25,8 +25,11 @@ void gmp_key_iter_create(gmp_key_iter *iter, const unsigned char *key, size_t ke
 void gmp_key_iter_destroy(gmp_key_iter *iter);
 
 void gmp_key_iter_next(gmp_key_iter *iter);
-int gmp_key_iter_check(const gmp_key_iter *iter);
+/// Get the current corrupted key.
 void gmp_key_iter_get(gmp_key_iter *iter, unsigned char *corrupted_key);
+static inline int gmp_key_iter_end(const gmp_key_iter *iter) {
+    return mpz_cmp(iter->curr_perm, iter->last_perm) > 0;
+}
 
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
