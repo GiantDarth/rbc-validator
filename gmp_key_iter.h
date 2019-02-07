@@ -26,7 +26,8 @@ void gmp_key_iter_destroy(gmp_key_iter *iter);
 
 void gmp_key_iter_next(gmp_key_iter *iter);
 /// Get the current corrupted key.
-void gmp_key_iter_get(gmp_key_iter *iter, unsigned char *corrupted_key);
+/// \param iter A pointer to an iterator that won't be modified.
+void gmp_key_iter_get(const gmp_key_iter *iter, unsigned char *corrupted_key);
 static inline int gmp_key_iter_end(const gmp_key_iter *iter) {
     return mpz_cmp(iter->curr_perm, iter->last_perm) > 0;
 }

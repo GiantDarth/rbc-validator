@@ -48,10 +48,8 @@ void gmp_key_iter_next(gmp_key_iter *iter) {
     mpz_neg(iter->corrupted_key_mpz, iter->key_mpz);
 }
 
-int gmp_key_iter_check(const gmp_key_iter *iter) {
-void gmp_key_iter_get(gmp_key_iter *iter, unsigned char *corrupted_key) {
+void gmp_key_iter_get(const gmp_key_iter *iter, unsigned char *corrupted_key) {
     // Convert from mpz to an unsigned char array
-
     mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, iter->corrupted_key_mpz);
 }
 
