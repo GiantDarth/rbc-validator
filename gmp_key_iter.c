@@ -6,8 +6,8 @@
 
 void gmp_key_iter_create(gmp_key_iter *iter, const unsigned char *key, size_t key_size,
         const mpz_t first_perm, const mpz_t last_perm) {
-    mpz_inits(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->next_perm,
-            iter->key_mpz, iter->corrupted_key_mpz, NULL);
+    mpz_inits(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->key_mpz,
+            iter->corrupted_key_mpz, NULL);
 
     mpz_set(iter->curr_perm, first_perm);
     mpz_set(iter->last_perm, last_perm);
@@ -17,29 +17,29 @@ void gmp_key_iter_create(gmp_key_iter *iter, const unsigned char *key, size_t ke
 
 
 void gmp_key_iter_destroy(gmp_key_iter *iter) {
-    mpz_clears(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->next_perm,
-            iter->key_mpz, iter->corrupted_key_mpz, NULL);
+    mpz_clears(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->key_mpz,
+            iter->corrupted_key_mpz, NULL);
 }
 
 void gmp_key_iter_next(gmp_key_iter *iter) {
     // Equivalent to: t = (perm | (perm - 1)) + 1
-    mpz_sub_ui(iter->next_perm, iter->curr_perm, 1);
-    mpz_ior(iter->t, iter->curr_perm, iter->next_perm);
+    mpz_sub_ui(iter->t, iter->curr_perm, 1);
+    mpz_ior(iter->t, iter->curr_perm, iter->t);
     mpz_add_ui(iter->t, iter->t, 1);
 
     // Equivalent to: perm = t | ((((t & -t) / (perm & -perm)) >> 1) - 1)
-    mpz_neg(iter->next_perm, iter->curr_perm);
-    mpz_and(iter->next_perm, iter->curr_perm, iter->next_perm);
+    mpz_neg(iter->tmp, iter->curr_perm);
+    mpz_and(iter->curr_perm, iter->curr_perm, iter->tmp);
 
     mpz_neg(iter->tmp, iter->t);
     mpz_and(iter->tmp, iter->t, iter->tmp);
 
     // Truncate divide
-    mpz_tdiv_q(iter->next_perm, iter->tmp, iter->next_perm);
+    mpz_tdiv_q(iter->tmp, iter->tmp, iter->curr_perm);
     // Right shift by 1
-    mpz_tdiv_q_2exp(iter->next_perm, iter->next_perm, 1);
-    mpz_sub_ui(iter->next_perm, iter->next_perm, 1);
-    mpz_ior(iter->curr_perm, iter->t, iter->next_perm);
+    mpz_tdiv_q_2exp(iter->tmp, iter->tmp, 1);
+    mpz_sub_ui(iter->tmp, iter->tmp, 1);
+    mpz_ior(iter->curr_perm, iter->t, iter->tmp);
 
     // Perform a NAND operation between the permutation and the key.
     // If a bit is set in permutation, then flip the bit in the key.

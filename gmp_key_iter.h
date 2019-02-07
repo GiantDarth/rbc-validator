@@ -13,7 +13,6 @@ struct gmp_key_iter {
     mpz_t last_perm;
     mpz_t t;
     mpz_t tmp;
-    mpz_t next_perm;
     mpz_t key_mpz;
     mpz_t corrupted_key_mpz;
 };
