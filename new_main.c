@@ -11,6 +11,8 @@
 #include <gmp.h>
 #include <omp.h>
 
+#include "gmp_key_iter.h"
+
 /// Based on https://cs.stackexchange.com/a/67669
 /// \param perm The permutation to set.
 /// \param ordinal The ordinal as the input.
