@@ -11,70 +11,28 @@
 #include <gmp.h>
 #include <omp.h>
 
-/// Generate a new random permutation based on mismatches and a maximum key_size.
-/// \param perm The pre-allocated permutation to fill.
-/// \param mismatches The hamming distance to base on (equivalent to # of bits set).
-/// \param key_size The # of bytes the permutation will be.
-void generate_random_permutation(mpz_t *perm, size_t mismatches, size_t key_size) {
-    if(mismatches > key_size * 8) {
-        fprintf(stderr, "ERROR: key_size too large to fit into random permutation.\n");
-        return;
-    }
+/// Based on https://cs.stackexchange.com/a/67669
+/// \param perm The permutation to set.
+/// \param ordinal The ordinal as the input.
+/// \param mismatches How many bits to set.
+/// \param key_size How big the bit string is (in bytes)
+void decode_ordinal(mpz_t perm, mpz_t ordinal, size_t mismatches, size_t key_size) {
+    mpz_t binom;
+    mpz_init(binom);
 
-    // Use an unsigned char array as equivalently to an array of unique random 0-255 values
-    // Each value basically tells which bit index to set on the permutation, so each value must be unique.
-    unsigned char indices[mismatches];
-    size_t count = 0;
-    // Assumes using a UNIX platform (more specifically Linux).
-    FILE *fd = fopen("/dev/urandom", "r");
-
-    int found = 0;
-    while(count < mismatches) {
-        // Fill in a new random byte (equivalent to a random 0 - 255 integer).
-        fread(&(indices[count]), sizeof(indices[count]), 1, fd);
-        // Iterate through every previous index and ensure the new one is unique.
-        for(size_t i = 0; i < count; i++) {
-            if(indices[count] == indices[i]) {
-                found = 1;
-            }
-        }
-
-        // Only increment the count when a unique index is found.
-        if(!found) {
-            count++;
-        }
-        else {
-            found = 0;
+    mpz_set_ui(perm, 0);
+    for (unsigned long bit = key_size * 8 - 1; mismatches > 0; bit--)
+    {
+        mpz_bin_uiui(binom, bit, mismatches);
+        if (mpz_cmp(ordinal, binom) >= 0)
+        {
+            mpz_sub(ordinal, ordinal, binom);
+            mpz_setbit(perm, bit);
+            mismatches--;
         }
     }
 
-    // Ensure to close the file stream first.
-    fclose(fd);
-
-    // Initialize the permutation to 0.
-    mpz_set_ui(*perm, 0);
-    // Go through every index and set that bit on the permutation.
-    for(size_t i = 0; i < mismatches; i++) {
-        mpz_setbit(*perm, indices[i]);
-    }
-}
-
-/// Use simple insertion sort to sort the permutations.
-/// \param perms A preallocated array of permutations. This will be swapped in-place.
-/// \param perms_size How big the array is.
-void sort_permutations(mpz_t *perms, size_t perms_size) {
-    mpz_t tmp;
-    mpz_init(tmp);
-
-    for(size_t i = 1; i < perms_size; i++) {
-        for(size_t j = i; j > 0 && mpz_cmp(perms[j - 1], perms[j]) > 0; j--) {
-            mpz_set(tmp, perms[j - 1]);
-            mpz_set(perms[j - 1], perms[j]);
-            mpz_set(perms[j], tmp);
-        }
-    }
-
-    mpz_clear(tmp);
+    mpz_clear(binom);
 }
 
 /// Assigns the first possible permutation for a given # of mismatches.
@@ -99,6 +57,32 @@ void assign_last_permutation(mpz_t *perm, size_t mismatches, size_t key_size) {
     // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
     // Then we want to shift left 256 - 5 = 251 times.
     mpz_mul_2exp(*perm, *perm, (key_size * 8) - mismatches);
+}
+
+/// Generate a set of starting permutations based on mismatches and a maximum key_size.
+/// \param starting_perms The pre-allocated, pre-initialized array of starting_perms to fill.
+/// \param starting_perms_size The count of starting_perms.
+/// \param mismatches The hamming distance to base on (equivalent to # of bits set).
+/// \param key_size The # of bytes the permutations will be.
+void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, size_t mismatches,
+        size_t key_size) {
+    // Always set the first one to the global first permutation
+    assign_first_permutation(&(starting_perms[0]), mismatches);
+
+    mpz_t ordinal, chunk_size;
+    mpz_inits(ordinal, chunk_size, NULL);
+
+    mpz_bin_uiui(chunk_size, key_size * 8, mismatches);
+    mpz_tdiv_q_ui(chunk_size, chunk_size, starting_perms_size);
+
+    for(size_t i = 0; i < starting_perms_size; i++) {
+        mpz_mul_ui(ordinal, chunk_size, i);
+        gmp_printf("%Zd\n", ordinal);
+
+        decode_ordinal(starting_perms[i], ordinal, mismatches, key_size);
+    }
+
+    mpz_clears(ordinal, chunk_size, NULL);
 }
 
 /// Encrypts some message data using AES-256-ECB w/ PCKS#7 padding
@@ -241,28 +225,7 @@ int main() {
     mpz_init(last_perm);
     assign_last_permutation(&last_perm, MISMATCHES, KEY_SIZE);
 
-    // Always set the first one to the global first permutation
-    assign_first_permutation(&(starting_perms[0]), MISMATCHES);
-    size_t perm_count = 1;
-    int perm_found = 0;
-    while(perm_count < starting_perms_size) {
-        generate_random_permutation(&(starting_perms[perm_count]), MISMATCHES, KEY_SIZE);
-        for(size_t i = 0; i < perm_count; i++) {
-            if(mpz_cmp(starting_perms[i], starting_perms[perm_count]) == 0) {
-                perm_found = 1;
-                break;
-            }
-        }
-
-        if(!perm_found) {
-            perm_count++;
-        }
-        else {
-            perm_found = 0;
-        }
-    }
-
-    sort_permutations(starting_perms, starting_perms_size);
+    generate_starting_permutations(starting_perms, starting_perms_size, MISMATCHES, KEY_SIZE);
 
     uuid_t userId;
     char uuid[37];
