@@ -39,9 +39,4 @@ void gmp_assign_first_permutation(mpz_t perm, size_t mismatches);
 /// \param key_size How big the relevant key is in # of bytes.
 void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size);
 
-/// Use simple insertion sort to sort the permutations.
-/// \param perms A pre-allocated array of permutations. This will be swapped in-place.
-/// \param perms_size How big the array is.
-void gmp_sort_permutations(mpz_t *perms, size_t perms_size);
-
 #endif // GMP_PERM_ITER_H

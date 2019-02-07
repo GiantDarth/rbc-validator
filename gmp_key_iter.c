@@ -70,16 +70,3 @@ void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size)
     // Then we want to shift left 256 - 5 = 251 times.
     mpz_mul_2exp(perm, perm, (key_size * 8) - mismatches);
 }
-
-void gmp_sort_permutations(mpz_t *perms, size_t perms_size) {
-    mpz_t tmp;
-    mpz_init(tmp);
-
-    for(size_t i = 1; i < perms_size; i++) {
-        for(size_t j = i; j > 0 && mpz_cmp(perms[j - 1], perms[j]) > 0; j--) {
-            mpz_set(tmp, perms[j - 1]);
-            mpz_set(perms[j - 1], perms[j]);
-            mpz_set(perms[j], tmp);
-        }
-    }
-}
