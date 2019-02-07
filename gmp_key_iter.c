@@ -45,7 +45,7 @@ void gmp_key_iter_next(gmp_key_iter *iter) {
     // If a bit is set in permutation, then flip the bit in the key.
     // Otherwise, leave it as is.
     mpz_and(iter->corrupted_key_mpz, iter->key_mpz, iter->curr_perm);
-    mpz_neg(iter->corrupted_key_mpz, iter->key_mpz);
+    mpz_neg(iter->corrupted_key_mpz, iter->corrupted_key_mpz);
 }
 
 void gmp_key_iter_get(const gmp_key_iter *iter, unsigned char *corrupted_key) {
