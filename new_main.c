@@ -35,30 +35,6 @@ void decode_ordinal(mpz_t perm, mpz_t ordinal, size_t mismatches, size_t key_siz
     mpz_clear(binom);
 }
 
-/// Assigns the first possible permutation for a given # of mismatches.
-/// \param perm A pre-allocated mpz_t to fill the permutation to.
-/// \param mismatches The hamming distance that you want to base the permutation on.
-void assign_first_permutation(mpz_t *perm, size_t mismatches) {
-    // Set perm to first key
-    // Equivalent to: (perm << mismatches) - 1
-    mpz_set_ui(*perm, 1);
-    mpz_mul_2exp(*perm, *perm, mismatches);
-    mpz_sub_ui(*perm, *perm, 1);
-}
-
-/// Assigns the first possible permutation for a given # of mismatches and key size
-/// \param perm A pre-allocated mpz_t to fill the permutation to.
-/// \param mismatches The hamming distance that you want to base the permutation on.
-/// \param key_size How big the relevant key is in # of bytes.
-void assign_last_permutation(mpz_t *perm, size_t mismatches, size_t key_size) {
-    // First set the value to the first permutation.
-    assign_first_permutation(perm, mismatches);
-    // Equivalent to: perm << ((key_size * 8) - mismatches)
-    // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
-    // Then we want to shift left 256 - 5 = 251 times.
-    mpz_mul_2exp(*perm, *perm, (key_size * 8) - mismatches);
-}
-
 /// Generate a set of starting permutations based on mismatches and a maximum key_size.
 /// \param starting_perms The pre-allocated, pre-initialized array of starting_perms to fill.
 /// \param starting_perms_size The count of starting_perms.
@@ -67,7 +43,7 @@ void assign_last_permutation(mpz_t *perm, size_t mismatches, size_t key_size) {
 void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, size_t mismatches,
         size_t key_size) {
     // Always set the first one to the global first permutation
-    assign_first_permutation(&(starting_perms[0]), mismatches);
+    gmp_assign_first_permutation(starting_perms[0], mismatches);
 
     mpz_t ordinal, chunk_size;
     mpz_inits(ordinal, chunk_size, NULL);
