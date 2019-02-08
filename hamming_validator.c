@@ -56,7 +56,7 @@ void get_random_corrupted_key(const unsigned char *key, unsigned char *corrupted
 int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
                      size_t key_size, uuid_t userId, const unsigned char *auth_cipher, const int* global_found) {
     unsigned char *corrupted_key;
-    unsigned char cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
+    unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen, found = 0;
 
     // Initialization
@@ -70,11 +70,11 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     while(!gmp_key_iter_end(&iter) && !(*global_found)) {
         gmp_key_iter_get(&iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
-        if(!encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen)) {
+        if(!encrypt(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             break;
         }
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, 16) == 0) {
+        if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
             found = 1;
             break;
         }
@@ -91,8 +91,8 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
 
 int main() {
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 3;
-    size_t starting_perms_size = 1ULL;
+    const size_t MISMATCHES = 4;
+    size_t starting_perms_size = 512ULL;
 
     gmp_randstate_t randstate;
     gmp_randinit_default(randstate);
@@ -107,7 +107,7 @@ int main() {
 
     unsigned char *key;
     unsigned char *corrupted_key;
-    unsigned char auth_cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
+    unsigned char auth_cipher[EVP_MAX_BLOCK_LENGTH];
 
     mpz_t *starting_perms;
     mpz_t last_perm;
@@ -148,7 +148,7 @@ int main() {
     // (Needs to be checked on)
     size_t n;
     int found = 0;
-//    #pragma omp parallel for private(n) schedule(dynamic)
+    #pragma omp parallel for private(n) schedule(dynamic)
     for(n = 0; n < starting_perms_size; n++) {
         // If already found
         if(!found) {
