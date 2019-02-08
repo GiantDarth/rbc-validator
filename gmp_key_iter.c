@@ -41,31 +41,13 @@ void gmp_key_iter_next(gmp_key_iter *iter) {
     mpz_sub_ui(iter->tmp, iter->tmp, 1);
     mpz_ior(iter->curr_perm, iter->t, iter->tmp);
 
-    // Perform a NAND operation between the permutation and the key.
+    // Perform an XOR operation between the permutation and the key.
     // If a bit is set in permutation, then flip the bit in the key.
     // Otherwise, leave it as is.
-    mpz_and(iter->corrupted_key_mpz, iter->key_mpz, iter->curr_perm);
-    mpz_neg(iter->corrupted_key_mpz, iter->corrupted_key_mpz);
+    mpz_xor(iter->corrupted_key_mpz, iter->key_mpz, iter->curr_perm);
 }
 
 void gmp_key_iter_get(const gmp_key_iter *iter, unsigned char *corrupted_key) {
     // Convert from mpz to an unsigned char array
     mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, iter->corrupted_key_mpz);
-}
-
-void gmp_assign_first_permutation(mpz_t perm, size_t mismatches) {
-    // Set perm to first key
-    // Equivalent to: (perm << mismatches) - 1
-    mpz_set_ui(perm, 1);
-    mpz_mul_2exp(perm, perm, mismatches);
-    mpz_sub_ui(perm, perm, 1);
-}
-
-void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size) {
-    // First set the value to the first permutation.
-    gmp_assign_first_permutation(perm, mismatches);
-    // Equivalent to: perm << ((key_size * 8) - mismatches)
-    // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
-    // Then we want to shift left 256 - 5 = 251 times.
-    mpz_mul_2exp(perm, perm, (key_size * 8) - mismatches);
 }
