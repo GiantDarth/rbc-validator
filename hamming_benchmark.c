@@ -40,7 +40,7 @@ void int_progression(size_t mismatches) {
 void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
         size_t key_size, uuid_t userId) {
     unsigned char *corrupted_key;
-    unsigned char cipher[sizeof(userId) + EVP_MAX_BLOCK_LENGTH];
+    unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen;
 
     // Initialization
@@ -54,7 +54,7 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
     while(!gmp_key_iter_end(&iter)) {
         gmp_key_iter_get(&iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
-        if(!encrypt(corrupted_key, userId, sizeof(userId), cipher, &outlen)) {
+        if(!encrypt(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             break;
         }
 
