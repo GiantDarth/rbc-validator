@@ -4,8 +4,15 @@
 
 #include "gmp_key_iter.h"
 
-void gmp_key_iter_create(gmp_key_iter *iter, const unsigned char *key, size_t key_size,
+#include <stdlib.h>
+
+gmp_key_iter* gmp_key_iter_create(const unsigned char *key, size_t key_size,
         const mpz_t first_perm, const mpz_t last_perm) {
+    gmp_key_iter *iter;
+    if((iter = malloc(sizeof(*iter))) == NULL) {
+        return NULL;
+    }
+
     mpz_inits(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->key_mpz,
             iter->corrupted_key_mpz, NULL);
 
@@ -13,12 +20,14 @@ void gmp_key_iter_create(gmp_key_iter *iter, const unsigned char *key, size_t ke
     mpz_set(iter->last_perm, last_perm);
 
     mpz_import(iter->key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
-}
 
+    return iter;
+}
 
 void gmp_key_iter_destroy(gmp_key_iter *iter) {
     mpz_clears(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->key_mpz,
             iter->corrupted_key_mpz, NULL);
+    free(iter);
 }
 
 void gmp_key_iter_next(gmp_key_iter *iter) {

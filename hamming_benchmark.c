@@ -43,56 +43,74 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen;
 
-    // Initialization
-    gmp_key_iter iter;
-    gmp_key_iter_create(&iter, key, key_size, starting_perm, last_perm);
+    gmp_key_iter *iter;
 
     // Memory allocation
-    corrupted_key = malloc(sizeof(*corrupted_key) * key_size);
+    if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
+        perror("Error");
+        return;
+    }
+
+    // Allocation and initialization
+    if((iter = gmp_key_iter_create(key, key_size, starting_perm, last_perm)) == NULL) {
+        perror("Error");
+        free(corrupted_key);
+        return;
+    }
 
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(&iter)) {
-        gmp_key_iter_get(&iter, corrupted_key);
+    while(!gmp_key_iter_end(iter)) {
+        gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encrypt(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             break;
         }
 
-        gmp_key_iter_next(&iter);
+        gmp_key_iter_next(iter);
     }
 
     // Cleanup
+    gmp_key_iter_destroy(iter);
     free(corrupted_key);
-    gmp_key_iter_destroy(&iter);
 }
 
 int main() {
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = 4;
-
-    unsigned char *key;
-    key = malloc(sizeof(*key) * KEY_SIZE);
-
     size_t starting_perms_size = 512ULL;
 
+    uuid_t userId;
+    char uuid_str[37];
+
+    unsigned char *key;
+
     mpz_t *starting_perms;
-    starting_perms = malloc(sizeof(*starting_perms) * starting_perms_size);
+    mpz_t last_perm;
+
+    // Allocate memory
+    if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
+        perror("Error");
+        return EXIT_FAILURE;
+    }
+
+    if((starting_perms = malloc(sizeof(*starting_perms) * starting_perms_size)) == NULL) {
+        perror("Error");
+        free(key);
+        return EXIT_FAILURE;
+    }
+
     for(size_t i = 0; i < starting_perms_size; i++) {
         mpz_init(starting_perms[i]);
     }
-
-    mpz_t last_perm;
     mpz_init(last_perm);
-    gmp_assign_last_permutation(last_perm, MISMATCHES, KEY_SIZE);
+
+    // Initialize values
+    uuid_generate(userId);
+    uuid_unparse(userId, uuid_str);
+    printf("Using UUID: %s\n", uuid_str);
 
     generate_starting_permutations(starting_perms, starting_perms_size, MISMATCHES, KEY_SIZE);
-
-    uuid_t userId;
-    char uuid[37];
-
-    uuid_generate(userId);
-    uuid_unparse(userId, uuid);
-    printf("Using UUID: %s\n", uuid);
+    gmp_assign_last_permutation(last_perm, MISMATCHES, KEY_SIZE);
 
     double startTime = omp_get_wtime();
     // int_progression(MISMATCHES);
@@ -116,6 +134,7 @@ int main() {
 
     printf("Clock time: %f s\n", duration);
 
+    // Cleanup
     mpz_clear(last_perm);
     for(size_t i = 0; i < starting_perms_size; i++) {
         mpz_clear(starting_perms[i]);
@@ -123,5 +142,5 @@ int main() {
     free(starting_perms);
     free(key);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
