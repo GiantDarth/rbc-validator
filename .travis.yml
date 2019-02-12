@@ -1,0 +1,29 @@
+language: c
+
+os:
+  - linux
+
+compiler:
+  - gcc
+  - clang
+
+env:
+  - OMP_NUM_THREADS=4
+
+dist: xenial
+
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+      - libssl-dev
+      - uuid-dev
+      - libsqlite3-dev
+
+script:
+  - cmake --version
+  - cmake ./CMakeLists.txt
+  - cmake --build .
+  - lookupwork
+  - hamming_benchmark
+  - hamming_validator
