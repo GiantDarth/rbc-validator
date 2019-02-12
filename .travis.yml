@@ -24,9 +24,9 @@ before_install:
   - wget https://www.openssl.org/source/openssl-1.1.0j.tar.gz
   - tar xvf openssl-1.1.0j.tar.gz
   - cd openssl-1.1.0j
-  - ./config
-  - make
-  - make install
+  - sudo ./config
+  - sudo make
+  - sudo make install
   - cd ..
 
 script:
