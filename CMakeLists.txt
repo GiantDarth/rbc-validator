@@ -8,6 +8,8 @@ add_executable(hamming_validator hamming_validator.c gmp_key_iter.c gmp_key_iter
 add_executable(lookupwork lookupwork.c)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+# Append expected search paths for Monsoon
+list(APPEND CMAKE_PREFIX_PATH /packages/openssl/1.1.1 /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
