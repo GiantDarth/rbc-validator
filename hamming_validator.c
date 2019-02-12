@@ -84,6 +84,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encrypt(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
+            found = -1;
             break;
         }
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
