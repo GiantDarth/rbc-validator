@@ -30,3 +30,14 @@ script:
   - ./lookupwork
   - ./hamming_benchmark
   - ./hamming_validator
+
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/29fd40f0cf4a1a47b339
+    # options: [always|never|change] default: always
+    on_success: always
+    # options: [always|never|change] default: always
+    on_failure: always
+    # options: [always|never|change] default: always
+    on_start: never
