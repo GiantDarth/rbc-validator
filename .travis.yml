@@ -17,9 +17,17 @@ addons:
     packages:
       - libomp-dev
       - libgmp-dev
-      - libssl-dev
       - uuid-dev
       - libsqlite3-dev
+
+before_script:
+  - wget https://www.openssl.org/source/openssl-1.1.0j.tar.gz
+  - tar xf openssl-1.1.0j.tar.gz
+  - cd openssl-1.1.0j
+  - CC=gcc sudo ./config
+  - sudo make > /dev/null
+  - sudo make install > /dev/null
+  - cd ..
 
 script:
   - cmake --version
