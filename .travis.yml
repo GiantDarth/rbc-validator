@@ -22,7 +22,7 @@ addons:
 
 before_script:
   - wget https://www.openssl.org/source/openssl-1.1.0j.tar.gz
-  - tar xvf openssl-1.1.0j.tar.gz
+  - tar xf openssl-1.1.0j.tar.gz
   - cd openssl-1.1.0j
   - sudo ./config
   - sudo make > /dev/null
