@@ -11,9 +11,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
 list(APPEND CMAKE_PREFIX_PATH /packages/openssl/1.1.1 /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 # Append expected search paths for Mac OS X via Homebrew
-# TODO: Append these by using some sort of brew command, e.g.: brew list openssl@1.1
-list(APPEND CMAKE_PREFIX_PATH /usr/local/Cellar/openssl@1.1/1.1.1a /usr/local/Cellar/libomp/7.0.0
-        /usr/local/Cellar/ossp-uuid/1.6.2_2 /usr/local/Cellar/gmp/6.1.2_2 /usr/local/Cellar/sqlite/3.27.1)
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl@1.1 /usr/local/opt/libomp /usr/local/opt/ossp-uuid
+        /usr/local/opt/gmp /usr/local/opt/sqlite)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
