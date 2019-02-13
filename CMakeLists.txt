@@ -19,10 +19,11 @@ find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(SQLite3 MODULE REQUIRED)
+find_package(UUID MODULE REQUIRED)
 
 include_directories(${SQLITE3_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDES})
-include_directories(${UUID_INCLUDE_DIR})
+include_directories(${UUID_INCLUDE_DIRS})
 
 target_link_libraries(hamming_benchmark OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
 target_link_libraries(hamming_validator OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
