@@ -10,6 +10,9 @@ add_executable(lookupwork lookupwork.c)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
 list(APPEND CMAKE_PREFIX_PATH /packages/openssl/1.1.1 /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
+# Append expected search paths for Mac OS X via Homebrew
+list(APPEND CMAKE_PREFIX_PATH /usr/local/Cellar/openssl@1.1 /usr/local/Cellar/libomp /usr/local/Cellar/ossp-uuid
+        /usr/local/Cellar/gmp /usr/local/Cellar/sqlite)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
