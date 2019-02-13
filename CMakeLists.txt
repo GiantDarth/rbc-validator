@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
+if(APPLE)
+    cmake_minimum_required(VERSION 3.12)
+endif(APPLE)
 project(hamming_benchmark C)
 
 set(CMAKE_C_STANDARD 11)
