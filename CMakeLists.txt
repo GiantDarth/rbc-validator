@@ -1,6 +1,9 @@
-cmake_minimum_required(VERSION 3.9)
+# libomp can only be found on Mac OS X if using CMake 3.12+
 if(APPLE)
     cmake_minimum_required(VERSION 3.12)
+# Otherwise, we need at least CMake 3.9 to utilize OpenMP::OpenMP_C
+else(APPLE)
+    cmake_minimum_required(VERSION 3.9)
 endif(APPLE)
 project(hamming_benchmark C)
 
@@ -18,7 +21,6 @@ list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl@1.1 /usr/local/opt/libomp /
         /usr/local/opt/gmp /usr/local/opt/sqlite)
 
 find_package(OpenSSL 1.1 REQUIRED)
-# NOTE: This only works on Mac OS X w/ libomp for CMake 3.12+!
 find_package(OpenMP REQUIRED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(SQLite3 MODULE REQUIRED)
