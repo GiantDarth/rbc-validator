@@ -28,11 +28,7 @@ addons:
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libomp ossp-uuid ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew upgrade openssl@1.1 sqlite ; fi
-
-before_script:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew list openssl@1.1 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libomp ossp-uuid cmake ; fi
 
 script:
   - cmake --version
