@@ -1,1 +1,1 @@
-just a placeholder
+# Hamming Benchmark
