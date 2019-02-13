@@ -27,7 +27,7 @@ addons:
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libomp ossp-uuid cmake ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libomp ossp-uuid ; fi
 
 script:
   - cmake --version
