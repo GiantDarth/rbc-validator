@@ -21,8 +21,9 @@ find_package(SQLite3 MODULE REQUIRED)
 
 include_directories(${SQLITE3_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDES})
+include_directories(${UUID_INCLUDE_DIR})
 
-target_link_libraries(hamming_benchmark OpenSSL::SSL OpenMP::OpenMP_C uuid ${GMP_LIBRARIES})
-target_link_libraries(hamming_validator OpenSSL::SSL OpenMP::OpenMP_C uuid ${GMP_LIBRARIES})
+target_link_libraries(hamming_benchmark OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
+target_link_libraries(hamming_validator OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
