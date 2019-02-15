@@ -7,23 +7,25 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-void decode_ordinal(mpz_t perm, mpz_t ordinal, size_t mismatches, size_t key_size) {
-    mpz_t binom;
-    mpz_init(binom);
+void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size) {
+    mpz_t binom, curr_ordinal;
+    mpz_inits(binom, curr_ordinal, NULL);
+
+    mpz_set(curr_ordinal, ordinal);
 
     mpz_set_ui(perm, 0);
     for (unsigned long bit = key_size * 8 - 1; mismatches > 0; bit--)
     {
         mpz_bin_uiui(binom, bit, mismatches);
-        if (mpz_cmp(ordinal, binom) >= 0)
+        if (mpz_cmp(curr_ordinal, binom) >= 0)
         {
-            mpz_sub(ordinal, ordinal, binom);
+            mpz_sub(curr_ordinal, curr_ordinal, binom);
             mpz_setbit(perm, bit);
             mismatches--;
         }
     }
 
-    mpz_clear(binom);
+    mpz_clears(binom, curr_ordinal, NULL);
 }
 
 void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_randstate_t randstate) {

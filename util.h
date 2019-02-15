@@ -12,7 +12,7 @@
 /// \param ordinal The ordinal as the input.
 /// \param mismatches How many bits to set.
 /// \param key_size How big the bit string is (in bytes)
-void decode_ordinal(mpz_t perm, mpz_t ordinal, size_t mismatches, size_t key_size);
+void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size);
 
 void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_randstate_t randstate);
 
