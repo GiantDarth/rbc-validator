@@ -2,10 +2,12 @@ language: c
 
 os:
   - linux
+  - osx
+
+osx_image: xcode10.1
 
 compiler:
   - gcc
-  - clang
 
 env:
   - OMP_NUM_THREADS=4
@@ -22,6 +24,13 @@ addons:
       - libssl-dev
       - uuid-dev
       - libsqlite3-dev
+  homebrew:
+    packages:
+      - libomp
+      - gmp
+      - openssl@1.1
+      - ossp-uuid
+      - sqlite
 
 script:
   - cmake --version

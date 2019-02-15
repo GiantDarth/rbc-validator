@@ -1,4 +1,10 @@
-cmake_minimum_required(VERSION 3.9)
+# libomp can only be found on Mac OS X if using CMake 3.12+
+if(APPLE)
+    cmake_minimum_required(VERSION 3.12)
+# Otherwise, we need at least CMake 3.9 to utilize OpenMP::OpenMP_C
+else(APPLE)
+    cmake_minimum_required(VERSION 3.9)
+endif(APPLE)
 project(hamming_benchmark C)
 
 set(CMAKE_C_STANDARD 11)
@@ -10,16 +16,21 @@ add_executable(lookupwork lookupwork.c)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
 list(APPEND CMAKE_PREFIX_PATH /packages/openssl/1.1.1 /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
+# Append expected search paths for Mac OS X via Homebrew
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/openssl@1.1 /usr/local/opt/libomp /usr/local/opt/ossp-uuid
+        /usr/local/opt/gmp /usr/local/opt/sqlite)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(SQLite3 MODULE REQUIRED)
+find_package(UUID MODULE REQUIRED)
 
 include_directories(${SQLITE3_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDES})
+include_directories(${UUID_INCLUDE_DIRS})
 
-target_link_libraries(hamming_benchmark OpenSSL::SSL OpenMP::OpenMP_C uuid ${GMP_LIBRARIES})
-target_link_libraries(hamming_validator OpenSSL::SSL OpenMP::OpenMP_C uuid ${GMP_LIBRARIES})
+target_link_libraries(hamming_benchmark OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
+target_link_libraries(hamming_validator OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
