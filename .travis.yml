@@ -24,10 +24,13 @@ addons:
       - libssl-dev
       - uuid-dev
       - libsqlite3-dev
-
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install libomp ossp-uuid ; fi
+  homebrew:
+    packages:
+      - libomp
+      - gmp
+      - openssl@1.1
+      - ossp-uuid
+      - sqlite
 
 script:
   - cmake --version
