@@ -54,6 +54,7 @@ script:
       ./CMakeLists.txt
     else
       cmake ./CMakeLists.txt
+    fi
   - cmake --build .
   - ./lookupwork
   - ./hamming_benchmark
