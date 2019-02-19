@@ -42,7 +42,18 @@ before_install:
 
 script:
   - cmake --version
-  - cmake ./CMakeLists.txt
+  - |
+    # For Mojave (10.14)
+    # Source: https://github.com/henry0312/LightGBM/blob/master/docs/Installation-Guide.rst#apple-clang
+    if [[ "$TRAVIS_OSX_IMAGE" == "xcode10.2" ]]; then cmake \
+      -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
+      -DOpenMP_C_LIB_NAMES="omp" \
+      -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
+      -DOpenMP_CXX_LIB_NAMES="omp" \
+      -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
+      ./CMakeLists.txt
+    else
+      cmake ./CMakeLists.txt
   - cmake --build .
   - ./lookupwork
   - ./hamming_benchmark
