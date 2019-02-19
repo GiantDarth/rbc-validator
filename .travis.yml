@@ -38,10 +38,6 @@ addons:
       - ossp-uuid
       - sqlite
 
-# Based on Travis CI's recommendations for MPI projects
-before_install:
-  - test -n $CC && unset CC
-
 script:
   - cmake --version
   - |
