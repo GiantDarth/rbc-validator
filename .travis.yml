@@ -20,6 +20,7 @@ addons:
       - sourceline: "ppa:ondrej/php"
     packages:
       - libomp-dev
+      - libopenmpi-dev
       - libgmp-dev
       - libssl-dev
       - uuid-dev
@@ -27,6 +28,7 @@ addons:
   homebrew:
     packages:
       - libomp
+      - open-mpi
       - gmp
       - openssl@1.1
       - ossp-uuid
