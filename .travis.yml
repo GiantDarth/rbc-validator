@@ -1,18 +1,22 @@
 language: c
 
-os:
-  - linux
-  - osx
-
-osx_image: xcode10.1
-
-compiler:
-  - gcc
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      compiler: gcc
+    - os: linux
+      dist: xenial
+      compiler: clang
+    - os: osx
+      osx_image: xcode10.1
+      compiler: clang
+    - os: osx
+      osx_image: xcode10.2
+      compiler: clang
 
 env:
   - OMP_NUM_THREADS=4
-
-dist: xenial
 
 addons:
   apt:
@@ -20,6 +24,7 @@ addons:
       - sourceline: "ppa:ondrej/php"
     packages:
       - libomp-dev
+      - libopenmpi-dev
       - libgmp-dev
       - libssl-dev
       - uuid-dev
@@ -27,6 +32,7 @@ addons:
   homebrew:
     packages:
       - libomp
+      - open-mpi
       - gmp
       - openssl@1.1
       - ossp-uuid
@@ -34,7 +40,19 @@ addons:
 
 script:
   - cmake --version
-  - cmake ./CMakeLists.txt
+  - |
+    # For Mojave (10.14)
+    # Source: https://github.com/henry0312/LightGBM/blob/master/docs/Installation-Guide.rst#apple-clang
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]] && [[ "$TRAVIS_OSX_IMAGE" == "xcode10.2" ]]; then cmake \
+      -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
+      -DOpenMP_C_LIB_NAMES="omp" \
+      -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
+      -DOpenMP_CXX_LIB_NAMES="omp" \
+      -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
+      ./CMakeLists.txt
+    else
+      cmake ./CMakeLists.txt
+    fi
   - cmake --build .
   - ./lookupwork
   - ./hamming_benchmark
