@@ -32,6 +32,6 @@ include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 
 target_link_libraries(hamming_benchmark OpenSSL::SSL OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
-target_link_libraries(hamming_validator OpenSSL::SSL OpenMP::OpenMP_C MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
+target_link_libraries(hamming_validator OpenSSL::SSL MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})

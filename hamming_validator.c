@@ -11,7 +11,6 @@
 #include <openssl/evp.h>
 #include <uuid/uuid.h>
 #include <gmp.h>
-#include <omp.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -152,6 +151,8 @@ int main() {
 
     mpz_t starting_perm, ending_perm;
 
+    struct timespec startTime, endTime;
+
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
         perror("Error");
@@ -188,7 +189,7 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    double startTime = omp_get_wtime();
+    clock_gettime(CLOCK_MONOTONIC, &startTime);
     // Loop through every starting_perms, assuming that the array is already sorted.
     pid_t children[starting_perms_size];
     for(size_t i = 0; i < starting_perms_size; i++) {
@@ -214,6 +215,9 @@ int main() {
     int status;
     while(wait(&status) > 0 && !WEXITSTATUS(status));
 
+    clock_gettime(CLOCK_MONOTONIC, &endTime);
+    double duration = (1e9 * difftime(endTime.tv_sec, startTime.tv_sec) + endTime.tv_nsec - startTime.tv_nsec) / 1e9;
+
     if(WEXITSTATUS(status)) {
         for(size_t i = 0; i < 8; i++) {
             kill(children[i], SIGTERM);
@@ -221,10 +225,7 @@ int main() {
         }
     }
 
-    double duration = omp_get_wtime() - startTime;
-
     printf("Clock time: %f s\n", duration);
-
     printf("Found: %d", WEXITSTATUS(status));
 
     // Cleanup
