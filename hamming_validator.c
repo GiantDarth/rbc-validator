@@ -216,7 +216,7 @@ int main() {
     while(wait(&status) > 0 && !WEXITSTATUS(status));
 
     clock_gettime(CLOCK_MONOTONIC, &endTime);
-    double duration = (1e9 * difftime(endTime.tv_sec, startTime.tv_sec) + endTime.tv_nsec - startTime.tv_nsec) / 1e9;
+    double duration = difftime(endTime.tv_sec, startTime.tv_sec) + ((endTime.tv_nsec - startTime.tv_nsec) / 1e9);
 
     if(WEXITSTATUS(status)) {
         for(size_t i = 0; i < 8; i++) {
