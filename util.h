@@ -30,7 +30,7 @@ void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms
 /// \param msgLen Denotes the size of the message (not NULL-terminated).
 /// \param cipher The output data's length (not NULL-terminated).
 /// \return Returns 1 on success or 0 on error (typically OpenSSL error).
-int encrypt(const unsigned char* key, const unsigned char* msg, size_t msgLen, unsigned char* cipher, int* outlen);
+int encryptMsg(const unsigned char *key, const unsigned char *msg, size_t msgLen, unsigned char *cipher, int *outlen);
 
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.

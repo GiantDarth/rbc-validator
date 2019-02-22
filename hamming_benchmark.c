@@ -62,7 +62,7 @@ void gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const uns
     while(!gmp_key_iter_end(iter)) {
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
-        if(!encrypt(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
+        if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             break;
         }
 

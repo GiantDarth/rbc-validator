@@ -115,7 +115,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     while(!gmp_key_iter_end(iter)) {
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
-        if(!encrypt(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
+        if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             found = -1;
             break;
         }
@@ -178,7 +178,7 @@ int main() {
     get_random_corrupted_key(key, corrupted_key, MISMATCHES, KEY_SIZE, randstate);
 
     int outlen;
-    if(!encrypt(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
+    if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
         // Cleanup
         mpz_clears(starting_perm, ending_perm, NULL);
         free(corrupted_key);
