@@ -13,6 +13,7 @@
 #include <gmp.h>
 #include <omp.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h>
 
 #include "gmp_key_iter.h"
