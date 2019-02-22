@@ -202,8 +202,6 @@ int main() {
             get_perm_pair(starting_perm, ending_perm, i, starting_perms_size, MISMATCHES, KEY_SIZE);
             int found = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
 
-            printf("%zu, %d\n", i, found);
-
             // Cleanup
             mpz_clears(starting_perm, ending_perm, NULL);
             free(corrupted_key);
