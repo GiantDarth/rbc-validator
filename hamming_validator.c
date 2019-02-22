@@ -138,7 +138,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
 
 int main() {
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 4;
+    const size_t MISMATCHES = 3;
     size_t starting_perms_size = 8ULL;
 
     gmp_randstate_t randstate;
