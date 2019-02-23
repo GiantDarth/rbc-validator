@@ -60,7 +60,7 @@ void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms
     mpz_clears(ordinal, chunk_size, NULL);
 }
 
-int encrypt(const unsigned char* key, const unsigned char* msg, size_t msgLen, unsigned char* cipher, int* outlen) {
+int encryptMsg(const unsigned char *key, const unsigned char *msg, size_t msgLen, unsigned char *cipher, int *outlen) {
     int tmplen;
 
     EVP_CIPHER_CTX *ctx;
