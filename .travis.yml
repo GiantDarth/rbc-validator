@@ -57,6 +57,7 @@ script:
   - ./lookupwork
   - ./hamming_benchmark
   - ./hamming_validator
+  - ./hamming_validator_fork
 
 notifications:
   webhooks:
