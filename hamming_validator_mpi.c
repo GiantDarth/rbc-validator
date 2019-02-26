@@ -98,11 +98,11 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
 int main(int argc, char **argv) {
     int my_rank, nprocs;
 
-    MPI_Init(&argc,&argv);
-    MPI_Comm_rank(MPI_COMM_WORLD,&my_rank);
-    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Status status;
-    MPI_Request request=MPI_REQUEST_NULL;
+    MPI_Request request = MPI_REQUEST_NULL;
 
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = 3;
@@ -120,6 +120,7 @@ int main(int argc, char **argv) {
 
     struct timespec startTime, endTime;
 
+    // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
         perror("Error");
         return EXIT_FAILURE;
@@ -133,11 +134,11 @@ int main(int argc, char **argv) {
 
     mpz_inits(starting_perm, ending_perm, NULL);
 
-    if (my_rank == 0) {
-        // Memory allocation
-
+    if(my_rank == 0) {
         // Initialize values
         uuid_generate(userId);
+
+        // Convert the uuid to a string for printing
         uuid_unparse(userId, uuid_str);
         printf("Using UUID: %s\n", uuid_str);
 
@@ -176,10 +177,11 @@ int main(int argc, char **argv) {
     get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
     gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
 
-    if (my_rank == 0) {
-      printf("Checked all combinations!\n");
+    if(my_rank == 0) {
+        printf("Checked all combinations!\n");
     }
 
+    // Cleanup
     mpz_clears(starting_perm, ending_perm, NULL);
     free(corrupted_key);
     free(key);
