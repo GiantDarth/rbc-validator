@@ -28,11 +28,10 @@
 /// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
-/// \param global_found A pointer to a shared "found" variable so as to cut out early if another thread
-/// has found it.
+/// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
-                  size_t key_size, uuid_t userId, const unsigned char *auth_cipher, const int* global_found) {
+                  size_t key_size, uuid_t userId, const unsigned char *auth_cipher, const int* signal) {
     // Declaration
     unsigned char *corrupted_key;
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
@@ -54,7 +53,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     }
 
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(iter) && !(*global_found)) {
+    while(!gmp_key_iter_end(iter) && !(*signal)) {
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
@@ -83,7 +82,8 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
 int main() {
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = 3;
-    size_t starting_perms_size = 512ULL;
+    // Use this line to manually set the # of threads, otherwise it detects it by your machine
+//    omp_set_num_threads(4);
 
     gmp_randstate_t randstate;
 
@@ -93,9 +93,6 @@ int main() {
     unsigned char *key;
     unsigned char *corrupted_key;
     unsigned char auth_cipher[EVP_MAX_BLOCK_LENGTH];
-
-    mpz_t *starting_perms;
-    mpz_t last_perm;
 
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
@@ -108,18 +105,6 @@ int main() {
         free(key);
         return ERROR_CODE_FAILURE;
     }
-
-    if((starting_perms = malloc(sizeof(*starting_perms) * starting_perms_size)) == NULL) {
-        perror("Error");
-        free(key);
-        free(corrupted_key);
-        return ERROR_CODE_FAILURE;
-    }
-
-    for(size_t i = 0; i < starting_perms_size; i++) {
-        mpz_init(starting_perms[i]);
-    }
-    mpz_init(last_perm);
 
     // Initialize values
     uuid_generate(userId);
@@ -138,59 +123,62 @@ int main() {
     int outlen;
     if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
         // Cleanup
-        mpz_clear(last_perm);
-        for(size_t i = 0; i < starting_perms_size; i++) {
-            mpz_clear(starting_perms[i]);
-        }
-        free(starting_perms);
         free(corrupted_key);
         free(key);
 
         return ERROR_CODE_FAILURE;
     }
 
-    generate_starting_permutations(starting_perms, starting_perms_size, MISMATCHES, KEY_SIZE);
-    gmp_assign_last_permutation(last_perm, MISMATCHES, KEY_SIZE);
-
     double startTime = omp_get_wtime();
-    // Loop through every starting_perms, assuming that the array is already sorted.
-    // Apparently the loop variable needs to be declared first and set as 'private(n)' for pure C?
-    // (Needs to be checked on)
-    size_t n;
-    int found = 0;
-#pragma omp parallel for private(n) schedule(dynamic)
-    for(n = 0; n < starting_perms_size; n++) {
-        // If already found
-        if(!found) {
-            // If not the last of the starting_perms, set the last_perm to be the next item in the array
-            if(n < starting_perms_size - 1) {
-                if(gmp_validator(starting_perms[n], starting_perms[n + 1], key, KEY_SIZE, userId,
-                                 auth_cipher, &found)) {
-                    found = 1;
-                }
-            }
-                // Else, assume the last starting_perm will continue until last_perm.
-            else {
-                if(gmp_validator(starting_perms[n], last_perm, key, KEY_SIZE, userId, auth_cipher,
-                                 &found)) {
-                    found = 1;
-                }
-            }
+    int found = 0, signal = 0, error = 0;
+#pragma omp parallel
+    {
+        mpz_t starting_perm, ending_perm;
+        mpz_inits(starting_perm, ending_perm, NULL);
+
+        get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(), (size_t)omp_get_num_threads(),
+                MISMATCHES, KEY_SIZE);
+
+        int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId,
+                auth_cipher, &signal);
+        // If the result is positive, set the "global" found to 1. Will cause the other threads to
+        // prematurely stop.
+        if(subfound > 0) {
+#pragma omp critical
+            {
+                found = 1;
+                signal = 1;
+            };
         }
+        // If the result is negative, set a flag that an error has occurred, and stop the other threads.
+        // Will cause the other threads to prematurely stop.
+        else if(subfound < 0) {
+            // Set the error flag, then set the signal to stop the other threads
+#pragma omp critical
+            {
+                error = 1;
+                signal = 1;
+            };
+        }
+
+        mpz_clears(starting_perm, ending_perm, NULL);
+    }
+
+    // Check if an error occurred in one of the threads.
+    if(error) {
+        // Cleanup
+        free(corrupted_key);
+        free(key);
+
+        return EXIT_FAILURE;
     }
 
     double duration = omp_get_wtime() - startTime;
 
     printf("Clock time: %f s\n", duration);
-
     printf("Found: %d\n", found);
-
+  
     // Cleanup
-    mpz_clear(last_perm);
-    for(size_t i = 0; i < starting_perms_size; i++) {
-        mpz_clear(starting_perms[i]);
-    }
-    free(starting_perms);
     free(corrupted_key);
     free(key);
 
