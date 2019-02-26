@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
-    
+
     // Reduce all the "found" answers to a single found statement.
     // Also works as a natural barrier to make sure all processes are done validating before ending time.
     int found = 0;
