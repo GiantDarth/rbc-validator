@@ -122,7 +122,7 @@ int main() {
     }
 
     double startTime = omp_get_wtime();
-    int found = 0;
+    int found = 0, error = 0;
 #pragma omp parallel
     {
         mpz_t starting_perm, ending_perm;
@@ -131,19 +131,38 @@ int main() {
         get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(), (size_t)omp_get_num_threads(),
                 MISMATCHES, KEY_SIZE);
 
-        if(gmp_validator(starting_perm, ending_perm, corrupted_key, KEY_SIZE, userId,
-                         auth_cipher, &found)) {
+        int subfound = gmp_validator(starting_perm, ending_perm, corrupted_key, KEY_SIZE, userId,
+                auth_cipher, &found);
+        // If the result is positive, set the "global" found to 1. Will cause the other threads to
+        // prematurely stop.
+        if(subfound > 0) {
 #pragma omp critical
             found = 1;
+        }
+        // If the result is negative, set a flag that an error has occurred, and stop the other threads.
+        // Will cause the other threads to prematurely stop.
+        else if(subfound < 0) {
+            // Artificially set the "global" found to yes to get the threads to stop.
+#pragma omp critical
+            found = 1;
+            error = 1;
         }
 
         mpz_clears(starting_perm, ending_perm, NULL);
     }
 
+    // If the "global" found is negative, then an error has occurred.
+    if(error) {
+        // Cleanup
+        free(corrupted_key);
+        free(key);
+
+        return EXIT_FAILURE;
+    }
+
     double duration = omp_get_wtime() - startTime;
 
     printf("Clock time: %f s\n", duration);
-
     printf("Found: %d", found);
 
     // Cleanup
