@@ -46,8 +46,6 @@ script:
     if [[ "$TRAVIS_OS_NAME" == "osx" ]] && [[ "$TRAVIS_OSX_IMAGE" == "xcode10.2" ]]; then cmake \
       -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
       -DOpenMP_C_LIB_NAMES="omp" \
-      -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
-      -DOpenMP_CXX_LIB_NAMES="omp" \
       -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
       ./CMakeLists.txt
     else
@@ -57,13 +55,14 @@ script:
   - ./lookupwork
   - ./hamming_benchmark
   - ./hamming_validator
+  - ./hamming_validator_fork
 
 notifications:
   webhooks:
     urls:
       - https://webhooks.gitter.im/e/29fd40f0cf4a1a47b339
     # options: [always|never|change] default: always
-    on_success: always
+    on_success: change
     # options: [always|never|change] default: always
     on_failure: always
     # options: [always|never|change] default: always
