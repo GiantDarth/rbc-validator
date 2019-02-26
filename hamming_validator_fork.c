@@ -175,7 +175,7 @@ int main() {
     }
 
     printf("Clock time: %f s\n", duration);
-    printf("Found: %d", WEXITSTATUS(status));
+    printf("Found: %d\n", WEXITSTATUS(status));
 
     // Cleanup
     mpz_clears(starting_perm, ending_perm, NULL);
