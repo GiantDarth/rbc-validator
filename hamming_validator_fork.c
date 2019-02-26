@@ -109,6 +109,8 @@ int main() {
 
     // Initialize values
     uuid_generate(userId);
+
+    // Convert the uuid to a string for printing
     uuid_unparse(userId, uuid_str);
     printf("Using UUID: %s\n", uuid_str);
 
