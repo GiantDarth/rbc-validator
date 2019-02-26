@@ -56,6 +56,7 @@ script:
   - ./hamming_benchmark
   - ./hamming_validator
   - ./hamming_validator_fork
+  - mpirun -np 4 ./hamming_validator_mpi
 
 notifications:
   webhooks:
