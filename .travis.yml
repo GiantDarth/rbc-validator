@@ -57,8 +57,7 @@ script:
   - ./hamming_benchmark
   - ./hamming_validator
   - ./hamming_validator_fork
-  - echo "Using $(nproc) processors..."
-  - mpirun -np $(nproc) ./hamming_validator_mpi
+  - mpirun --oversubscribe -np 4 ./hamming_validator_mpi
 
 notifications:
   webhooks:
