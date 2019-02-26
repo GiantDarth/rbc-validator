@@ -187,5 +187,5 @@ int main() {
     free(corrupted_key);
     free(key);
 
-    return 0;
+    return found ? EXIT_SUCCESS: EXIT_FAILURE;
 }

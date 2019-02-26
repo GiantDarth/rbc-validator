@@ -175,5 +175,5 @@ int main() {
     free(corrupted_key);
     free(key);
 
-    return 0;
+    return WEXITSTATUS(status) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
