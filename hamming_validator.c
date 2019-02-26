@@ -182,5 +182,5 @@ int main() {
     free(corrupted_key);
     free(key);
 
-    return found ? ERROR_CODE_FOUND: ERROR_CODE_NOT_FOUND;
+    return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 }
