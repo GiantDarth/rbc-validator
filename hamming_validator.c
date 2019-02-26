@@ -183,7 +183,7 @@ int main() {
 
     printf("Clock time: %f s\n", duration);
 
-    printf("Found: %d", found);
+    printf("Found: %d\n", found);
 
     // Cleanup
     mpz_clear(last_perm);
