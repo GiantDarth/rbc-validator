@@ -24,11 +24,10 @@
 /// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
-/// \param global_found A pointer to a shared "found" variable so as to cut out early if another thread
-/// has found it.
+/// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
-                  size_t key_size, uuid_t userId, const unsigned char *auth_cipher, const int* global_found) {
+                  size_t key_size, uuid_t userId, const unsigned char *auth_cipher, const int* signal) {
     // Declaration
     unsigned char *corrupted_key;
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
@@ -50,7 +49,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     }
 
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(iter) && !(*global_found)) {
+    while(!gmp_key_iter_end(iter) && !(*signal)) {
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
@@ -122,7 +121,7 @@ int main() {
     }
 
     double startTime = omp_get_wtime();
-    int found = 0, error = 0;
+    int found = 0, signal = 0, error = 0;
 #pragma omp parallel
     {
         mpz_t starting_perm, ending_perm;
@@ -132,26 +131,31 @@ int main() {
                 MISMATCHES, KEY_SIZE);
 
         int subfound = gmp_validator(starting_perm, ending_perm, corrupted_key, KEY_SIZE, userId,
-                auth_cipher, &found);
+                auth_cipher, &signal);
         // If the result is positive, set the "global" found to 1. Will cause the other threads to
         // prematurely stop.
         if(subfound > 0) {
 #pragma omp critical
-            found = 1;
+            {
+                found = 1;
+                signal = 1;
+            };
         }
         // If the result is negative, set a flag that an error has occurred, and stop the other threads.
         // Will cause the other threads to prematurely stop.
         else if(subfound < 0) {
-            // Artificially set the "global" found to yes to get the threads to stop.
+            // Set the error flag, then set the signal to stop the other threads
 #pragma omp critical
-            found = 1;
-            error = 1;
+            {
+                error = 1;
+                signal = 1;
+            };
         }
 
         mpz_clears(starting_perm, ending_perm, NULL);
     }
 
-    // If the "global" found is negative, then an error has occurred.
+    // Check if an error occurred in one of the threads.
     if(error) {
         // Cleanup
         free(corrupted_key);
