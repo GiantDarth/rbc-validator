@@ -60,15 +60,14 @@ int gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsi
         return -1;
     }
 
+    int status = 0;
     // While we haven't reached the end of iteration
     while(!gmp_key_iter_end(iter) && !(*signal)) {
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
-            // Cleanup
-            gmp_key_iter_destroy(iter);
-            free(corrupted_key);
-            return -1;
+            status = -1;
+            break;
         }
 
         gmp_key_iter_next(iter);
@@ -78,7 +77,7 @@ int gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsi
     gmp_key_iter_destroy(iter);
     free(corrupted_key);
 
-    return 0;
+    return status;
 }
 
 int main() {
