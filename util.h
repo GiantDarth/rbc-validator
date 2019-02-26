@@ -42,4 +42,31 @@ void gmp_assign_first_permutation(mpz_t perm, size_t mismatches);
 /// \param key_size How big the relevant key is in # of bytes.
 void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size);
 
+/// Generate a random key using GMP's pseudo-random number generator functionality.
+/// \param key A pre-allocated array that is key_size bytes long.
+/// \param key_size The # of bytes to write to @param key.
+/// \param randstate A GMP randomstate object that's pre-initialized and seeded.
+void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randstate);
+/// Generate a randomly corrupted key based on a pre-existing key using GMP's pseudo-random number generator
+/// functionality.
+/// \param corrupted_key A pre-allocated array that is key_size bytes long. The final output of the corrupted key.
+/// \param key A pre-allocated array that is key_size bytes long. The starting key that will be corrupted and
+/// saved to @param corrupted_key.
+/// \param mismatches The # of bits to randomly flip form @param key written to @param corrupted_key.
+/// \param key_size The # of bytes to read from @param key and write to @param corrupted_key.
+/// \param randstate A GMP randomstate object that's pre-initialized and seeded.
+void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, size_t mismatches,
+                              size_t key_size, gmp_randstate_t randstate);
+
+/// Create a starting-ending pair of permutations based on total pairs expected and its index out of them.
+/// Meant to be used to feed into a gmp_key_iter.
+/// \param starting_perm A pre-allocated mpz_t to fill the starting permutation to.
+/// \param ending_perm A pre-allocated mpz_t to fill the ending permutation to.
+/// \param pair_index A zero-based index out of all the possible pairs expected.
+/// \param pair_count The total amount of pairs expected to generate.
+/// \param mismatches The hamming distance that you want to base the permutation on.
+/// \param key_size How big the relevant key is in # of bytes.
+void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+                   size_t mismatches, size_t key_size);
+
 #endif //HAMMING_BENCHMARK_UTIL_H

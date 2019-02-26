@@ -18,66 +18,6 @@
 #include "gmp_key_iter.h"
 #include "util.h"
 
-void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randstate) {
-    mpz_t key_mpz;
-    mpz_init(key_mpz);
-
-    mpz_urandomb(key_mpz, randstate, key_size * 8);
-
-    mpz_export(key, NULL, sizeof(*key), 1, 0, 0, key_mpz);
-
-    mpz_clear(key_mpz);
-}
-
-void get_random_corrupted_key(const unsigned char *key, unsigned char *corrupted_key, size_t mismatches,
-        size_t key_size, gmp_randstate_t randstate) {
-    mpz_t key_mpz, corrupted_key_mpz, perm;
-    mpz_inits(key_mpz, corrupted_key_mpz, perm, NULL);
-
-    get_random_permutation(perm, mismatches, key_size, randstate);
-
-    mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
-
-    // Perform an XOR operation between the permutation and the key.
-    // If a bit is set in permutation, then flip the bit in the key.
-    // Otherwise, leave it as is.
-    mpz_xor(corrupted_key_mpz, key_mpz, perm);
-
-    mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, corrupted_key_mpz);
-
-    mpz_clears(key_mpz, corrupted_key_mpz, perm, NULL);
-}
-
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
-        size_t mismatches, size_t key_size) {
-    mpz_t total_perms, starting_ordinal, ending_ordinal;
-    mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
-
-    mpz_bin_uiui(total_perms, key_size * 8, mismatches);
-
-    if(pair_index == 0) {
-        gmp_assign_first_permutation(starting_perm, mismatches);
-    }
-    else {
-        mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
-        mpz_mul_ui(starting_ordinal, starting_ordinal, pair_index);
-
-        decode_ordinal(starting_perm, starting_ordinal, mismatches, key_size);
-    }
-
-    if(pair_index == pair_count - 1) {
-        gmp_assign_last_permutation(ending_perm, mismatches, key_size);
-    }
-    else {
-        mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
-        mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
-
-        decode_ordinal(ending_perm, ending_ordinal, mismatches, key_size);
-    }
-
-    mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
-}
-
 /// Given a starting permutation, iterate forward through every possible permutation until one that's matching
 /// last_perm is found, or until a matching cipher is found.
 /// \param starting_perm The permutation to start iterating from.
@@ -177,7 +117,7 @@ int main() {
     gmp_randseed_ui(randstate, (unsigned long)time(NULL));
 
     get_random_key(key, KEY_SIZE, randstate);
-    get_random_corrupted_key(key, corrupted_key, MISMATCHES, KEY_SIZE, randstate);
+    get_random_corrupted_key(corrupted_key, key, MISMATCHES, KEY_SIZE, randstate);
 
     int outlen;
     if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
