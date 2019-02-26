@@ -19,6 +19,10 @@
 #include "gmp_key_iter.h"
 #include "util.h"
 
+#define ERROR_CODE_FOUND 0
+#define ERROR_CODE_NOT_FOUND 1
+#define ERROR_CODE_FAILURE 2
+
 /// Given a starting permutation, iterate forward through every possible permutation until one that's matching
 /// last_perm is found, or until a matching cipher is found.
 /// \param starting_perm The permutation to start iterating from.
@@ -78,8 +82,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
             MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
             if(sum == 1) {
-                MPI_Finalize();
-                exit(0);
+                break;
             }
 
             // not found yet, we'll check back after count is reached again
@@ -95,6 +98,9 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     return found;
 }
 
+/// MPI implementation
+/// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
+/// and a 2 when a general error has occurred.
 int main(int argc, char **argv) {
     int my_rank, nprocs;
 
@@ -123,13 +129,15 @@ int main(int argc, char **argv) {
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
         perror("Error");
-        return EXIT_FAILURE;
+
+        MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
     if((corrupted_key = malloc(sizeof(*corrupted_key) * KEY_SIZE)) == NULL) {
         perror("Error");
         free(key);
-        return EXIT_FAILURE;
+
+        MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
     mpz_inits(starting_perm, ending_perm, NULL);
@@ -147,7 +155,7 @@ int main(int argc, char **argv) {
         gmp_randseed_ui(randstate, (unsigned long)time(NULL));
 
         get_random_key(key, KEY_SIZE, randstate);
-        get_random_corrupted_key(key, corrupted_key, MISMATCHES, KEY_SIZE, randstate);
+        get_random_corrupted_key(corrupted_key, key, MISMATCHES, KEY_SIZE, randstate);
 
         int outlen;
         if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
@@ -156,10 +164,8 @@ int main(int argc, char **argv) {
             free(corrupted_key);
             free(key);
 
-            return EXIT_FAILURE;
+            MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
         }
-
-
     } // end rank 0
 
     //clock_gettime(CLOCK_MONOTONIC, &startTime);
@@ -175,10 +181,22 @@ int main(int argc, char **argv) {
     //printf("\n");
 
     get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
-    gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
+    int subfound = gmp_validator(starting_perm, ending_perm, corrupted_key, KEY_SIZE, userId, auth_cipher);
+    if(subfound < 0) {
+        // Cleanup
+        mpz_clears(starting_perm, ending_perm, NULL);
+        free(corrupted_key);
+        free(key);
+
+        MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
+    }
+
+    // Reduce all the "found" answers to a single found statement.
+    int found = 0;
+    MPI_Reduce(&subfound, &found, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if(my_rank == 0) {
-        printf("Checked all combinations!\n");
+        printf("Found: %d\n", found);
     }
 
     // Cleanup
@@ -186,7 +204,13 @@ int main(int argc, char **argv) {
     free(corrupted_key);
     free(key);
 
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
-    return 0;
 
+    if(my_rank == 0) {
+        return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
+    }
+    else {
+        return ERROR_CODE_FOUND;
+    }
 }
