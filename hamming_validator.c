@@ -139,7 +139,7 @@ int main() {
         get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(), (size_t)omp_get_num_threads(),
                 MISMATCHES, KEY_SIZE);
 
-        int subfound = gmp_validator(starting_perm, ending_perm, corrupted_key, KEY_SIZE, userId,
+        int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId,
                 auth_cipher, &signal);
         // If the result is positive, set the "global" found to 1. Will cause the other threads to
         // prematurely stop.
