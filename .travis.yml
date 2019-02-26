@@ -25,6 +25,7 @@ addons:
     packages:
       - libomp-dev
       - libopenmpi-dev
+      - openmpi-bin
       - libgmp-dev
       - libssl-dev
       - uuid-dev
