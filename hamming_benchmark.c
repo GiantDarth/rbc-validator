@@ -107,7 +107,7 @@ int main() {
 
     double startTime = omp_get_wtime();
     int signal = 0, error = 0;
-    #pragma omp parallel
+#pragma omp parallel
     {
         mpz_t starting_perm, ending_perm;
         mpz_inits(starting_perm, ending_perm, NULL);
