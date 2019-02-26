@@ -16,6 +16,10 @@
 #include "gmp_key_iter.h"
 #include "util.h"
 
+#define ERROR_CODE_FOUND 0
+#define ERROR_CODE_NOT_FOUND 1
+#define ERROR_CODE_FAILURE 2
+
 /// Given a starting permutation, iterate forward through every possible permutation until one that's matching
 /// last_perm is found, or until a matching cipher is found.
 /// \param starting_perm The permutation to start iterating from.
@@ -72,6 +76,9 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     return found;
 }
 
+/// OpenMP implementation
+/// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
+/// and a 2 when a general error has occurred.
 int main() {
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = 3;
@@ -90,13 +97,13 @@ int main() {
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
         perror("Error");
-        return EXIT_FAILURE;
+        return ERROR_CODE_FAILURE;
     }
 
     if((corrupted_key = malloc(sizeof(*corrupted_key) * KEY_SIZE)) == NULL) {
         perror("Error");
         free(key);
-        return EXIT_FAILURE;
+        return ERROR_CODE_FAILURE;
     }
 
     // Initialize values
@@ -119,7 +126,7 @@ int main() {
         free(corrupted_key);
         free(key);
 
-        return EXIT_FAILURE;
+        return ERROR_CODE_FAILURE;
     }
 
     double startTime = omp_get_wtime();
@@ -175,5 +182,5 @@ int main() {
     free(corrupted_key);
     free(key);
 
-    return 0;
+    return found ? ERROR_CODE_FOUND: ERROR_CODE_NOT_FOUND;
 }
