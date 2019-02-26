@@ -176,8 +176,8 @@ int main() {
     double duration = omp_get_wtime() - startTime;
 
     printf("Clock time: %f s\n", duration);
-    printf("Found: %d", found);
-
+    printf("Found: %d\n", found);
+  
     // Cleanup
     free(corrupted_key);
     free(key);
