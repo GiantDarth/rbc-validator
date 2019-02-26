@@ -61,30 +61,30 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
-            found = -1;
-            break;
+            // Cleanup
+            gmp_key_iter_destroy(iter);
+            free(corrupted_key);
+            return -1;
         }
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
             found = 1;
-            //break;
         }
 
-        /* // remove this comment block to enable early exit on valid key found
+        // remove this comment block to enable early exit on valid key found
         // count is a tuning knob for how often the MPI collective should check
         // if the right key has been found.
-        if (count == 10000) {
-            MPI_Allreduce(&found,&sum,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+        if(count == 10000) {
+            MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-            if (sum == 1) {
-              MPI_Finalize();
-              exit(0);
+            if(sum == 1) {
+                MPI_Finalize();
+                exit(0);
             }
 
             // not found yet, we'll check back after count is reached again
             count = 0;
         }
-        */
         gmp_key_iter_next(iter);
     }
 
