@@ -168,8 +168,6 @@ int main(int argc, char **argv) {
         }
     } // end rank 0
 
-    //clock_gettime(CLOCK_MONOTONIC, &startTime);
-
     // all ranks
 
     MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
@@ -180,8 +178,13 @@ int main(int argc, char **argv) {
     //print_hex(key, KEY_SIZE);
     //printf("\n");
 
+    // Initialize time for root rank
+    if(my_rank == 0) {
+        clock_gettime(CLOCK_MONOTONIC, &startTime);
+    }
+
     get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
-    int subfound = gmp_validator(starting_perm, ending_perm, corrupted_key, KEY_SIZE, userId, auth_cipher);
+    int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
     if(subfound < 0) {
         // Cleanup
         mpz_clears(starting_perm, ending_perm, NULL);
@@ -190,12 +193,17 @@ int main(int argc, char **argv) {
 
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
-
+    
     // Reduce all the "found" answers to a single found statement.
+    // Also works as a natural barrier to make sure all processes are done validating before ending time.
     int found = 0;
     MPI_Reduce(&subfound, &found, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if(my_rank == 0) {
+        clock_gettime(CLOCK_MONOTONIC, &endTime);
+        double duration = difftime(endTime.tv_sec, startTime.tv_sec) + ((endTime.tv_nsec - startTime.tv_nsec) / 1e9);
+
+        printf("Clock time: %f s\n", duration);
         printf("Found: %d\n", found);
     }
 
