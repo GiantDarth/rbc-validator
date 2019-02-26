@@ -171,3 +171,9 @@ void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, si
 
     mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
 }
+
+void print_hex(unsigned char *array, size_t count) {
+    for(size_t i = 0; i < count; i++) {
+        printf("%02x", array[i]);
+    }
+}

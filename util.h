@@ -69,4 +69,9 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
                    size_t mismatches, size_t key_size);
 
+/// Print out a raw byte array as hexadecimal.
+/// \param array An allocated byte array to print.
+/// \param count The # of bytes to print from array.
+void print_hex(unsigned char *array, size_t count);
+
 #endif //HAMMING_BENCHMARK_UTIL_H
