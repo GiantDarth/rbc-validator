@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
     MPI_Request request = MPI_REQUEST_NULL;
 
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 3;
+    const size_t MISMATCHES = atoi(argv[1]);
 
     gmp_randstate_t randstate;
 
