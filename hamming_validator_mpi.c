@@ -35,7 +35,7 @@
 /// has found it.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
-                     size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
+                     size_t key_size, uuid_t userId, const unsigned char *auth_cipher, int cycles) {
 
     int sum = 0;
     // Declaration
@@ -75,18 +75,21 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
             found = 1;
         }
 
+
         // remove this comment block to enable early exit on valid key found
         // count is a tuning knob for how often the MPI collective should check
         // if the right key has been found.
-        if(count == 10000) {
+        if(count == cycles) {
+
+
             MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+            //MPI_Iallreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD, &request);
 
             if(sum == 1) {
+                printf("Found: 1\n");
                 break;
             }
 
-            // not found yet, we'll check back after count is reached again
-            count = 0;
         }
         gmp_key_iter_next(iter);
     }
@@ -98,11 +101,48 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     return found;
 }
 
+// this code derived from stack exchange
+int choose(int n, int k) {
+    if (k == 0) {
+      return 1;
+    }else{
+      return (n * choose(n - 1, k - 1)) / k;
+    }
+}
+
+// get_numcycles
+// we will be able to run in multiple modes:
+// - cycles fixed (mode 0)
+// - cycles increasing with cores (mode 1)
+// - cycles decreasing with cores (mode 2)
+// - cycles proportional (mode 3)
+
+// as mismatches go up, combinations will go up, how do we increase the cycles per core too?
+// inherently with combinations going up, processors will have more combinations to work on
+int get_numcycles(int key_size, int mismatches, int nprocs, int mode, int base_cycles) {
+  // fixed default size
+  int num_cycles = base_cycles;
+  int combinations = choose(key_size*8,mismatches);
+
+  if (mode == 0){
+    return num_cycles;
+  } else if (mode == 1) {
+    return num_cycles*(nprocs*(.015));
+  }else if (mode == 2) {
+    return num_cycles*200*(1/nprocs);
+  } else if (mode == 3) {
+    num_cycles = combinations/(key_size*nprocs*mismatches);
+    return num_cycles;
+  }
+
+
+  return num_cycles;
+}
 /// MPI implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char **argv) {
-    int my_rank, nprocs;
+    int my_rank, nprocs, mode, base_cycles;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
@@ -112,6 +152,8 @@ int main(int argc, char **argv) {
 
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = atoi(argv[1]);
+    mode = atoi(argv[2]);
+    base_cycles = atoi(argv[3]);
 
     gmp_randstate_t randstate;
 
@@ -183,8 +225,12 @@ int main(int argc, char **argv) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);
     }
 
+
+    int cycles = get_numcycles(KEY_SIZE, MISMATCHES, nprocs, mode, base_cycles);
+
+
     get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
-    int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
+    int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher, cycles);
     if(subfound < 0) {
         // Cleanup
         mpz_clears(starting_perm, ending_perm, NULL);
@@ -196,15 +242,16 @@ int main(int argc, char **argv) {
 
     // Reduce all the "found" answers to a single found statement.
     // Also works as a natural barrier to make sure all processes are done validating before ending time.
-    int found = 0;
-    MPI_Reduce(&subfound, &found, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    //int found = 0;
+    //MPI_Reduce(&subfound, &found, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if(my_rank == 0) {
         clock_gettime(CLOCK_MONOTONIC, &endTime);
         double duration = difftime(endTime.tv_sec, startTime.tv_sec) + ((endTime.tv_nsec - startTime.tv_nsec) / 1e9);
 
+        printf("Num cycles: %d\n", cycles);
         printf("Clock time: %f s\n", duration);
-        printf("Found: %d\n", found);
+      //  printf("Found: %d\n", found);
     }
 
     // Cleanup
@@ -212,13 +259,14 @@ int main(int argc, char **argv) {
     free(corrupted_key);
     free(key);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    //MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
 
-    if(my_rank == 0) {
+    /*if(my_rank == 0) {
         return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
     }
     else {
         return ERROR_CODE_FOUND;
     }
+    */
 }
