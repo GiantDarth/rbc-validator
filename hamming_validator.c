@@ -60,11 +60,11 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
             found = -1;
             break;
         }
-        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
-            found = 1;
-            break;
-        }
+//        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
+//        if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
+//            found = 1;
+//            break;
+//        }
 
         gmp_key_iter_next(iter);
     }
@@ -81,9 +81,9 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
 /// and a 2 when a general error has occurred.
 int main() {
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 3;
+    const size_t MISMATCHES = 4;
     // Use this line to manually set the # of threads, otherwise it detects it by your machine
-//    omp_set_num_threads(4);
+    omp_set_num_threads(1);
 
     gmp_randstate_t randstate;
 

@@ -9,7 +9,7 @@ project(hamming_benchmark C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(hamming_benchmark hamming_benchmark.c gmp_key_iter.c gmp_key_iter.h util.c util.h uint256_t.c uint256_t.h)
+add_executable(hamming_benchmark hamming_benchmark.c uint256_key_iter.c uint256_key_iter.h util.c util.h uint256_t.c uint256_t.h)
 add_executable(hamming_validator hamming_validator.c gmp_key_iter.c gmp_key_iter.h util.c util.h uint256_t.c uint256_t.h)
 add_executable(hamming_validator_fork hamming_validator_fork.c gmp_key_iter.c gmp_key_iter.h util.c util.h uint256_t.c uint256_t.h)
 add_executable(hamming_validator_mpi hamming_validator_mpi.c gmp_key_iter.c gmp_key_iter.h util.c util.h uint256_t.c uint256_t.h)
