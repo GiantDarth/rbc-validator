@@ -64,11 +64,13 @@ void uint256_shift_left(uint256_t *rop, const uint256_t* op1, unsigned long shif
 }
 
 
-void uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t *op2) {
+unsigned char uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t *op2) {
     unsigned char carry = 0;
     for(int i = 0; i < 4; ++i) {
         carry = _addcarry_u64(carry, op1->limbs[i], op2->limbs[i], (unsigned long long*)&(rop->limbs[i]));
     }
+
+    return carry;
 }
 
 unsigned long uint256_ctz(const uint256_t *op1) {

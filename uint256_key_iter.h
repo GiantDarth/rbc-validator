@@ -17,6 +17,7 @@ typedef struct uint256_key_iter {
     uint256_t tmp;
     uint256_t key_uint;
     uint256_t corrupted_key_uint;
+    unsigned char overflow;
 } uint256_key_iter;
 
 /// Allocate and initialize a iterator based on the parameters passed in.

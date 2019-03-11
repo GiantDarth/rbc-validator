@@ -25,7 +25,7 @@ void uint256_shift_left(uint256_t *rop, const uint256_t* op1, unsigned long shif
 
 // Arithmetic
 void uint256_neg(uint256_t *rop, const uint256_t *op1);
-void uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t *op2);
+unsigned char uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t *op2);
 unsigned long uint256_ctz(const uint256_t *op1);
 int uint256_eq(const uint256_t* op1, const uint256_t* op2);
 

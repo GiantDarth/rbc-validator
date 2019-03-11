@@ -41,7 +41,7 @@ void uint256_key_iter_next(uint256_key_iter *iter) {
 
     uint256_shift_right(&(iter->tmp), &(iter->tmp), shift);
 
-    uint256_add(&(iter->t), &(iter->t), &UINT256_ONE);
+    iter->overflow = uint256_add(&(iter->t), &(iter->t), &UINT256_ONE);
     uint256_and(&(iter->tmp), &(iter->t), &(iter->tmp));
 
     uint256_ior(&(iter->curr_perm), &(iter->t), &(iter->tmp));
@@ -58,5 +58,5 @@ void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char *corrupted
 }
 
 int uint256_key_iter_end(const uint256_key_iter *iter) {
-    return uint256_eq(&(iter->curr_perm), &(iter->last_perm));
+    return uint256_eq(&(iter->curr_perm), &(iter->last_perm)) || iter->overflow;
 }
