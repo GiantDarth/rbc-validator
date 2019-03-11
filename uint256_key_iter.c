@@ -56,3 +56,7 @@ void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char *corrupted
     // Convert from mpz to an unsigned char array
     uint256_export(corrupted_key, &(iter->corrupted_key_uint));
 }
+
+int uint256_key_iter_end(const uint256_key_iter *iter) {
+    return uint256_eq(&(iter->curr_perm), &(iter->last_perm));
+}

@@ -46,8 +46,6 @@ void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char *corrupted
 /// \param iter A pointer to an iterator that won't be modified.
 /// Passing in a NULL pointer is undefined behavior.
 /// \return Returns a 0 if the iterator hasn't reached the end, or a 1 if it has.
-static inline int uint256_key_iter_end(const uint256_key_iter *iter) {
-    return uint256_eq(&(iter->curr_perm), &(iter->last_perm));
-}
+int uint256_key_iter_end(const uint256_key_iter *iter);
 
 #endif // UINT256_PERM_ITER_H
