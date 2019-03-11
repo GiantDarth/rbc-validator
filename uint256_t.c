@@ -40,15 +40,7 @@ void uint256_neg(uint256_t *rop, const uint256_t *op1) {
 void uint256_shift_right(uint256_t *rop, const uint256_t* op1, unsigned long shift) {
     memcpy(rop->limbs, op1->limbs, 32);
 
-//    for(unsigned long i = 0; i < shift; ++i) {
-//        for(int j = 0; j < 3; ++j) {
-//            rop->limbs[j] >>= 1;
-//            // If the least significant bit of high is set, then set the most significant bit of low (carry)
-//            rop->limbs[j] |= (rop->limbs[j + 1] & 0b1) << 63;
-//        }
-//        rop->limbs[3] >>= 1;
-//    }
-    if(shift < 64) {
+    for(unsigned long i = 0; i < shift; ++i) {
         for(int j = 0; j < 3; ++j) {
             rop->limbs[j] >>= 1;
             // If the least significant bit of high is set, then set the most significant bit of low (carry)
