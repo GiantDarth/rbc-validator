@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <x86intrin.h>
+#include <stdio.h>
 #include "uint256_t.h"
 
 void uint256_and(uint256_t *rop, const uint256_t *op1, const uint256_t *op2) {
@@ -37,23 +38,29 @@ void uint256_neg(uint256_t *rop, const uint256_t *op1) {
     uint256_add(rop, rop, &UINT256_ONE);
 }
 
-void uint256_shift_right(uint256_t *rop, const uint256_t* op1, unsigned long shift) {
-    memcpy(rop->limbs, op1->limbs, 32);
-
-    for(unsigned long i = 0; i < shift; ++i) {
-        for(int j = 0; j < 3; ++j) {
-            rop->limbs[j] >>= 1;
-            // If the least significant bit of high is set, then set the most significant bit of low (carry)
-            rop->limbs[j] |= (rop->limbs[j + 1] & 0b1) << 63;
-        }
-        rop->limbs[3] >>= 1;
+void uint256_shift_right(uint256_t *rop, const uint256_t* op1, int shift) {
+    int word_shifts = shift / 64;
+    // Copy the words by a gap of "word_shifts" words
+    for(int i = word_shifts; i < 4; ++i) {
+        rop->limbs[i - word_shifts] = op1->limbs[i];
     }
+
+    // Zero out the leading words
+    for(int i = 4 - word_shifts; i < 4; ++i) {
+        rop->limbs[i] = 0;
+    }
+
+    shift %= 64;
+    for(int i = 0; i < 3; ++i) {
+        rop->limbs[i] = (rop->limbs[i] >> shift) | (rop->limbs[i + 1] << (64 - shift));
+    }
+    rop->limbs[3] >>= shift;
 }
 
-void uint256_shift_left(uint256_t *rop, const uint256_t* op1, unsigned long shift) {
+void uint256_shift_left(uint256_t *rop, const uint256_t* op1, int shift) {
     memcpy(rop->limbs, op1->limbs, 32);
 
-    for(unsigned long i = 0; i < shift; ++i) {
+    for(int i = 0; i < shift; ++i) {
         for(int j = 3; j > 0; --j) {
             rop->limbs[j] <<= 1;
             // If the least significant bit of high is set, then set the most significant bit of low (carry)
@@ -66,38 +73,46 @@ void uint256_shift_left(uint256_t *rop, const uint256_t* op1, unsigned long shif
 
 unsigned char uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t *op2) {
     unsigned char carry = 0;
+    // Chain in series each addition
     for(int i = 0; i < 4; ++i) {
+        // Add with carry
         carry = _addcarry_u64(carry, op1->limbs[i], op2->limbs[i], (unsigned long long*)&(rop->limbs[i]));
     }
 
     return carry;
 }
 
-unsigned long uint256_ctz(const uint256_t *op1) {
-    unsigned long count = __builtin_ctzll(op1->limbs[0]);
+int uint256_ctz(const uint256_t *op1) {
+    int count = op1->limbs[0] ? (int)__builtin_ctzll(op1->limbs[0]) : 64;
     int count_limit = 64;
 
-    for(int i = 1; count == count_limit && i < 4; ++i) {
-        count += __builtin_ctzll(op1->limbs[i]);
+    for(int i = 1; count == count_limit && i < 4; i++) {
+        count += op1->limbs[i] ? (int)__builtin_ctzll(op1->limbs[i]) : 64;
         count_limit += 64;
     }
 
     return count;
 }
 
-int uint256_eq(const uint256_t* op1, const uint256_t* op2) {
-    return (op1->limbs[0] == op2->limbs[0]) && (op1->limbs[1] == op2->limbs[1])
-        && (op1->limbs[2] == op2->limbs[2]) && (op1->limbs[3] == op2->limbs[3]);
+int uint256_cmp(const uint256_t* op1, const uint256_t* op2) {
+    int result = 0;
+    for(int i = 3; result == 0 && i >= 0; --i) {
+        // Do a comparison by subtraction
+        result = (op1->limbs[i] > op2->limbs[i]) - (op1->limbs[i] < op2->limbs[i]);
+    }
+
+    return result;
 }
 
-void uint256_import(uint256_t *rop, const unsigned char *buffer) {
-    int b = 0;
+void uint256_import(uint256_t *rop, size_t count, const unsigned char *buffer) {
+    size_t b = 0;
 
-    *rop = UINT256_ZERO;
+    // Zero-out the destination first
+    memset(rop->limbs, 0, sizeof(*(rop->limbs) * 4));
 
-    for(int i = 0; i < 4; ++i) {
-        for(int shift = 56; shift >= 0; shift -= 8) {
-            rop->limbs[i] |= (buffer[b++] << shift);
+    for(int i = 3; i > 0 && b < count; ++i) {
+        for(size_t shift = 56; shift >= 0 && b < count; shift -= 8, ++b) {
+            rop->limbs[i] |= buffer[i] << shift;
         }
     }
 }

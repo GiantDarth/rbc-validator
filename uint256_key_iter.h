@@ -41,7 +41,7 @@ void uint256_key_iter_next(uint256_key_iter *iter);
 /// Passing in a NULL pointer is undefined behavior.
 /// \param corrupted_key The buffer to fill the corrupted key. Must have at least 'key_size' bytes allocated
 /// (based on gmp_key_iter_create)
-void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char *corrupted_key);
+unsigned char* uint256_key_iter_get(const uint256_key_iter *iter);
 
 /// Return a boolean value of whether the iterator has reached the end or not.
 /// \param iter A pointer to an iterator that won't be modified.

@@ -46,32 +46,16 @@ int gmp_progression(const uint256_t *starting_perm, const uint256_t *last_perm, 
 
     uint256_key_iter *iter;
 
-    // Memory allocation
-    if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
-        perror("Error");
-        return -1;
-    }
-
     // Allocation and initialization
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
-        free(corrupted_key);
         return -1;
     }
 
     int status = 0;
     // While we haven't reached the end of iteration
-    size_t i = 0;
-//    uint256_t test = {
-//            .limbs = { 0xffffffffffffffff, 0xffffffffffffffff, 0, 0  }
-//    };
-    unsigned char dump[32];
-
     while(!uint256_key_iter_end(iter) && !(*signal)) {
-        if(i++ >= 174792640) {
-            break;
-        }
-        uint256_key_iter_get(iter, corrupted_key);
+        corrupted_key = uint256_key_iter_get(iter);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             status = -1;
@@ -79,17 +63,10 @@ int gmp_progression(const uint256_t *starting_perm, const uint256_t *last_perm, 
         }
 
         uint256_key_iter_next(iter);
-
-//        uint256_export(dump, &test);
-//        print_hex(corrupted_key, 32);
-//        printf("\n");
-//        printf(" %lu\n", uint256_ctz(&test));
-//        uint256_add(&test, &test, &UINT256_ONE);
     }
 
     // Cleanup
     uint256_key_iter_destroy(iter);
-    free(corrupted_key);
 
     return status;
 }
@@ -111,8 +88,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    printf("%zu\n", sizeof(unsigned long long));
-
     // Initialize values
     uuid_generate(userId);
 
@@ -124,10 +99,9 @@ int main() {
     int signal = 0, error = 0;
 #pragma omp parallel
     {
-        uint256_t starting_perm = UINT256_ONE, ending_perm = UINT256_NEG_ONE;
-
-        uint256_shift_left(&starting_perm, &starting_perm, MISMATCHES);
-        uint256_add(&starting_perm, &starting_perm, &UINT256_NEG_ONE);
+        uint256_t starting_perm, ending_perm;
+        uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)omp_get_thread_num(),
+                (size_t)omp_get_num_threads(), MISMATCHES, KEY_SIZE);
 
         // If the result is non-zero, set a flag that an error has occurred, and stop the other threads.
         // Will cause the other threads to prematurely stop.
