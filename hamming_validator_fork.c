@@ -149,7 +149,7 @@ int main() {
             return -1;
         }
         else if(children[i] == 0) {
-            get_perm_pair(starting_perm, ending_perm, i, starting_perms_size, MISMATCHES, KEY_SIZE);
+            gmp_get_perm_pair(starting_perm, ending_perm, i, starting_perms_size, MISMATCHES, KEY_SIZE);
             int found = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
 
             // Cleanup

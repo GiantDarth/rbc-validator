@@ -136,8 +136,8 @@ int main() {
         mpz_t starting_perm, ending_perm;
         mpz_inits(starting_perm, ending_perm, NULL);
 
-        get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(), (size_t)omp_get_num_threads(),
-                MISMATCHES, KEY_SIZE);
+        gmp_get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(),
+                (size_t)omp_get_num_threads(), MISMATCHES, KEY_SIZE);
 
         int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId,
                 auth_cipher, &signal);

@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);
     }
 
-    get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
+    gmp_get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
     int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
     if(subfound < 0) {
         // Cleanup

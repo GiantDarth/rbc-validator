@@ -66,7 +66,7 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 /// \param pair_count The total amount of pairs expected to generate.
 /// \param mismatches The hamming distance that you want to base the permutation on.
 /// \param key_size How big the relevant key is in # of bytes.
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
                    size_t mismatches, size_t key_size);
 
 /// Print out a raw byte array as hexadecimal.

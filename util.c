@@ -142,7 +142,7 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
     mpz_clears(key_mpz, corrupted_key_mpz, perm, NULL);
 }
 
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
                    size_t mismatches, size_t key_size) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
