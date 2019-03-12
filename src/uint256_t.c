@@ -44,21 +44,27 @@ void uint256_neg(uint256_t *rop, const uint256_t *op1) {
 }
 
 void uint256_shift_right(uint256_t *rop, const uint256_t* op1, int shift) {
-    int word_shifts = shift / 64;
-    // Copy the words by a gap of "word_shifts" words
-    for(int i = word_shifts; i < 4; ++i) {
-        rop->limbs[i - word_shifts] = op1->limbs[i];
+    // How many limb shifts to perform
+    int limb_shifts = shift / 64;
+    // Copy the words by a gap of "limb_shifts" limbs
+    for(int i = limb_shifts; i < 4; ++i) {
+        rop->limbs[i - limb_shifts] = op1->limbs[i];
     }
 
     // Zero out the leading words
-    for(int i = 4 - word_shifts; i < 4; ++i) {
+    for(int i = 4 - limb_shifts; i < 4; ++i) {
         rop->limbs[i] = 0;
     }
 
+    // Make sure remaining shift is within range of 64-bits
     shift %= 64;
+    // Start from least-significant limb to second-to-most
     for(int i = 0; i < 3; ++i) {
+        // Right shift the current limb, then attach the next limb's trailing bits to this one's
+        // leading bits
         rop->limbs[i] = (rop->limbs[i] >> shift) | (rop->limbs[i + 1] << (64 - shift));
     }
+    // Only right shift the last limb
     rop->limbs[3] >>= shift;
 }
 
@@ -66,6 +72,7 @@ void uint256_shift_left(uint256_t *rop, const uint256_t* op1, int shift) {
     memcpy(rop->limbs, op1->limbs, 32);
 
     for(int i = 0; i < shift; ++i) {
+        // Start from most-significant limb until second-to-first one
         for(int j = 3; j > 0; --j) {
             rop->limbs[j] <<= 1;
             // If the least significant bit of high is set, then set the most significant bit of low (carry)
@@ -88,10 +95,13 @@ unsigned char uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t 
 }
 
 int uint256_ctz(const uint256_t *op1) {
+    // Make sure to check if the limb is non-zero, otherwise define it to be 64.
     int count = op1->limbs[0] ? (int)__builtin_ctzll(op1->limbs[0]) : 64;
     int count_limit = 64;
 
+    // Continue through other limbs until a limb whose value is 0 is met.
     for(int i = 1; count == count_limit && i < 4; i++) {
+        // Make sure to check if the limb is non-zero, otherwise define it to be 64.
         count += op1->limbs[i] ? (int)__builtin_ctzll(op1->limbs[i]) : 64;
         count_limit += 64;
     }
@@ -101,8 +111,9 @@ int uint256_ctz(const uint256_t *op1) {
 
 int uint256_cmp(const uint256_t* op1, const uint256_t* op2) {
     int result = 0;
+    // Continue from the most-significant limb until a non-zero result is found
     for(int i = 3; result == 0 && i >= 0; --i) {
-        // Do a comparison by subtraction
+        // Do a comparison by subtracting the negative condition from the positive condition
         result = (op1->limbs[i] > op2->limbs[i]) - (op1->limbs[i] < op2->limbs[i]);
     }
 
@@ -115,7 +126,9 @@ void uint256_import(uint256_t *rop, const unsigned char *buffer) {
     // Zero-out the destination first
     memset(rop->limbs, 0, sizeof(*(rop->limbs) * 4));
 
+    // Start from most-significant limb
     for(int i = 0; i < 4; ++i) {
+        // Start from most-significant byte
         for(int j = 0; j < 8; ++j) {
             rop->limbs[i] >>= 8;
             rop->limbs[i] |= (uint64_t)buffer[b++] << 56;
@@ -126,7 +139,9 @@ void uint256_import(uint256_t *rop, const unsigned char *buffer) {
 void uint256_export(unsigned char *buffer, const uint256_t *rop) {
     int b = 0;
 
+    // Start from most-significant limb
     for(int i = 0; i < 4; ++i) {
+        // Start from most-significant byte
         for(int shift = 0; shift < 64; shift += 8) {
             buffer[b++] = (unsigned char)(rop->limbs[i] >> shift);
         }
