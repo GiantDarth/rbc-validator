@@ -8,6 +8,11 @@
 #include <stdio.h>
 #include "uint256_t.h"
 
+void uint256_set_ui(uint256_t *rop, unsigned long long value) {
+    rop->limbs[0] = value;
+    memset(&(rop->limbs[1]), 0, 3);
+}
+
 void uint256_and(uint256_t *rop, const uint256_t *op1, const uint256_t *op2) {
     for(int i = 0; i < 4; ++i) {
         rop->limbs[i] = op1->limbs[i] & op2->limbs[i];

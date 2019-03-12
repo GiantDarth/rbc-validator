@@ -15,6 +15,11 @@ typedef struct uint256_t {
     uint64_t limbs[4];
 } uint256_t;
 
+/// Set an unsigned long long to a uint256 struct.
+/// \param rop A pointer
+/// \param value
+void uint256_set_ui(uint256_t *rop, unsigned long long value);
+
 // Btwise operations
 void uint256_and(uint256_t *rop, const uint256_t *op1, const uint256_t *op2);
 void uint256_ior(uint256_t *rop, const uint256_t *op1, const uint256_t *op2);
