@@ -39,7 +39,7 @@ void int_progression(size_t mismatches) {
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \return Returns a 0 on success, or a -1 on an error.
 int gmp_progression(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
-        size_t key_size, uuid_t userId, const int *signal) {
+        uuid_t userId, const int *signal) {
     unsigned char *corrupted_key;
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen;
@@ -105,7 +105,7 @@ int main() {
 
         // If the result is non-zero, set a flag that an error has occurred, and stop the other threads.
         // Will cause the other threads to prematurely stop.
-        if(gmp_progression(&starting_perm, &ending_perm, key, KEY_SIZE, userId, &signal)) {
+        if(gmp_progression(&starting_perm, &ending_perm, key, userId, &signal)) {
             // Set the signal to stop the other threads
 #pragma omp critical
             {

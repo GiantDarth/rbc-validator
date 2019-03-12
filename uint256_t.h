@@ -30,7 +30,7 @@ int uint256_ctz(const uint256_t *op1);
 int uint256_cmp(const uint256_t* op1, const uint256_t* op2);
 
 // Utility
-void uint256_import(uint256_t *rop, size_t count, const unsigned char *buffer);
+void uint256_import(uint256_t *rop, const unsigned char *buffer);
 void uint256_export(unsigned char *buffer, const uint256_t *rop);
 
 #endif //HAMMING_BENCHMARK_UINT256_T_H

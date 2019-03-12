@@ -18,7 +18,7 @@ uint256_key_iter* uint256_key_iter_create(const unsigned char *key, const uint25
     iter->curr_perm = *first_perm;
     iter->last_perm = *last_perm;
 
-    uint256_import(&(iter->key_uint), 32, key);
+    uint256_import(&(iter->key_uint), key);
 
     // Perform an XOR operation between the permutation and the key.
     // If a bit is set in permutation, then flip the bit in the key.

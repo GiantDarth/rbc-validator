@@ -10,11 +10,10 @@
 
 #include <openssl/evp.h>
 #include <uuid/uuid.h>
-#include <gmp.h>
 #include <omp.h>
 
-#include "gmp_key_iter.h"
 #include "util.h"
+#include "uint256_key_iter.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -30,31 +29,24 @@
 /// \param auth_cipher The authentication cipher to test against
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
-                  size_t key_size, uuid_t userId, const unsigned char *auth_cipher, const int* signal) {
+int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
+        uuid_t userId, const unsigned char *auth_cipher, const int* signal) {
     // Declaration
     unsigned char *corrupted_key;
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen, found = 0;
 
-    gmp_key_iter *iter;
-
-    // Memory allocation
-    if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
-        perror("Error");
-        return -1;
-    }
+    uint256_key_iter *iter;
 
     // Allocation and initialization
-    if((iter = gmp_key_iter_create(key, key_size, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
-        free(corrupted_key);
         return -1;
     }
 
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(iter) && !(*signal)) {
-        gmp_key_iter_get(iter, corrupted_key);
+    while(!uint256_key_iter_end(iter) && !(*signal)) {
+        corrupted_key = uint256_key_iter_get(iter);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             found = -1;
@@ -66,12 +58,11 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
             break;
         }
 
-        gmp_key_iter_next(iter);
+        uint256_key_iter_next(iter);
     }
 
     // Cleanup
-    gmp_key_iter_destroy(iter);
-    free(corrupted_key);
+    uint256_key_iter_destroy(iter);
 
     return found;
 }
@@ -81,7 +72,7 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
 /// and a 2 when a general error has occurred.
 int main() {
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 3;
+    const size_t MISMATCHES = 4;
     // Use this line to manually set the # of threads, otherwise it detects it by your machine
 //    omp_set_num_threads(1);
 
@@ -133,13 +124,12 @@ int main() {
     int found = 0, signal = 0, error = 0;
 #pragma omp parallel
     {
-        mpz_t starting_perm, ending_perm;
-        mpz_inits(starting_perm, ending_perm, NULL);
+        uint256_t starting_perm, ending_perm;
 
-        gmp_get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(),
+        uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)omp_get_thread_num(),
                 (size_t)omp_get_num_threads(), MISMATCHES, KEY_SIZE);
 
-        int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId,
+        int subfound = gmp_validator(&starting_perm, &ending_perm, key, userId,
                 auth_cipher, &signal);
         // If the result is positive, set the "global" found to 1. Will cause the other threads to
         // prematurely stop.
@@ -160,8 +150,6 @@ int main() {
                 signal = 1;
             };
         }
-
-        mpz_clears(starting_perm, ending_perm, NULL);
     }
 
     // Check if an error occurred in one of the threads.

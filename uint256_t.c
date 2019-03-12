@@ -104,15 +104,16 @@ int uint256_cmp(const uint256_t* op1, const uint256_t* op2) {
     return result;
 }
 
-void uint256_import(uint256_t *rop, size_t count, const unsigned char *buffer) {
+void uint256_import(uint256_t *rop, const unsigned char *buffer) {
     size_t b = 0;
 
     // Zero-out the destination first
     memset(rop->limbs, 0, sizeof(*(rop->limbs) * 4));
 
-    for(int i = 3; i > 0 && b < count; ++i) {
-        for(size_t shift = 56; shift >= 0 && b < count; shift -= 8, ++b) {
-            rop->limbs[i] |= buffer[i] << shift;
+    for(int i = 0; i < 4; ++i) {
+        for(int j = 0; j < 8; ++j) {
+            rop->limbs[i] >>= 8;
+            rop->limbs[i] |= (uint64_t)buffer[b++] << 56;
         }
     }
 }
@@ -120,8 +121,8 @@ void uint256_import(uint256_t *rop, size_t count, const unsigned char *buffer) {
 void uint256_export(unsigned char *buffer, const uint256_t *rop) {
     int b = 0;
 
-    for(int i = 3; i >= 0; --i) {
-        for(int shift = 56; shift >= 0; shift -= 8) {
+    for(int i = 0; i < 4; ++i) {
+        for(int shift = 0; shift < 64; shift += 8) {
             buffer[b++] = (unsigned char)(rop->limbs[i] >> shift);
         }
     }
