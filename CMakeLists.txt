@@ -18,6 +18,7 @@ add_executable(hamming_benchmark src/hamming_benchmark.c ${SOURCE_FILES})
 add_executable(hamming_validator src/hamming_validator.c ${SOURCE_FILES})
 add_executable(hamming_validator_fork src/hamming_validator_fork.c ${SOURCE_FILES})
 add_executable(hamming_validator_mpi src/hamming_validator_mpi.c ${SOURCE_FILES})
+
 add_executable(lookupwork src/lookupwork.c)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
