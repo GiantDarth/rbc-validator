@@ -51,7 +51,7 @@ void uint256_shift_right(uint256_t *rop, const uint256_t* op1, int shift) {
         rop->limbs[i - limb_shifts] = op1->limbs[i];
     }
 
-    // Zero out the leading words
+    // Zero out the leading limbs
     for(int i = 4 - limb_shifts; i < 4; ++i) {
         rop->limbs[i] = 0;
     }
@@ -69,17 +69,28 @@ void uint256_shift_right(uint256_t *rop, const uint256_t* op1, int shift) {
 }
 
 void uint256_shift_left(uint256_t *rop, const uint256_t* op1, int shift) {
-    memcpy(rop->limbs, op1->limbs, 32);
-
-    for(int i = 0; i < shift; ++i) {
-        // Start from most-significant limb until second-to-first one
-        for(int j = 3; j > 0; --j) {
-            rop->limbs[j] <<= 1;
-            // If the least significant bit of high is set, then set the most significant bit of low (carry)
-            rop->limbs[j] |= (rop->limbs[j - 1] >> 63) & 0b1;
-        }
-        rop->limbs[0] <<= 1;
+    // How many limb shifts to perform
+    int limb_shifts = shift / 64;
+    // Copy the words by a gap of "limb_shifts" limbs
+    for(int i = 0; i < 4 - limb_shifts; ++i) {
+        rop->limbs[i + limb_shifts] = op1->limbs[i];
     }
+
+    // Zero out the trailing limbs
+    for(int i = 0; i < limb_shifts; ++i) {
+        rop->limbs[i] = 0;
+    }
+
+    // Make sure remaining shift is within range of 64-bits
+    shift %= 64;
+    // Start from most-significant limb to second-to-least
+    for(int i = 3; i > 0; --i) {
+        // left shift the current limb, then attach the next limb's leading bits to this one's
+        // trailing bits
+        rop->limbs[i] = (rop->limbs[i] << shift) | (rop->limbs[i - 1] >> (64 - shift));
+    }
+    // Only left shift the last limb
+    rop->limbs[0] <<= shift;
 }
 
 
