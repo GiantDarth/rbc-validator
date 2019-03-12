@@ -11,11 +11,14 @@ set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
-add_executable(hamming_benchmark hamming_benchmark.c uint256_key_iter.c uint256_key_iter.h util.c util.h uint256_t.c uint256_t.h)
-add_executable(hamming_validator hamming_validator.c uint256_key_iter.c uint256_key_iter.h util.c util.h uint256_t.c uint256_t.h)
-add_executable(hamming_validator_fork hamming_validator_fork.c uint256_key_iter.c uint256_key_iter.h util.c util.h uint256_t.c uint256_t.h)
-add_executable(hamming_validator_mpi hamming_validator_mpi.c uint256_key_iter.c uint256_key_iter.h util.c util.h uint256_t.c uint256_t.h)
-add_executable(lookupwork lookupwork.c)
+set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/uint256_key_iter.c src/uint256_key_iter.h
+        src/util.c src/util.h)
+
+add_executable(hamming_benchmark src/hamming_benchmark.c ${SOURCE_FILES})
+add_executable(hamming_validator src/hamming_validator.c ${SOURCE_FILES})
+add_executable(hamming_validator_fork src/hamming_validator_fork.c ${SOURCE_FILES})
+add_executable(hamming_validator_mpi src/hamming_validator_mpi.c ${SOURCE_FILES})
+add_executable(lookupwork src/lookupwork.c)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
