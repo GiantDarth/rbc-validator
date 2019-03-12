@@ -214,7 +214,7 @@ void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, siz
     mpz_clears(starting_perm_mpz, ending_perm_mpz, NULL);
 }
 
-void print_hex(unsigned char *array, size_t count) {
+void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
         printf("%02x", array[i]);
     }
