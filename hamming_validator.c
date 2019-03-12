@@ -72,7 +72,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
 /// and a 2 when a general error has occurred.
 int main() {
     const size_t KEY_SIZE = 32;
-    const size_t MISMATCHES = 4;
+    const size_t MISMATCHES = 3;
     // Use this line to manually set the # of threads, otherwise it detects it by your machine
 //    omp_set_num_threads(1);
 
