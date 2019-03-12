@@ -39,23 +39,30 @@ void int_progression(size_t mismatches) {
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \return Returns a 0 on success, or a -1 on an error.
 int gmp_progression(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
-        uuid_t userId, const int *signal) {
+        size_t key_size, uuid_t userId, const int *signal) {
     unsigned char *corrupted_key;
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen;
 
     uint256_key_iter *iter;
 
+    // Memory allocation
+    if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
+        perror("Error");
+        return -1;
+    }
+
     // Allocation and initialization
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
+        free(corrupted_key);
         return -1;
     }
 
     int status = 0;
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter) && !(*signal)) {
-        corrupted_key = uint256_key_iter_get(iter);
+        uint256_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             status = -1;
@@ -67,6 +74,7 @@ int gmp_progression(const uint256_t *starting_perm, const uint256_t *last_perm, 
 
     // Cleanup
     uint256_key_iter_destroy(iter);
+    free(corrupted_key);
 
     return status;
 }
@@ -105,7 +113,7 @@ int main() {
 
         // If the result is non-zero, set a flag that an error has occurred, and stop the other threads.
         // Will cause the other threads to prematurely stop.
-        if(gmp_progression(&starting_perm, &ending_perm, key, userId, &signal)) {
+        if(gmp_progression(&starting_perm, &ending_perm, key, KEY_SIZE, userId, &signal)) {
             // Set the signal to stop the other threads
 #pragma omp critical
             {

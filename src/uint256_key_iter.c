@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "util.h"
 
 uint256_key_iter* uint256_key_iter_create(const unsigned char *key, const uint256_t *first_perm,
@@ -55,8 +56,8 @@ void uint256_key_iter_next(uint256_key_iter *iter) {
     uint256_xor(&(iter->corrupted_key_uint), &(iter->key_uint), &(iter->curr_perm));
 }
 
-unsigned char* uint256_key_iter_get(const uint256_key_iter *iter) {
-    return (unsigned char*)iter->corrupted_key_uint.limbs;
+void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char* corrupted_key) {
+    memcpy(corrupted_key, (unsigned char*)iter->corrupted_key_uint.limbs, 32);
 }
 
 int uint256_key_iter_end(const uint256_key_iter *iter) {

@@ -35,7 +35,7 @@
 /// has found it.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
-        uuid_t userId, const unsigned char *auth_cipher) {
+        size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
     int sum = 0;
     // Declaration
     unsigned char *corrupted_key;
@@ -44,9 +44,16 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
 
     uint256_key_iter *iter;
 
+    // Memory allocation
+    if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
+        perror("Error");
+        return -1;
+    }
+
     // Allocation and initialization
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
+        free(corrupted_key);
         return -1;
     }
 
@@ -54,11 +61,12 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter)) {
         count++;
-        corrupted_key = uint256_key_iter_get(iter);
+        uint256_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             // Cleanup
             uint256_key_iter_destroy(iter);
+            free(corrupted_key);
             return -1;
         }
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
@@ -84,6 +92,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
 
     // Cleanup
     uint256_key_iter_destroy(iter);
+    free(corrupted_key);
 
     return found;
 }
@@ -171,7 +180,7 @@ int main(int argc, char **argv) {
     }
 
     uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
-    int subfound = gmp_validator(&starting_perm, &ending_perm, key, userId, auth_cipher);
+    int subfound = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher);
     if(subfound < 0) {
         // Cleanup
         free(corrupted_key);
