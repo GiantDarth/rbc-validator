@@ -21,6 +21,11 @@ gmp_key_iter* gmp_key_iter_create(const unsigned char *key, size_t key_size,
 
     mpz_import(iter->key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 
+    // Perform an XOR operation between the permutation and the key.
+    // If a bit is set in permutation, then flip the bit in the key.
+    // Otherwise, leave it as is.
+    mpz_xor(iter->corrupted_key_mpz, iter->key_mpz, iter->curr_perm);
+
     return iter;
 }
 

@@ -15,8 +15,8 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#include "gmp_key_iter.h"
 #include "util.h"
+#include "uint256_key_iter.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -33,14 +33,14 @@
 /// \param global_found A pointer to a shared "found" variable so as to cut out early if another thread
 /// has found it.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
-                     size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
+int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
+        size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
     // Declaration
     unsigned char *corrupted_key;
     unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
     int outlen, found = 0;
 
-    gmp_key_iter *iter;
+    uint256_key_iter *iter;
 
     // Memory allocation
     if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
@@ -49,15 +49,15 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     }
 
     // Allocation and initialization
-    if((iter = gmp_key_iter_create(key, key_size, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
         free(corrupted_key);
         return -1;
     }
 
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(iter)) {
-        gmp_key_iter_get(iter, corrupted_key);
+    while(!uint256_key_iter_end(iter)) {
+        uint256_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
             found = -1;
@@ -69,11 +69,11 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
             break;
         }
 
-        gmp_key_iter_next(iter);
+        uint256_key_iter_next(iter);
     }
 
     // Cleanup
-    gmp_key_iter_destroy(iter);
+    uint256_key_iter_destroy(iter);
     free(corrupted_key);
 
     return found;
@@ -96,7 +96,7 @@ int main() {
     unsigned char *corrupted_key;
     unsigned char auth_cipher[EVP_MAX_BLOCK_LENGTH];
 
-    mpz_t starting_perm, ending_perm;
+    uint256_t starting_perm, ending_perm;
 
     struct timespec startTime, endTime;
 
@@ -111,8 +111,6 @@ int main() {
         free(key);
         return ERROR_CODE_FAILURE;
     }
-
-    mpz_inits(starting_perm, ending_perm, NULL);
 
     // Initialize values
     uuid_generate(userId);
@@ -131,7 +129,6 @@ int main() {
     int outlen;
     if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
         // Cleanup
-        mpz_clears(starting_perm, ending_perm, NULL);
         free(corrupted_key);
         free(key);
 
@@ -149,11 +146,10 @@ int main() {
             return -1;
         }
         else if(children[i] == 0) {
-            get_perm_pair(starting_perm, ending_perm, i, starting_perms_size, MISMATCHES, KEY_SIZE);
-            int found = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
+            uint256_get_perm_pair(&starting_perm, &ending_perm, i, starting_perms_size, MISMATCHES, KEY_SIZE);
+            int found = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher);
 
             // Cleanup
-            mpz_clears(starting_perm, ending_perm, NULL);
             free(corrupted_key);
             free(key);
 
@@ -178,7 +174,6 @@ int main() {
     printf("Found: %d\n", WEXITSTATUS(status));
 
     // Cleanup
-    mpz_clears(starting_perm, ending_perm, NULL);
     free(corrupted_key);
     free(key);
 

@@ -6,6 +6,7 @@
 #define HAMMING_BENCHMARK_UTIL_H
 
 #include <gmp.h>
+#include "uint256_t.h"
 
 /// Based on https://cs.stackexchange.com/a/67669
 /// \param perm The permutation to set.
@@ -42,6 +43,9 @@ void gmp_assign_first_permutation(mpz_t perm, size_t mismatches);
 /// \param key_size How big the relevant key is in # of bytes.
 void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size);
 
+void uint256_assign_first_permutation(uint256_t *perm, size_t mismatches);
+void uint256_assign_last_permutation(uint256_t *perm, size_t mismatches, size_t key_size);
+
 /// Generate a random key using GMP's pseudo-random number generator functionality.
 /// \param key A pre-allocated array that is key_size bytes long.
 /// \param key_size The # of bytes to write to @param key.
@@ -66,12 +70,15 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 /// \param pair_count The total amount of pairs expected to generate.
 /// \param mismatches The hamming distance that you want to base the permutation on.
 /// \param key_size How big the relevant key is in # of bytes.
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
                    size_t mismatches, size_t key_size);
+
+void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
+                           size_t pair_count, size_t mismatches, size_t key_size);
 
 /// Print out a raw byte array as hexadecimal.
 /// \param array An allocated byte array to print.
 /// \param count The # of bytes to print from array.
-void print_hex(unsigned char *array, size_t count);
+void print_hex(const unsigned char *array, size_t count);
 
 #endif //HAMMING_BENCHMARK_UTIL_H
