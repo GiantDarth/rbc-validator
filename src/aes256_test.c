@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <memory.h>
 #include "aes256-ni.h"
-#include "util.h"
 
 void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
@@ -19,12 +18,12 @@ int main(int argc, char **argv) {
             0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
             0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
             0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
-
     };
-    const char msg[] = "Hello world x2!";
+    // A message that's exactly 16 bytes long.
+    const char msg[] = "Hello world x2!\n";
     const unsigned char expected_cipher[] = {
-            0x58, 0x3a, 0x95, 0x74, 0x4d, 0xbe, 0x80, 0x4a,
-            0xfc, 0x1d, 0x45, 0xbe, 0xb9, 0xbb, 0xfe, 0xf7
+            0x00, 0x80, 0xb5, 0xcd, 0x7d, 0x63, 0x1b, 0x04,
+            0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33, 0x1b, 0x3e
     };
 
     unsigned char cipher[16];
@@ -32,7 +31,7 @@ int main(int argc, char **argv) {
     aes256_enc_key_scheduler *key_scheduler = aes256_enc_key_scheduler_create();
     aes256_enc_key_scheduler_update(key_scheduler, key);
 
-    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, sizeof(msg));
+    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, strlen(msg));
 
     print_hex(cipher, sizeof(cipher));
     printf("\n");
