@@ -20,8 +20,6 @@ env:
 
 addons:
   apt:
-    sources:
-      - sourceline: "ppa:ondrej/php"
     packages:
       - libomp-dev
       - libopenmpi-dev
