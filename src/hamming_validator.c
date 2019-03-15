@@ -34,7 +34,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
     // Declaration
     unsigned char *corrupted_key;
     unsigned char cipher[sizeof(uuid_t)];
-    int outlen, found = 0;
+    int found = 0;
 
     uint256_key_iter *iter;
     aes256_enc_key_scheduler *key_scheduler;
@@ -72,7 +72,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
         }
 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
+        if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             found = 1;
             break;
         }
@@ -142,7 +142,6 @@ int main() {
     get_random_key(key, KEY_SIZE, randstate);
     get_random_corrupted_key(corrupted_key, key, MISMATCHES, KEY_SIZE, randstate);
 
-    int outlen;
     if(aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
         // Cleanup
         aes256_enc_key_scheduler_destroy(key_scheduler);
