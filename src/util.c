@@ -4,8 +4,6 @@
 
 #include "util.h"
 
-#include <openssl/err.h>
-#include <openssl/evp.h>
 #include <string.h>
 
 void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size) {
