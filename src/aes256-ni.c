@@ -169,7 +169,7 @@ int aes256_ecb_encrypt(unsigned char *cipher, aes256_enc_key_scheduler *key_sche
             tmp = _mm_aesenc_si128(tmp, key_scheduler->scheduler[j]);
         }
 
-        tmp = _mm_aesenclast_si128(tmp, key_scheduler->scheduler[NUM_OF_ROUNDS - 1]);
+        tmp = _mm_aesenclast_si128(tmp, key_scheduler->scheduler[NUM_OF_ROUNDS]);
         _mm_storeu_si128(&((__m128i*)cipher)[i], tmp);
     }
 
