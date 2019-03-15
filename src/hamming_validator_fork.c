@@ -8,15 +8,15 @@
 #include <time.h>
 #include <math.h>
 
-#include <openssl/evp.h>
 #include <uuid/uuid.h>
 #include <gmp.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
 
-#include "util.h"
 #include "uint256_key_iter.h"
+#include "aes256-ni.h"
+#include "util.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -37,34 +37,48 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
         size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
     // Declaration
     unsigned char *corrupted_key;
-    unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
-    int outlen, found = 0;
+    unsigned char cipher[sizeof(uuid_t)];
+    int found = 0;
 
     uint256_key_iter *iter;
+    aes256_enc_key_scheduler *key_scheduler;
 
     // Memory allocation
     if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
         perror("Error");
+
+        return -1;
+    }
+
+    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
+        perror("Error");
+        free(corrupted_key);
+
         return -1;
     }
 
     // Allocation and initialization
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
+        aes256_enc_key_scheduler_destroy(key_scheduler);
         free(corrupted_key);
+
         return -1;
     }
 
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter)) {
         uint256_key_iter_get(iter, corrupted_key);
+        aes256_enc_key_scheduler_update(key_scheduler, key);
+
         // If encryption fails for some reason, break prematurely.
-        if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
+        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
             found = -1;
             break;
         }
+
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
+        if(memcmp(cipher, auth_cipher, 16) == 0) {
             found = 1;
             break;
         }
@@ -74,6 +88,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
 
     // Cleanup
     uint256_key_iter_destroy(iter);
+    aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
 
     return found;
@@ -94,7 +109,9 @@ int main() {
 
     unsigned char *key;
     unsigned char *corrupted_key;
-    unsigned char auth_cipher[EVP_MAX_BLOCK_LENGTH];
+    unsigned char auth_cipher[sizeof(uuid_t)];
+
+    aes256_enc_key_scheduler *key_scheduler;
 
     uint256_t starting_perm, ending_perm;
 
@@ -103,12 +120,21 @@ int main() {
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
         perror("Error");
+
         return ERROR_CODE_FAILURE;
     }
 
     if((corrupted_key = malloc(sizeof(*corrupted_key) * KEY_SIZE)) == NULL) {
         perror("Error");
         free(key);
+
+        return ERROR_CODE_FAILURE;
+    }
+
+    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
+        free(corrupted_key);
+        free(key);
+
         return ERROR_CODE_FAILURE;
     }
 
@@ -127,8 +153,9 @@ int main() {
     get_random_corrupted_key(corrupted_key, key, MISMATCHES, KEY_SIZE, randstate);
 
     int outlen;
-    if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
+    if(aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
         // Cleanup
+        aes256_enc_key_scheduler_destroy(key_scheduler);
         free(corrupted_key);
         free(key);
 
@@ -150,6 +177,7 @@ int main() {
             int found = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher);
 
             // Cleanup
+            aes256_enc_key_scheduler_destroy(key_scheduler);
             free(corrupted_key);
             free(key);
 
@@ -174,6 +202,7 @@ int main() {
     printf("Found: %d\n", WEXITSTATUS(status));
 
     // Cleanup
+    aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);
 
