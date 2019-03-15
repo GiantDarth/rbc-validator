@@ -32,10 +32,10 @@ int main(int argc, char **argv) {
     aes256_enc_key_scheduler *key_scheduler = aes256_enc_key_scheduler_create();
     aes256_enc_key_scheduler_update(key_scheduler, key);
 
-    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, 16);
+    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, sizeof(msg));
 
-    print_hex(cipher, 16);
+    print_hex(cipher, sizeof(cipher));
     printf("\n");
 
-    return memcmp(cipher, expected_cipher, 16) ? EXIT_FAILURE : EXIT_SUCCESS;
+    return memcmp(cipher, expected_cipher, sizeof(cipher)) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
