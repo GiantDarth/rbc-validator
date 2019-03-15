@@ -25,14 +25,6 @@ void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_
 void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, size_t mismatches,
                                     size_t key_size);
 
-/// Encrypts some message data using AES-256-ECB w/ PCKS#7 padding
-/// \param key The key data, must be at least 32 bytes long.
-/// \param msg The message to be encrypted, designated to be msgLen bytes long.
-/// \param msgLen Denotes the size of the message (not NULL-terminated).
-/// \param cipher The output data's length (not NULL-terminated).
-/// \return Returns 1 on success or 0 on error (typically OpenSSL error).
-int encryptMsg(const unsigned char *key, const unsigned char *msg, size_t msgLen, unsigned char *cipher, int *outlen);
-
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
 /// \param mismatches The hamming distance that you want to base the permutation on.

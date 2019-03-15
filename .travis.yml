@@ -53,6 +53,7 @@ script:
       cmake ./CMakeLists.txt
     fi
   - cmake --build .
+  - ./aes256_test
   - ./lookupwork
   - ./hamming_benchmark
   - ./hamming_validator
