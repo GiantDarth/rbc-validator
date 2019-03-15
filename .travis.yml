@@ -27,7 +27,6 @@ addons:
       - libopenmpi-dev
       - openmpi-bin
       - libgmp-dev
-      - libssl-dev
       - uuid-dev
       - libsqlite3-dev
   homebrew:
@@ -35,7 +34,6 @@ addons:
       - libomp
       - open-mpi
       - gmp
-      - openssl@1.1
       - ossp-uuid
       - sqlite
 
