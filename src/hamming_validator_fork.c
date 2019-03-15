@@ -69,7 +69,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter)) {
         uint256_key_iter_get(iter, corrupted_key);
-        aes256_enc_key_scheduler_update(key_scheduler, key);
+        aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
 
         // If encryption fails for some reason, break prematurely.
         if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
@@ -152,6 +152,7 @@ int main() {
     get_random_key(key, KEY_SIZE, randstate);
     get_random_corrupted_key(corrupted_key, key, MISMATCHES, KEY_SIZE, randstate);
 
+    aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
     if(aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
         // Cleanup
         aes256_enc_key_scheduler_destroy(key_scheduler);
