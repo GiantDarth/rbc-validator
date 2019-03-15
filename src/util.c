@@ -4,8 +4,8 @@
 
 #include "util.h"
 
-#include <openssl/err.h>
-#include <openssl/evp.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size) {
@@ -59,41 +59,6 @@ void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms
     }
 
     mpz_clears(ordinal, chunk_size, NULL);
-}
-
-int encryptMsg(const unsigned char *key, const unsigned char *msg, size_t msgLen, unsigned char *cipher, int *outlen) {
-    int tmplen;
-
-    EVP_CIPHER_CTX *ctx;
-
-    if((ctx = EVP_CIPHER_CTX_new()) == NULL) {
-        return 0;
-    }
-
-    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, NULL)) {
-        fprintf(stderr, "ERROR: EVP_EncryptInit_ex failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-        EVP_CIPHER_CTX_free(ctx);
-        return 0;
-    }
-
-    if(!EVP_EncryptUpdate(ctx, cipher, outlen, msg, (int)msgLen)) {
-        fprintf(stderr, "ERROR: EVP_EncryptUpdate failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-        EVP_CIPHER_CTX_free(ctx);
-        return 0;
-    }
-    if(!EVP_EncryptFinal_ex(ctx, cipher + *outlen, &tmplen)) {
-        fprintf(stderr, "ERROR: EVP_EncryptFinal_ex failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-        EVP_CIPHER_CTX_free(ctx);
-        return 0;
-    }
-    *outlen += tmplen;
-
-    EVP_CIPHER_CTX_free(ctx);
-
-    return 1;
 }
 
 void gmp_assign_first_permutation(mpz_t perm, size_t mismatches) {
