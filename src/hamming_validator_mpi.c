@@ -110,7 +110,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
 /// MPI implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
     int my_rank, nprocs;
 
     MPI_Init(&argc, &argv);

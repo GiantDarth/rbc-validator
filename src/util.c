@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size) {
+void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_size) {
     mpz_t binom, curr_ordinal;
     mpz_inits(binom, curr_ordinal, NULL);
 
@@ -29,7 +29,7 @@ void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t k
     mpz_clears(binom, curr_ordinal, NULL);
 }
 
-void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_randstate_t randstate) {
+void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate) {
     mpz_t ordinal, binom;
     mpz_inits(ordinal, binom, NULL);
 
@@ -41,7 +41,7 @@ void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_
     mpz_clears(ordinal, binom, NULL);
 }
 
-void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, size_t mismatches,
+void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, int mismatches,
                                     size_t key_size) {
     // Always set the first one to the global first permutation
     gmp_assign_first_permutation(starting_perms[0], mismatches);
@@ -61,7 +61,7 @@ void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms
     mpz_clears(ordinal, chunk_size, NULL);
 }
 
-void gmp_assign_first_permutation(mpz_t perm, size_t mismatches) {
+void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
     // Set perm to first key
     // Equivalent to: (perm << mismatches) - 1
     mpz_set_ui(perm, 1);
@@ -69,7 +69,7 @@ void gmp_assign_first_permutation(mpz_t perm, size_t mismatches) {
     mpz_sub_ui(perm, perm, 1);
 }
 
-void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size) {
+void gmp_assign_last_permutation(mpz_t perm, int mismatches, size_t key_size) {
     // First set the value to the first permutation.
     gmp_assign_first_permutation(perm, mismatches);
     // Equivalent to: perm << ((key_size * 8) - mismatches)
@@ -78,14 +78,14 @@ void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size)
     mpz_mul_2exp(perm, perm, (key_size * 8) - mismatches);
 }
 
-void uint256_assign_first_permutation(uint256_t *perm, size_t mismatches) {
+void uint256_assign_first_permutation(uint256_t *perm, int mismatches) {
     // Set perm to first key
     // Equivalent to: (perm << mismatches) - 1
     uint256_shift_left(perm, perm, (int)mismatches);
     uint256_add(perm, perm, &UINT256_NEG_ONE);
 }
 
-void uint256_assign_last_permutation(uint256_t *perm, size_t mismatches, size_t key_size) {
+void uint256_assign_last_permutation(uint256_t *perm, int mismatches, size_t key_size) {
     // First set the value to the first permutation.
     uint256_assign_first_permutation(perm, mismatches);
     // Equivalent to: perm << ((key_size * 8) - mismatches)
@@ -105,7 +105,7 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
     mpz_clear(key_mpz);
 }
 
-void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, size_t mismatches,
+void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
                               size_t key_size, gmp_randstate_t randstate) {
     mpz_t key_mpz, corrupted_key_mpz, perm;
     mpz_inits(key_mpz, corrupted_key_mpz, perm, NULL);
@@ -125,7 +125,7 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 }
 
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
-                   size_t mismatches, size_t key_size) {
+                   int mismatches, size_t key_size) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
 
@@ -155,7 +155,7 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
 }
 
 void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
-        size_t pair_count, size_t mismatches, size_t key_size) {
+        size_t pair_count, int mismatches, size_t key_size) {
     mpz_t starting_perm_mpz, ending_perm_mpz;
     uint64_t *starting_perm_buffer, *ending_perm_buffer;
 

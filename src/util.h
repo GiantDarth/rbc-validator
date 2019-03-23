@@ -13,30 +13,30 @@
 /// \param ordinal The ordinal as the input.
 /// \param mismatches How many bits to set.
 /// \param key_size How big the bit string is (in bytes)
-void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size);
+void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_size);
 
-void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_randstate_t randstate);
+void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate);
 
 /// Generate a set of starting permutations based on mismatches and a maximum key_size.
 /// \param starting_perms The pre-allocated, pre-initialized array of starting_perms to fill.
 /// \param starting_perms_size The count of starting_perms.
 /// \param mismatches The hamming distance to base on (equivalent to # of bits set).
 /// \param key_size The # of bytes the permutations will be.
-void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, size_t mismatches,
+void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, int mismatches,
                                     size_t key_size);
 
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
 /// \param mismatches The hamming distance that you want to base the permutation on.
-void gmp_assign_first_permutation(mpz_t perm, size_t mismatches);
+void gmp_assign_first_permutation(mpz_t perm, int mismatches);
 /// Assigns the first possible permutation for a given # of mismatches and key size
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
 /// \param mismatches The hamming distance that you want to base the permutation on.
 /// \param key_size How big the relevant key is in # of bytes.
-void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size);
+void gmp_assign_last_permutation(mpz_t perm, int mismatches, size_t key_size);
 
-void uint256_assign_first_permutation(uint256_t *perm, size_t mismatches);
-void uint256_assign_last_permutation(uint256_t *perm, size_t mismatches, size_t key_size);
+void uint256_assign_first_permutation(uint256_t *perm, int mismatches);
+void uint256_assign_last_permutation(uint256_t *perm, int mismatches, size_t key_size);
 
 /// Generate a random key using GMP's pseudo-random number generator functionality.
 /// \param key A pre-allocated array that is key_size bytes long.
@@ -51,7 +51,7 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 /// \param mismatches The # of bits to randomly flip form @param key written to @param corrupted_key.
 /// \param key_size The # of bytes to read from @param key and write to @param corrupted_key.
 /// \param randstate A GMP randomstate object that's pre-initialized and seeded.
-void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, size_t mismatches,
+void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
                               size_t key_size, gmp_randstate_t randstate);
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of them.
@@ -63,10 +63,10 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 /// \param mismatches The hamming distance that you want to base the permutation on.
 /// \param key_size How big the relevant key is in # of bytes.
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
-                   size_t mismatches, size_t key_size);
+                   int mismatches, size_t key_size);
 
 void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
-                           size_t pair_count, size_t mismatches, size_t key_size);
+                           size_t pair_count, int mismatches, size_t key_size);
 
 /// Print out a raw byte array as hexadecimal.
 /// \param array An allocated byte array to print.
