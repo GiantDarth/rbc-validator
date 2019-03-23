@@ -4,8 +4,9 @@
 
 #include "util.h"
 
-#include <openssl/err.h>
-#include <openssl/evp.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 void decode_ordinal(mpz_t perm, const mpz_t ordinal, size_t mismatches, size_t key_size) {
     mpz_t binom, curr_ordinal;
@@ -60,41 +61,6 @@ void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms
     mpz_clears(ordinal, chunk_size, NULL);
 }
 
-int encryptMsg(const unsigned char *key, const unsigned char *msg, size_t msgLen, unsigned char *cipher, int *outlen) {
-    int tmplen;
-
-    EVP_CIPHER_CTX *ctx;
-
-    if((ctx = EVP_CIPHER_CTX_new()) == NULL) {
-        return 0;
-    }
-
-    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, NULL)) {
-        fprintf(stderr, "ERROR: EVP_EncryptInit_ex failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-        EVP_CIPHER_CTX_free(ctx);
-        return 0;
-    }
-
-    if(!EVP_EncryptUpdate(ctx, cipher, outlen, msg, (int)msgLen)) {
-        fprintf(stderr, "ERROR: EVP_EncryptUpdate failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-        EVP_CIPHER_CTX_free(ctx);
-        return 0;
-    }
-    if(!EVP_EncryptFinal_ex(ctx, cipher + *outlen, &tmplen)) {
-        fprintf(stderr, "ERROR: EVP_EncryptFinal_ex failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-        EVP_CIPHER_CTX_free(ctx);
-        return 0;
-    }
-    *outlen += tmplen;
-
-    EVP_CIPHER_CTX_free(ctx);
-
-    return 1;
-}
-
 void gmp_assign_first_permutation(mpz_t perm, size_t mismatches) {
     // Set perm to first key
     // Equivalent to: (perm << mismatches) - 1
@@ -110,6 +76,22 @@ void gmp_assign_last_permutation(mpz_t perm, size_t mismatches, size_t key_size)
     // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
     // Then we want to shift left 256 - 5 = 251 times.
     mpz_mul_2exp(perm, perm, (key_size * 8) - mismatches);
+}
+
+void uint256_assign_first_permutation(uint256_t *perm, size_t mismatches) {
+    // Set perm to first key
+    // Equivalent to: (perm << mismatches) - 1
+    uint256_shift_left(perm, perm, (int)mismatches);
+    uint256_add(perm, perm, &UINT256_NEG_ONE);
+}
+
+void uint256_assign_last_permutation(uint256_t *perm, size_t mismatches, size_t key_size) {
+    // First set the value to the first permutation.
+    uint256_assign_first_permutation(perm, mismatches);
+    // Equivalent to: perm << ((key_size * 8) - mismatches)
+    // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
+    // Then we want to shift left 256 - 5 = 251 times.
+    uint256_shift_left(perm, perm, (int)((key_size * 8) - mismatches));
 }
 
 void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randstate) {
@@ -142,7 +124,7 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
     mpz_clears(key_mpz, corrupted_key_mpz, perm, NULL);
 }
 
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
                    size_t mismatches, size_t key_size) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
@@ -172,7 +154,32 @@ void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, si
     mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
 }
 
-void print_hex(unsigned char *array, size_t count) {
+void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
+        size_t pair_count, size_t mismatches, size_t key_size) {
+    mpz_t starting_perm_mpz, ending_perm_mpz;
+    uint64_t *starting_perm_buffer, *ending_perm_buffer;
+
+    mpz_inits(starting_perm_mpz, ending_perm_mpz, NULL);
+
+    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size);
+
+    size_t count;
+    starting_perm_buffer = mpz_export(NULL, &count, -1, sizeof(*starting_perm_buffer),
+            0, 0, starting_perm_mpz);
+    memset(starting_perm->limbs, 0, 4 * sizeof(*starting_perm_buffer));
+    memcpy(starting_perm->limbs, starting_perm_buffer, count * sizeof(*starting_perm_buffer));
+
+    ending_perm_buffer = mpz_export(NULL, &count, -1, sizeof(*ending_perm_buffer),
+            0, 0, ending_perm_mpz);
+    memset(ending_perm->limbs, 0, 4 * sizeof(*ending_perm_buffer));
+    memcpy(ending_perm->limbs, ending_perm_buffer, count * sizeof(*ending_perm_buffer));
+
+    free(ending_perm_buffer);
+    free(starting_perm_buffer);
+    mpz_clears(starting_perm_mpz, ending_perm_mpz, NULL);
+}
+
+void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
         printf("%02x", array[i]);
     }

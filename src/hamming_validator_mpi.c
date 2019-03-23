@@ -9,14 +9,14 @@
 #include <math.h>
 #include <mpi.h>
 
-#include <openssl/evp.h>
 #include <uuid/uuid.h>
 #include <gmp.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
 
-#include "gmp_key_iter.h"
+#include "uint256_key_iter.h"
+#include "aes256-ni.h"
 #include "util.h"
 
 #define ERROR_CODE_FOUND 0
@@ -34,16 +34,16 @@
 /// \param global_found A pointer to a shared "found" variable so as to cut out early if another thread
 /// has found it.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
-                     size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
-
+int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
+        size_t key_size, uuid_t userId, const unsigned char *auth_cipher) {
     int sum = 0;
     // Declaration
     unsigned char *corrupted_key;
-    unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
-    int outlen, found = 0;
+    unsigned char cipher[sizeof(uuid_t)];
+    int found = 0;
 
-    gmp_key_iter *iter;
+    uint256_key_iter *iter;
+    aes256_enc_key_scheduler *key_scheduler;
 
     // Memory allocation
     if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
@@ -51,27 +51,35 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
         return -1;
     }
 
-    // Allocation and initialization
-    if((iter = gmp_key_iter_create(key, key_size, starting_perm, last_perm)) == NULL) {
+    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
         perror("Error");
+        free(corrupted_key);
+        return -1;
+    }
+
+    // Allocation and initialization
+    if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
+        perror("Error");
+        aes256_enc_key_scheduler_destroy(key_scheduler);
         free(corrupted_key);
         return -1;
     }
 
     int count = 0;
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(iter)) {
+    while(!uint256_key_iter_end(iter)) {
         count++;
-        gmp_key_iter_get(iter, corrupted_key);
+        uint256_key_iter_get(iter, corrupted_key);
+        aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
+
         // If encryption fails for some reason, break prematurely.
-        if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
-            // Cleanup
-            gmp_key_iter_destroy(iter);
-            free(corrupted_key);
-            return -1;
+        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+            found = -1;
+            break;
         }
+
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
+        if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             found = 1;
         }
 
@@ -88,11 +96,12 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
             // not found yet, we'll check back after count is reached again
             count = 0;
         }
-        gmp_key_iter_next(iter);
+        uint256_key_iter_next(iter);
     }
 
     // Cleanup
-    gmp_key_iter_destroy(iter);
+    uint256_key_iter_destroy(iter);
+    aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
 
     return found;
@@ -120,9 +129,11 @@ int main(int argc, char **argv) {
 
     unsigned char *key;
     unsigned char *corrupted_key;
-    unsigned char auth_cipher[EVP_MAX_BLOCK_LENGTH];
+    unsigned char auth_cipher[sizeof(uuid_t)];
 
-    mpz_t starting_perm, ending_perm;
+    aes256_enc_key_scheduler *key_scheduler;
+
+    uint256_t starting_perm, ending_perm;
 
     struct timespec startTime, endTime;
 
@@ -140,7 +151,12 @@ int main(int argc, char **argv) {
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-    mpz_inits(starting_perm, ending_perm, NULL);
+    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
+        free(corrupted_key);
+        free(key);
+
+        MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
+    }
 
     if(my_rank == 0) {
         // Initialize values
@@ -157,10 +173,10 @@ int main(int argc, char **argv) {
         get_random_key(key, KEY_SIZE, randstate);
         get_random_corrupted_key(corrupted_key, key, MISMATCHES, KEY_SIZE, randstate);
 
-        int outlen;
-        if(!encryptMsg(corrupted_key, userId, sizeof(userId), auth_cipher, &outlen)) {
+        aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
+        if(aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
             // Cleanup
-            mpz_clears(starting_perm, ending_perm, NULL);
+            aes256_enc_key_scheduler_destroy(key_scheduler);
             free(corrupted_key);
             free(key);
 
@@ -171,7 +187,7 @@ int main(int argc, char **argv) {
     // all ranks
 
     MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(auth_cipher, EVP_MAX_BLOCK_LENGTH, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Bcast(auth_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
     //printf("rank: %d received this for key: ", my_rank);
@@ -183,11 +199,10 @@ int main(int argc, char **argv) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);
     }
 
-    get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
-    int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher);
+    uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
+    int subfound = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher);
     if(subfound < 0) {
         // Cleanup
-        mpz_clears(starting_perm, ending_perm, NULL);
         free(corrupted_key);
         free(key);
 
@@ -208,7 +223,7 @@ int main(int argc, char **argv) {
     }
 
     // Cleanup
-    mpz_clears(starting_perm, ending_perm, NULL);
+    aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);
 

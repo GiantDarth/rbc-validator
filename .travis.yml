@@ -20,14 +20,11 @@ env:
 
 addons:
   apt:
-    sources:
-      - sourceline: "ppa:ondrej/php"
     packages:
       - libomp-dev
       - libopenmpi-dev
       - openmpi-bin
       - libgmp-dev
-      - libssl-dev
       - uuid-dev
       - libsqlite3-dev
   homebrew:
@@ -35,7 +32,6 @@ addons:
       - libomp
       - open-mpi
       - gmp
-      - openssl@1.1
       - ossp-uuid
       - sqlite
 
@@ -53,6 +49,7 @@ script:
       cmake ./CMakeLists.txt
     fi
   - cmake --build .
+  - ./aes256_test
   - ./lookupwork
   - ./hamming_benchmark
   - ./hamming_validator

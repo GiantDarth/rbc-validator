@@ -4,12 +4,11 @@
 #include <time.h>
 #include <math.h>
 
-#include <openssl/evp.h>
 #include <uuid/uuid.h>
-#include <gmp.h>
 #include <omp.h>
 
-#include "gmp_key_iter.h"
+#include "uint256_key_iter.h"
+#include "aes256-ni.h"
 #include "util.h"
 
 void int_progression(size_t mismatches) {
@@ -39,13 +38,14 @@ void int_progression(size_t mismatches) {
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \return Returns a 0 on success, or a -1 on an error.
-int gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsigned char *key,
+int gmp_progression(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
         size_t key_size, uuid_t userId, const int *signal) {
     unsigned char *corrupted_key;
-    unsigned char cipher[EVP_MAX_BLOCK_LENGTH];
+    unsigned char cipher[sizeof(uuid_t)];
     int outlen;
 
-    gmp_key_iter *iter;
+    uint256_key_iter *iter;
+    aes256_enc_key_scheduler *key_scheduler;
 
     // Memory allocation
     if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
@@ -53,28 +53,38 @@ int gmp_progression(const mpz_t starting_perm, const mpz_t last_perm, const unsi
         return -1;
     }
 
-    // Allocation and initialization
-    if((iter = gmp_key_iter_create(key, key_size, starting_perm, last_perm)) == NULL) {
+    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
         perror("Error");
+        free(corrupted_key);
+        return -1;
+    }
+
+    // Allocation and initialization
+    if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
+        perror("Error");
+        aes256_enc_key_scheduler_destroy(key_scheduler);
         free(corrupted_key);
         return -1;
     }
 
     int status = 0;
     // While we haven't reached the end of iteration
-    while(!gmp_key_iter_end(iter) && !(*signal)) {
-        gmp_key_iter_get(iter, corrupted_key);
+    while(!uint256_key_iter_end(iter) && !(*signal)) {
+        uint256_key_iter_get(iter, corrupted_key);
+        aes256_enc_key_scheduler_update(key_scheduler, key);
+
         // If encryption fails for some reason, break prematurely.
-        if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
+        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
             status = -1;
             break;
         }
 
-        gmp_key_iter_next(iter);
+        uint256_key_iter_next(iter);
     }
 
     // Cleanup
-    gmp_key_iter_destroy(iter);
+    uint256_key_iter_destroy(iter);
+    aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
 
     return status;
@@ -84,7 +94,7 @@ int main() {
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = 3;
     // Use this line to manually set the # of threads, otherwise it detects it by your machine
-//    omp_set_num_threads(4);
+//    omp_set_num_threads(1);
 
     uuid_t userId;
     char uuid_str[37];
@@ -92,7 +102,7 @@ int main() {
     unsigned char *key;
 
     // Allocate memory
-    if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
+    if((key = calloc(KEY_SIZE, sizeof(*key))) == NULL) {
         perror("Error");
         return EXIT_FAILURE;
     }
@@ -108,15 +118,13 @@ int main() {
     int signal = 0, error = 0;
 #pragma omp parallel
     {
-        mpz_t starting_perm, ending_perm;
-        mpz_inits(starting_perm, ending_perm, NULL);
-
-        get_perm_pair(starting_perm, ending_perm, (size_t)omp_get_thread_num(), (size_t)omp_get_num_threads(),
-                      MISMATCHES, KEY_SIZE);
+        uint256_t starting_perm, ending_perm;
+        uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)omp_get_thread_num(),
+                (size_t)omp_get_num_threads(), MISMATCHES, KEY_SIZE);
 
         // If the result is non-zero, set a flag that an error has occurred, and stop the other threads.
         // Will cause the other threads to prematurely stop.
-        if(gmp_progression(starting_perm, ending_perm, key, KEY_SIZE, userId, &signal)) {
+        if(gmp_progression(&starting_perm, &ending_perm, key, KEY_SIZE, userId, &signal)) {
             // Set the signal to stop the other threads
 #pragma omp critical
             {
@@ -124,8 +132,6 @@ int main() {
                 signal = 1;
             };
         }
-
-        mpz_clears(starting_perm, ending_perm, NULL);
     }
 
     // Check if an error occurred in one of the threads.
