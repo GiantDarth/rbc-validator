@@ -15,7 +15,6 @@ set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/uint256_key_iter.c src/uint
         src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h )
 
 add_executable(hamming_validator_omp src/hamming_validator_omp.c ${SOURCE_FILES})
-add_executable(hamming_validator_fork src/hamming_validator_fork.c ${SOURCE_FILES})
 add_executable(hamming_validator_mpi src/hamming_validator_mpi.c ${SOURCE_FILES})
 
 add_executable(lookupwork src/lookupwork.c)
@@ -40,7 +39,6 @@ include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 
 target_link_libraries(hamming_validator_omp OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
-target_link_libraries(hamming_validator_fork ${UUID_LIBRARIES} ${GMP_LIBRARIES})
 target_link_libraries(hamming_validator_mpi MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
