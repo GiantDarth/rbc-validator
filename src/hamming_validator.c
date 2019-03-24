@@ -233,26 +233,46 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
         return -1;
     }
 
-    // While we haven't reached the end of iteration
-    while(!uint256_key_iter_end(iter) && (!(*signal) || benchmark)) {
-        uint256_key_iter_get(iter, corrupted_key);
-        aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
+    if(benchmark) {
+        // While we haven't reached the end of iteration
+        while(!uint256_key_iter_end(iter)) {
+            uint256_key_iter_get(iter, corrupted_key);
+            aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
 
-        // If encryption fails for some reason, break prematurely.
-        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-            found = -1;
-            break;
-        }
-
-        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
-            found = 1;
-            if(!benchmark) {
+            // If encryption fails for some reason, break prematurely.
+            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+                found = -1;
                 break;
             }
-        }
 
-        uint256_key_iter_next(iter);
+            // If the new cipher is the same as the passed in auth_cipher, set found to true and break
+            if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
+                found = 1;
+            }
+
+            uint256_key_iter_next(iter);
+        }
+    }
+    else {
+        // While we haven't reached the end of iteration
+        while(!uint256_key_iter_end(iter) && !(*signal)) {
+            uint256_key_iter_get(iter, corrupted_key);
+            aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
+
+            // If encryption fails for some reason, break prematurely.
+            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+                found = -1;
+                break;
+            }
+
+            // If the new cipher is the same as the passed in auth_cipher, set found to true and break
+            if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
+                found = 1;
+                break;
+            }
+
+            uint256_key_iter_next(iter);
+        }
     }
 
     // Cleanup
@@ -284,7 +304,7 @@ int main(int argc, char *argv[]) {
     int mismatch, ending_mismatch;
 
     double startTime;
-    int found, signal, error;
+    int found, subfound, signal, error;
 
     // Memory allocation
     if ((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
@@ -333,7 +353,7 @@ int main(int argc, char *argv[]) {
 
     if (arguments.random) {
         fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and randomly"
-                        " generated ones will be used in place.\n");
+                        " generated ones will be used in their place.\n");
 
         uuid_generate(userId);
 
@@ -364,19 +384,19 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "INFO: Using UUID:                                 %s\n", uuid_str);
 
         fprintf(stderr, "INFO: Using AES-256 Key:                          ");
-        print_hex(key, KEY_SIZE);
-        printf("\n");
+        fprint_hex(stderr, key, KEY_SIZE);
+        fprintf(stderr, "\n");
 
         if(arguments.random) {
             fprintf(stderr, "INFO: Using AES-256 Corrupted Key (%d mismatches): ",
                     arguments.cipher_mismatches);
-            print_hex(corrupted_key, KEY_SIZE);
-            printf("\n");
+            fprint_hex(stderr, corrupted_key, KEY_SIZE);
+            fprintf(stderr, "\n");
         }
 
         fprintf(stderr, "INFO: AES-256 Authentication Cipher:              ");
-        print_hex(auth_cipher, KEY_SIZE);
-        printf("\n");
+        fprint_hex(stderr, auth_cipher, KEY_SIZE);
+        fprintf(stderr, "\n");
     }
 
     startTime = omp_get_wtime();
@@ -400,7 +420,7 @@ int main(int argc, char *argv[]) {
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
                                   (size_t) omp_get_num_threads(), mismatch, KEY_SIZE);
 
-            int subfound = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId,
+            subfound = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId,
                     auth_cipher, &signal, arguments.benchmark);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.

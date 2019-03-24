@@ -6,6 +6,7 @@
 #define HAMMING_BENCHMARK_UTIL_H
 
 #include <gmp.h>
+#include <stdio.h>
 #include "uint256_t.h"
 
 /// Based on https://cs.stackexchange.com/a/67669
@@ -69,8 +70,9 @@ void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, siz
                            size_t pair_count, int mismatches, size_t key_size);
 
 /// Print out a raw byte array as hexadecimal.
+/// \param stream An IO stream to output to.
 /// \param array An allocated byte array to print.
 /// \param count The # of bytes to print from array.
-void print_hex(const unsigned char *array, size_t count);
+void fprint_hex(FILE *stream, const unsigned char *array, size_t count);
 
 #endif //HAMMING_BENCHMARK_UTIL_H
