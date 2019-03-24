@@ -194,7 +194,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
     int sum = 0;
     // Declaration
     unsigned char *corrupted_key;
-    unsigned char cipher[sizeof(uuid_t)];
+    unsigned char cipher[BLOCK_SIZE];
     int found = 0;
 
     uint256_key_iter *iter;
@@ -422,7 +422,7 @@ int main(int argc, char *argv[]) {
             }
 
             fprintf(stderr, "INFO: AES-256 Authentication Cipher:              ");
-            fprint_hex(stderr, auth_cipher, KEY_SIZE);
+            fprint_hex(stderr, auth_cipher, BLOCK_SIZE);
             fprintf(stderr, "\n");
         }
 

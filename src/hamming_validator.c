@@ -425,7 +425,7 @@ int main(int argc, char *argv[]) {
         }
 
         fprintf(stderr, "INFO: AES-256 Authentication Cipher:              ");
-        fprint_hex(stderr, auth_cipher, KEY_SIZE);
+        fprint_hex(stderr, auth_cipher, BLOCK_SIZE);
         fprintf(stderr, "\n");
     }
 
