@@ -186,8 +186,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
-/// \param global_found A pointer to a shared "found" variable so as to cut out early if another thread
-/// has found it.
+/// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
         size_t key_size, uuid_t userId, const unsigned char *auth_cipher, int benchmark) {
@@ -292,7 +291,7 @@ int main(int argc, char *argv[]) {
 
     int mismatch, ending_mismatch;
 
-    int found, subfound, signal, error;
+    int found, subfound;
     uint256_t starting_perm, ending_perm;
     struct timespec startTime, endTime;
 
