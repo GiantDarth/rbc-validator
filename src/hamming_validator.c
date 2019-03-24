@@ -26,11 +26,22 @@
 const char *argp_program_version = "hamming_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 
-static char args_doc[] = "CIPHER KEY UUID";
-static char prog_desc[] = "Given an AES-256 key and a cipher from an unreliable source,"
+static char args_doc[] = "CIPHER KEY UUID\n-r/--random -c/--cipher-mismatches=value";
+static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
                           " progressively corrupt it by a certain number of bits until"
-                          " a matching corrupted key is found. The matching key will"
-                          " sent to stdout.";
+                          " a matching corrupted key is found. The matching key will be"
+                          " sent to stdout.\n\nThis implementation uses MPI.\v"
+
+                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
+                          " generated in ECB mode, meaning given a 128-bit UUID, this"
+                          " should be 128-bits long as well.\n\n"
+
+                          "The original KEY, passed in as hexadecimal, is corrupted by"
+                          " a certain number of bits and compared against CIPHER. Only"
+                          " AES-256 keys are currently supported.\n\n"
+
+                          "The UUID, passed in canonical form is the message that both"
+                          " sources encrypt and is previously agreed upon.";
 
 struct arguments {
     int verbose, benchmark, random;
@@ -39,29 +50,25 @@ struct arguments {
 };
 
 static struct argp_option options[] = {
-    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
+    {0, 0, 0, 0, "General Options:"},
     {"benchmark", 'b', 0, 0, "Don't cut out early when key is found."},
-    {"random", 'r', 0, 0, "Instead of using arguments, randomly generate cipher, key,"
-                          " and uuid."},
-    {"cipher", 'c', "hex", 0, "The cipher generated from a potentially unreliable source."
-                              " The cipher is assumed to have been generated in ECB mode,"
-                              " meaning given a 128-bit UUID, this should be 128-bits"
-                              " long as well."},
-    {"key", 'k', "hex", 0, "The original key to corrupt (in hexadecimal). Only AES-256"
-                           " keys are currently supported."},
-    {"uuid", 'u', "value", 0, "The UUID representing the user to encrypt (in canonical form)."},
     {"mismatches", 'm', "value", 0, "The # of bits of corruption to test against. Defaults to"
                                     " -1. If negative, then it will start from 0 and"
                                     " continuously increase them up until the size of the key"
                                     " in bits."},
+    {"threads", 't', "count", 0, "The # of bits to corrupt the key by. Defaults to 0. If set"
+                                 " to 0, then the number of threads used will be detected"
+                                 " by the system." },
+    {0, 0, 0, 0, "Random Mode Options:"},
+    {"random", 'r', 0, 0, "Instead of using arguments, randomly generate cipher, key,"
+                          " and uuid."},
     {"cipher-mismatches", 'c', "value", 0, "The # of bits to corrupt the key by when. This"
                                            " only makes sense in random mode. If negative,"
                                            " then it will start from 0 and continuously"
                                            " increase them up until the size of the key in"
                                            " bits."},
-    {"threads", 't', "count", 0, "The # of bits to corrupt the key by. Defaults to 0. If set"
-                                 " to 0, then it the number of threads used will be detected"
-                                 " by the system." },
+    {0, 0, 0, 0, "Diagnostic Options:"},
+    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
     { 0 }
 };
 
