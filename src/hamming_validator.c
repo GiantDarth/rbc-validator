@@ -175,6 +175,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 default:
                     argp_usage(state);
             }
+            break;
         case ARGP_KEY_NO_ARGS:
             if(!arguments->random) {
                 argp_usage(state);
@@ -378,6 +379,28 @@ int main(int argc, char *argv[]) {
         }
     }
     else {
+        switch(parse_hex(auth_cipher, arguments.cipher_hex)) {
+            case 1:
+                fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
+                return EINVAL;
+            case 2:
+                fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+                return EINVAL;
+            default:
+                break;
+        }
+
+        switch(parse_hex(key, arguments.key_hex)) {
+            case 1:
+                fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
+                return EINVAL;
+            case 2:
+                fprintf(stderr, "ERROR: KEY did not have even length.\n");
+                return EINVAL;
+            default:
+                break;
+        }
+
         if (uuid_parse(arguments.uuid_hex, userId) < 0) {
             fprintf(stderr, "ERROR: UUID not in canonical form.\n");
             return EINVAL;
