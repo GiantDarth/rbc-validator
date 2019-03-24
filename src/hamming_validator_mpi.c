@@ -61,8 +61,8 @@ static struct argp_option options[] = {
                                         " continuously increase them up until the size of the key"
                                         " in bits."},
         {0, 0, 0, 0, "Random Mode Options:"},
-        {"random", 'r', 0, 0, "Instead of using arguments, randomly generate cipher, key,"
-                              " and uuid."},
+        {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY,"
+                              " and UUID."},
         {"cipher-mismatches", 'c', "value", 0, "The # of bits to corrupt the key by when. This"
                                                " only makes sense in random mode. If negative,"
                                                " then it will start from 0 and continuously"
