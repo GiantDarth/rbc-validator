@@ -56,14 +56,14 @@ static struct argp_option options[] = {
                                     " -1. If negative, then it will start from 0 and"
                                     " continuously increase them up until the size of the key"
                                     " in bits."},
-    {"threads", 't', "count", 0, "How many worker threads to use. Defaults to 0. If set"
-                                 " to 0, then the number of threads used will be detected"
-                                 " by the system." },
+    {"threads", 't', "count", 0, "How many worker threads to use. Defaults to 0. If set to 0,"
+                                 " then the number of threads used will be detected by the"
+                                 " system." },
     {0, 0, 0, 0, "Random Mode Options:"},
-    {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY,"
-                          " and UUID."},
-    {"cipher-mismatches", 'c', "value", 0, "The # of bits to corrupt the key by when. This"
-                                           " only makes sense in random mode."},
+    {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
+                          " UUID."},
+    {"cipher-mismatches", 'c', "value", 0, "The # of bits to corrupt the key by. This only"
+                                           " makes sense in random mode."},
     {0, 0, 0, 0, "Diagnostic Options:"},
     {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
     { 0 }
