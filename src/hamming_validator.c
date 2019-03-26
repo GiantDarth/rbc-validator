@@ -31,7 +31,7 @@ static char args_doc[] = "CIPHER KEY UUID\n-r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
                           " progressively corrupt it by a certain number of bits until"
                           " a matching corrupted key is found. The matching key will be"
-                          " sent to stdout.\n\nThis implementation uses MPI.\v"
+                          " sent to stdout.\n\nThis implementation uses OpenMP.\v"
 
                           "If the key is found then the program will exit with 0. If not"
                           " found, e.g. when providing --mismatches and especially"
