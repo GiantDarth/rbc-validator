@@ -47,7 +47,7 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " a certain number of bits and compared against CIPHER. Only"
                           " AES-256 keys are currently supported.\n\n"
 
-                          "The UUID, passed in canonical form is the message that both"
+                          "The UUID, passed in canonical form, is the message that both"
                           " sources encrypt and is previously agreed upon.";
 
 struct arguments {
