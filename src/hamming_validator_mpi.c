@@ -58,10 +58,10 @@ static struct argp_option options[] = {
     {"benchmark", 'b', 0, 0, "Don't cut out early when key is found."},
     {"mismatches", 'm', "value", 0, "The largest # of bits of corruption to test against,"
                                     " inclusively. Defaults to -1. If negative, then the"
-                                    " size of key in bits will be the limit. If in random,"
-                                    " then this will also be used to corrupt the random key"
-                                    " by the same # of bits; for this reason, it must be set"
-                                    " and non-negative when in random mode."},
+                                    " size of key in bits will be the limit. If in random"
+                                    " mode, then this will also be used to corrupt the"
+                                    " random key by the same # of bits; for this reason, it"
+                                    " must be set and non-negative when in random mode."},
     // Uses a non-printable key to signify that this is a long-only option
     {"only-given", 1000, 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
                                " --mismatches. This is only valid when --mismatches is set and"
