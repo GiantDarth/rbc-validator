@@ -52,14 +52,14 @@ script:
   - cmake --build .
   - ./aes256_test
   - ./lookupwork
-  - ./hamming_validator -rv -c3
+  - ./hamming_validator -rv -m3
   - |
-    ./hamming_validator -v 73962ffac2a737632b4e3dc0ce424dac \
+    ./hamming_validator -v -m3 73962ffac2a737632b4e3dc0ce424dac \
       ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
       78df66c7-4723-434f-b5b9-ae61e02cd97c
-  - mpirun --oversubscribe -np 4 ./hamming_validator_mpi -rv -c3
+  - mpirun --oversubscribe -np 4 ./hamming_validator_mpi -rv -m3
   - |
-    mpirun --oversubscribe -np 4 ./hamming_validator_mpi -v 73962ffac2a737632b4e3dc0ce424dac \
+    mpirun --oversubscribe -np 4 ./hamming_validator_mpi -v -m3 73962ffac2a737632b4e3dc0ce424dac \
         ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
         78df66c7-4723-434f-b5b9-ae61e02cd97c
 
