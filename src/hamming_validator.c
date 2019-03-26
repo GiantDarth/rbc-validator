@@ -27,11 +27,17 @@ const char *argp_program_version = "hamming_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "CIPHER KEY UUID\n-r/--random -c/--cipher-mismatches=value";
+static char args_doc[] = "CIPHER KEY UUID\n-r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
                           " progressively corrupt it by a certain number of bits until"
                           " a matching corrupted key is found. The matching key will be"
                           " sent to stdout.\n\nThis implementation uses MPI.\v"
+
+                          "If the key is found then the program will exit with 0. If not"
+                          " found, e.g. when providing --mismatches and especially"
+                          " --only-given, then the program will exit with 1. For any"
+                          " general error, such as parsing, out-of-memory, etc., the"
+                          " program will exit with 2."
 
                           "The CIPHER, passed in as hexadecimal, is assumed to have been"
                           " generated in ECB mode, meaning given a 128-bit UUID, this"
@@ -45,28 +51,30 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " sources encrypt and is previously agreed upon.";
 
 struct arguments {
-    int verbose, benchmark, random;
+    int verbose, benchmark, random, only_given;
     char *cipher_hex, *key_hex, *uuid_hex;
-    int mismatches, cipher_mismatches, threads;
+    int mismatches, threads;
 };
 
 static struct argp_option options[] = {
-    {0, 0, 0, 0, "General Options:"},
     {"benchmark", 'b', 0, 0, "Don't cut out early when key is found."},
-    {"mismatches", 'm', "value", 0, "The # of bits of corruption to test against. Defaults to"
-                                    " -1. If negative, then it will start from 0 and"
-                                    " continuously increase them up until the size of the key"
-                                    " in bits."},
+    {"mismatches", 'm', "value", 0, "The largest # of bits of corruption to test against,"
+                                    " inclusively. Defaults to -1. If negative, then the"
+                                    " size of key in bits will be the limit. If in random,"
+                                    " then this will also be used to corrupt the random key"
+                                    " by the same # of bits; for this reason, it must be set"
+                                    " and non-negative when in random mode."},
+    // Uses a non-printable key to signify that this is a long-only option
+    {"only-given", 1000, 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
+                               " --mismatches. This is only valid when --mismatches is set and"
+                               " non-negative."},
+    {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
+                          " UUID. This must be accompanied by --mismatches, since it is used to"
+                          " corrupt the random key by the same # of bits."},
+    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
     {"threads", 't', "count", 0, "How many worker threads to use. Defaults to 0. If set to 0,"
                                  " then the number of threads used will be detected by the"
                                  " system." },
-    {0, 0, 0, 0, "Random Mode Options:"},
-    {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
-                          " UUID."},
-    {"cipher-mismatches", 'c', "value", 0, "The # of bits to corrupt the key by. This only"
-                                           " makes sense in random mode."},
-    {0, 0, 0, 0, "Diagnostic Options:"},
-    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
     { 0 }
 };
 
@@ -87,6 +95,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'r':
             arguments->random = 1;
             break;
+        case 1000:
+            arguments->only_given = 1;
+            break;
         case 'm':
             errno = 0;
             value = strtol(arg, &endptr, 10);
@@ -106,27 +117,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
 
             arguments->mismatches = (int)value;
-
-            break;
-        case 'c':
-            errno = 0;
-            value = strtol(arg, &endptr, 10);
-
-            if((errno == ERANGE && (value == LONG_MAX || value == LONG_MIN))
-                    || (!errno && value == 0)) {
-                argp_failure(state, ERROR_CODE_FAILURE, errno, "--cipher-mismatches");
-            }
-
-            if(*endptr != '\0') {
-                argp_error(state, "--cipher-mismatches contains invalid characters.\n");
-            }
-
-            if (value > KEY_SIZE * 8) {
-                fprintf(stderr, "--cipher-mismatches cannot exceed the key size for AES-256"
-                                " in bits.\n");
-            }
-
-            arguments->cipher_mismatches = (int)value;
 
             break;
         case 't':
@@ -180,11 +170,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
             break;
         case ARGP_KEY_END:
-            if(arguments->random && arguments->cipher_mismatches < 0) {
-                argp_error(state, "--cipher-mismatches must be set and non-negative when using"
-                                  " random mode.\n");
+            if(arguments->mismatches < 0) {
+                if(arguments->random) {
+                    argp_error(state, "--mismatches must be set and non-negative when using --random.\n");
+                }
+                if(arguments->only_given) {
+                    argp_error(state, "--mismatches must be set and non-negative when using --only-given.\n");
+                }
             }
-
             break;
         case ARGP_KEY_INIT:
             break;
@@ -340,7 +333,6 @@ int main(int argc, char *argv[]) {
     arguments.uuid_hex = NULL;
     // Default to -1 for no mismatches provided, aka. go through all mismatches.
     arguments.mismatches = -1;
-    arguments.cipher_mismatches = -1;
 
     // Parse arguments
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
@@ -353,9 +345,13 @@ int main(int argc, char *argv[]) {
     mismatch = 0;
     ending_mismatch = KEY_SIZE * 8;
 
-    // If a mismatch argument was provided, set the validation range to only use that instead.
-    if (arguments.mismatches >= 0) {
+    // If --only-given option was set, set the validation range to only use the --mismatches value.
+    if (arguments.only_given) {
         mismatch = arguments.mismatches;
+        ending_mismatch = arguments.mismatches;
+    }
+    // If --mismatches is set and non-negative, set the ending_mismatch to its value.
+    else if(arguments.mismatches >= 0) {
         ending_mismatch = arguments.mismatches;
     }
 
@@ -366,7 +362,7 @@ int main(int argc, char *argv[]) {
         uuid_generate(userId);
 
         get_random_key(key, KEY_SIZE, randstate);
-        get_random_corrupted_key(corrupted_key, key, arguments.cipher_mismatches, KEY_SIZE, randstate);
+        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate);
 
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
         if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
@@ -418,8 +414,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "\n");
 
         if(arguments.random) {
-            fprintf(stderr, "INFO: Using AES-256 Corrupted Key (%d mismatches): ",
-                    arguments.cipher_mismatches);
+            fprintf(stderr, "INFO: Using AES-256 Corrupted Key (%d mismatches): ", arguments.mismatches);
             fprint_hex(stderr, corrupted_key, KEY_SIZE);
             fprintf(stderr, "\n");
         }
