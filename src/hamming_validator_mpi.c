@@ -171,6 +171,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's matching
 /// last_perm is found, or until a matching cipher is found.
+/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at least
+/// key_size bytes big.
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param key The original AES key.
@@ -179,11 +181,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param auth_cipher The authentication cipher to test against
 /// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, const unsigned char *key,
-        size_t key_size, uuid_t userId, const unsigned char *auth_cipher, int benchmark) {
+int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
+        const unsigned char *key, size_t key_size, uuid_t userId, const unsigned char *auth_cipher,
+        int benchmark) {
     int sum = 0;
     // Declaration
-    unsigned char *corrupted_key;
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
 
@@ -191,11 +193,6 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
     aes256_enc_key_scheduler *key_scheduler;
 
     // Memory allocation
-    if((corrupted_key = malloc(sizeof(*corrupted_key) * key_size)) == NULL) {
-        perror("Error");
-        return -1;
-    }
-
     if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
         perror("Error");
         free(corrupted_key);
@@ -226,8 +223,6 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             found = 1;
-            fprint_hex(stdout, corrupted_key, key_size);
-            printf("\n");
         }
 
         // remove this comment block to enable early exit on valid key found
@@ -249,7 +244,6 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
     // Cleanup
     uint256_key_iter_destroy(iter);
     aes256_enc_key_scheduler_destroy(key_scheduler);
-    free(corrupted_key);
 
     return found;
 }
@@ -432,7 +426,7 @@ int main(int argc, char *argv[]) {
         }
 
         uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, mismatch, KEY_SIZE);
-        subfound = gmp_validator(&starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher,
+        subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher,
                 arguments.benchmark);
         if (subfound < 0) {
             // Cleanup
@@ -454,6 +448,11 @@ int main(int argc, char *argv[]) {
         if(arguments.verbose) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
             fprintf(stderr, "INFO: Found: %d\n", found);
+        }
+
+        if(found) {
+            fprint_hex(stdout, corrupted_key, KEY_SIZE);
+            printf("\n");
         }
     }
 
