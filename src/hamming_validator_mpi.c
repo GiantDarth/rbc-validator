@@ -29,6 +29,7 @@
 
 const char *argp_program_version = "hamming_validator MPI 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
+error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
 static char args_doc[] = "CIPHER KEY UUID\n-r/--random -c/--cipher-mismatches=value";
 static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
