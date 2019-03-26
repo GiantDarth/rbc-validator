@@ -37,7 +37,7 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " found, e.g. when providing --mismatches and especially"
                           " --only-given, then the program will exit with 1. For any"
                           " general error, such as parsing, out-of-memory, etc., the"
-                          " program will exit with 2."
+                          " program will exit with 2.\n\n"
 
                           "The CIPHER, passed in as hexadecimal, is assumed to have been"
                           " generated in ECB mode, meaning given a 128-bit UUID, this"

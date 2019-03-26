@@ -37,6 +37,12 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " a matching corrupted key is found. The matching key will be"
                           " sent to stdout.\n\nThis implementation uses MPI.\v"
 
+                          "If the key is found then the program will exit with 0. If not"
+                          " found, e.g. when providing --mismatches and especially"
+                          " --only-given, then the program will exit with 1. For any"
+                          " general error, such as parsing, out-of-memory, etc., the"
+                          " program will exit with 2.\n\n"
+
                           "The CIPHER, passed in as hexadecimal, is assumed to have been"
                           " generated in ECB mode, meaning given a 128-bit UUID, this"
                           " should be 128-bits long as well.\n\n"
