@@ -233,7 +233,7 @@ int gmp_validator(const uint256_t *starting_perm, const uint256_t *last_perm, co
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             found = 1;
-            fprint_hex(stdout, corrupted_key, KEY_SIZE);
+            fprint_hex(stdout, corrupted_key, key_size);
             printf("\n");
         }
 
