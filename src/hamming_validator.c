@@ -92,7 +92,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             value = strtol(arg, &endptr, 10);
 
             if((errno == ERANGE && (value == LONG_MAX || value == LONG_MIN))
-                    || (!errno && value == 0)) {
+                    || (errno && value == 0)) {
                 argp_failure(state, ERROR_CODE_FAILURE, errno, "--mismatches");
             }
 
