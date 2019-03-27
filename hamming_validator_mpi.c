@@ -28,7 +28,6 @@ MPI_Status status;
 MPI_Request request;
 
 int found = 0;
-int firstfound = 0;
 int flags[2] = {0,-1};
 int my_rank, nprocs, mode, base_cycles;
 
@@ -69,9 +68,11 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
     }
 
     int count = 0;
+
     // While we haven't reached the end of iteration
     while(!gmp_key_iter_end(iter)) {
         count++;
+
         gmp_key_iter_get(iter, corrupted_key);
         // If encryption fails for some reason, break prematurely.
         if(!encryptMsg(corrupted_key, userId, sizeof(uuid_t), cipher, &outlen)) {
@@ -83,24 +84,20 @@ int gmp_validator(const mpz_t starting_perm, const mpz_t last_perm, const unsign
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, (size_t)outlen) == 0) {
             flags[0] = 1;
-            // pthread con signal (signal)
         }
 
-
-        // all ranks are hitting this, need to send two ints, one int is flag
-        // other int is the rank that found it, then do somethin like
-        // if (found ==1 && my_rank = ints[1])
+        // need to send two ints because only want one rank to alert
+        // one int is flag, other int is the rank that found it
         if (flags[0] == 1 && flags[1] == -1){
           flags[0] = 1;
           flags[1] = my_rank;
-          printf("Found by rank: %d, alerting ranks ...\n",my_rank);
+          //printf("Found by rank: %d, alerting ranks ...\n",my_rank);
 
+          // alert all ranks that the key was found
           for (int i = 0; i < nprocs; i++) {
             MPI_Isend(&flags,2,MPI_INT,i,0,MPI_COMM_WORLD,&request);
             MPI_Wait(&request,MPI_STATUS_IGNORE);
           }
-          //printf("we done, break!\n");
-
           break;
         }
 
@@ -176,29 +173,33 @@ int get_numcycles(int key_size, int mismatches, int nprocs, int mode, int base_c
   return num_cycles;
 }
 
-// how to handle the issue with the request and status
+// comm function is run by the communication thread on each rank
+// simply waits to be alerted of a key being found
+// when found, it exits and the program in turn exits shortly after
 void *comm (void *arg) {
-  //int found = 0;
 
   MPI_Recv(&flags,2,MPI_INT,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
   MPI_Wait(&request,MPI_STATUS_IGNORE);
 
-  printf("Rank: %d sees that rank: %d found it!\n", my_rank, flags[1]);
-  // only way we get here is if it was found, no reason to check
-  //  return 0;
-  pthread_exit(0);
+  //printf("Rank: %d sees that rank: %d found it!\n", my_rank, flags[1]);
+
+  return 0;
 }
+
 /// MPI implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char **argv) {
+
     //int found = 0;
     pthread_t com_thread;
+    int level;
 
-    MPI_Init(&argc, &argv);
+    // This version, MPI_Init_thread is apparently needed when doing mpi comm
+    // on more than one thread in the program
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &level);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    //MPI_Status status;
     request = MPI_REQUEST_NULL;
 
     if (pthread_create( &com_thread, NULL, comm, 0)) {
@@ -206,36 +207,28 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-
     const size_t KEY_SIZE = 32;
     const size_t MISMATCHES = atoi(argv[1]);
     mode = atoi(argv[2]);
     base_cycles = atoi(argv[3]);
-
     gmp_randstate_t randstate;
-
     uuid_t userId;
     char uuid_str[37];
-
     unsigned char *key;
     unsigned char *corrupted_key;
     unsigned char auth_cipher[EVP_MAX_BLOCK_LENGTH];
-
     mpz_t starting_perm, ending_perm;
-
     struct timespec startTime, endTime;
 
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
         perror("Error");
-
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
     if((corrupted_key = malloc(sizeof(*corrupted_key) * KEY_SIZE)) == NULL) {
         perror("Error");
         free(key);
-
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
@@ -282,21 +275,20 @@ int main(int argc, char **argv) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);
     }
 
-
     int cycles = get_numcycles(KEY_SIZE, MISMATCHES, nprocs, mode, base_cycles);
-
 
     get_perm_pair(starting_perm, ending_perm, (size_t)my_rank, (size_t)nprocs, MISMATCHES, KEY_SIZE);
     int subfound = gmp_validator(starting_perm, ending_perm, key, KEY_SIZE, userId, auth_cipher, cycles, my_rank, nprocs);
 
-
+    //printf("Rank: %d is Thread join ...\n", my_rank);
+    pthread_join(com_thread, NULL);
 
     if(subfound < 0) {
         // Cleanup
         mpz_clears(starting_perm, ending_perm, NULL);
         free(corrupted_key);
         free(key);
-
+        printf ("ABORT!!! \n");
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
@@ -321,11 +313,8 @@ int main(int argc, char **argv) {
     free(corrupted_key);
     free(key);
 
-    printf("Rank: %d is Thread join ...\n", my_rank);
-    pthread_join(com_thread, NULL);
-
     //MPI_Barrier(MPI_COMM_WORLD);
-    printf("Rank: %d is Finalize ...\n", my_rank);
+    //printf("Rank: %d is Finalize ...\n", my_rank);
     MPI_Finalize();
 
     exit(0);
