@@ -194,7 +194,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
     // Memory allocation
     if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
         perror("Error");
-        free(corrupted_key);
+
         return -1;
     }
 
@@ -202,7 +202,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
         aes256_enc_key_scheduler_destroy(key_scheduler);
-        free(corrupted_key);
+
         return -1;
     }
 
