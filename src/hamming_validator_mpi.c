@@ -175,14 +175,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param key The original AES key.
-/// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
 /// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, size_t key_size, uuid_t userId, const unsigned char *auth_cipher,
-        int benchmark) {
+        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, int benchmark) {
     int sum = 0;
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
@@ -425,10 +423,11 @@ int main(int argc, char *argv[]) {
         }
 
         uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, mismatch, KEY_SIZE);
-        subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher,
+        subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
                 arguments.benchmark);
         if (subfound < 0) {
             // Cleanup
+            aes256_enc_key_scheduler_destroy(key_scheduler);
             free(corrupted_key);
             free(key);
 

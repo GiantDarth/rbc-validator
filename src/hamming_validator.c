@@ -194,15 +194,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param key The original AES key.
-/// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, size_t key_size, uuid_t userId, const unsigned char *auth_cipher,
-        const int* signal, int benchmark) {
+        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, const int* signal,
+        int benchmark) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -435,8 +434,8 @@ int main(int argc, char *argv[]) {
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
                                   (size_t) omp_get_num_threads(), mismatch, KEY_SIZE);
 
-            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, KEY_SIZE, userId,
-                    auth_cipher, &signal, arguments.benchmark);
+            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
+                    &signal, arguments.benchmark);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.
             if (subfound > 0) {
