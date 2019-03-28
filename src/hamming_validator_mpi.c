@@ -37,11 +37,11 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " a matching corrupted key is found. The matching key will be"
                           " sent to stdout.\n\nThis implementation uses MPI.\v"
 
-                          "If the key is found then the program will exit with 0. If not"
-                          " found, e.g. when providing --mismatches and especially"
-                          " --only-given, then the program will exit with 1. For any"
-                          " general error, such as parsing, out-of-memory, etc., the"
-                          " program will exit with 2.\n\n"
+                          "If the key is found then the program will have an exit code"
+                          " 0. If not found, e.g. when providing --mismatches and"
+                          " especially --exact, then the program will have an exit code"
+                          " 1. For any general error, such as parsing, out-of-memory,"
+                          " etc., the program will have an exit code 2.\n\n"
 
                           "The CIPHER, passed in as hexadecimal, is assumed to have been"
                           " generated in ECB mode, meaning given a 128-bit UUID, this"
@@ -55,7 +55,7 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " sources encrypt and is previously agreed upon.";
 
 struct arguments {
-    int verbose, benchmark, random, only_given;
+    int verbose, benchmark, random, fixed;
     char *cipher_hex, *key_hex, *uuid_hex;
     int mismatches;
 };
@@ -68,10 +68,9 @@ static struct argp_option options[] = {
                                     " mode, then this will also be used to corrupt the"
                                     " random key by the same # of bits; for this reason, it"
                                     " must be set and non-negative when in random mode."},
-    // Uses a non-printable key to signify that this is a long-only option
-    {"only-given", 1000, 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
-                               " --mismatches. This is only valid when --mismatches is set and"
-                               " non-negative."},
+    {"fixed", 'f', 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
+                         " --mismatches. This is only valid when --mismatches is set and"
+                         " non-negative."},
     {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
                           " UUID. This must be accompanied by --mismatches, since it is used to"
                           " corrupt the random key by the same # of bits."},
@@ -96,8 +95,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'r':
             arguments->random = 1;
             break;
-        case 1000:
-            arguments->only_given = 1;
+        case 'f':
+            arguments->fixed = 1;
             break;
         case 'm':
             errno = 0;
@@ -155,8 +154,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 if(arguments->random) {
                     argp_error(state, "--mismatches must be set and non-negative when using --random.\n");
                 }
-                if(arguments->only_given) {
-                    argp_error(state, "--mismatches must be set and non-negative when using --only-given.\n");
+                if(arguments->fixed) {
+                    argp_error(state, "--mismatches must be set and non-negative when using --fixed.\n");
                 }
             }
             break;
@@ -176,14 +175,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param key The original AES key.
-/// \param key_size The key size in # of bytes, typically 32.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
 /// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, size_t key_size, uuid_t userId, const unsigned char *auth_cipher,
-        int benchmark) {
+        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, int benchmark) {
     int sum = 0;
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
@@ -195,7 +192,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
     // Memory allocation
     if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
         perror("Error");
-        free(corrupted_key);
+
         return -1;
     }
 
@@ -203,7 +200,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
         aes256_enc_key_scheduler_destroy(key_scheduler);
-        free(corrupted_key);
+
         return -1;
     }
 
@@ -321,8 +318,8 @@ int main(int argc, char *argv[]) {
         mismatch = 0;
         ending_mismatch = KEY_SIZE * 8;
 
-        // If --only-given option was set, set the validation range to only use the --mismatches value.
-        if (arguments.only_given >= 0) {
+        // If --fixed option was set, set the validation range to only use the --mismatches value.
+        if (arguments.fixed >= 0) {
             mismatch = arguments.mismatches;
             ending_mismatch = arguments.mismatches;
         }
@@ -426,10 +423,11 @@ int main(int argc, char *argv[]) {
         }
 
         uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, mismatch, KEY_SIZE);
-        subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, KEY_SIZE, userId, auth_cipher,
+        subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
                 arguments.benchmark);
         if (subfound < 0) {
             // Cleanup
+            aes256_enc_key_scheduler_destroy(key_scheduler);
             free(corrupted_key);
             free(key);
 
