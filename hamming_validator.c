@@ -177,7 +177,7 @@ int main() {
 
     printf("Clock time: %f s\n", duration);
     printf("Found: %d\n", found);
-  
+
     // Cleanup
     free(corrupted_key);
     free(key);
