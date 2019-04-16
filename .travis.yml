@@ -56,16 +56,21 @@ script:
   - ./hamming_validator --help
   - ./hamming_validator -rv -m3
   - |
-    ./hamming_validator -v -m3 73962ffac2a737632b4e3dc0ce424dac \
-      ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
-      78df66c7-4723-434f-b5b9-ae61e02cd97c
+    [[ $(./hamming_validator -v -m3 73962ffac2a737632b4e3dc0ce424dac \
+        ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
+        78df66c7-4723-434f-b5b9-ae61e02cd97c) == \
+      "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
   - ./hamming_validator_mpi --usage
   - ./hamming_validator_mpi --help
-  - mpirun --oversubscribe -np 4 ./hamming_validator_mpi -rv -m3
   - |
-    mpirun --oversubscribe -np 4 ./hamming_validator_mpi -v -m3 73962ffac2a737632b4e3dc0ce424dac \
+    mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+      ./hamming_validator_mpi -rv -m3
+  - |
+    [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+      ./hamming_validator_mpi -v -m3 73962ffac2a737632b4e3dc0ce424dac \
         ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
-        78df66c7-4723-434f-b5b9-ae61e02cd97c
+        78df66c7-4723-434f-b5b9-ae61e02cd97c) == \
+      "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
 
 notifications:
   webhooks:

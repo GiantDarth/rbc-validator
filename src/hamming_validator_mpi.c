@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
 
     int mismatch, ending_mismatch;
 
-    int found, subfound;
+    int found, subfound = 0;
     uint256_t starting_perm, ending_perm;
     struct timespec startTime, endTime;
 
@@ -509,11 +509,11 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
 //            fprintf(stderr, "INFO: Found: %d\n", found);
         }
+    }
 
-        if(found) {
-            fprint_hex(stdout, corrupted_key, KEY_SIZE);
-            printf("\n");
-        }
+    if(subfound) {
+        fprint_hex(stdout, corrupted_key, KEY_SIZE);
+        printf("\n");
     }
 
     // Cleanup
