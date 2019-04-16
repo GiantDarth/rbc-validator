@@ -28,8 +28,11 @@ list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
         /usr/local/opt/gmp /usr/local/opt/sqlite)
 
+set(CMAKE_THREAD_PREFER_PTHREAD ON)
+
 find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
+find_package(Threads REQUIRED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(SQLite3 MODULE REQUIRED)
 find_package(UUID MODULE REQUIRED)
@@ -41,6 +44,6 @@ include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
 target_link_libraries(hamming_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
-target_link_libraries(hamming_validator_mpi MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
+target_link_libraries(hamming_validator_mpi MPI::MPI_C Threads::Threads ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
