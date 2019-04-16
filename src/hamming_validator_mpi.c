@@ -376,7 +376,7 @@ int main(int argc, char *argv[]) {
         ending_mismatch = KEY_SIZE * 8;
 
         // If --fixed option was set, set the validation range to only use the --mismatches value.
-        if (arguments.fixed >= 0) {
+        if (arguments.fixed) {
             mismatch = arguments.mismatches;
             ending_mismatch = arguments.mismatches;
         }
