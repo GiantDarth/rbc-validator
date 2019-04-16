@@ -9,7 +9,7 @@ project(hamming_benchmark C)
 
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 
 set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/uint256_key_iter.c src/uint256_key_iter.h
         src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h )
