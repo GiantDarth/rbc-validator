@@ -12,9 +12,9 @@
 #include <uuid/uuid.h>
 #include <gmp.h>
 #include <unistd.h>
-#include <signal.h>
 #include <sys/wait.h>
 #include <argp.h>
+#include <pthread.h>
 
 #include "uint256_key_iter.h"
 #include "aes256-ni.h"
@@ -26,6 +26,12 @@
 
 #define KEY_SIZE 32
 #define BLOCK_SIZE 16
+
+int flags[2] = {0, -1};
+
+struct comm_arguments {
+    MPI_Request request;
+};
 
 const char *argp_program_version = "hamming_validator MPI 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
@@ -180,8 +186,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, int benchmark) {
-    int sum = 0;
+        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, int benchmark, int verbose,
+        int my_rank, int nprocs, MPI_Request request) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -204,10 +210,10 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
         return -1;
     }
 
-    int count = 0;
+//    int count = 0;
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter)) {
-        count++;
+//        count++;
         uint256_key_iter_get(iter, corrupted_key);
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
 
@@ -219,22 +225,53 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
+            flags[0] = 1;
             found = 1;
+            if(verbose) {
+                fprintf(stderr, "INFO: Found: %d\n", found);
+            }
         }
 
         // remove this comment block to enable early exit on valid key found
         // count is a tuning knob for how often the MPI collective should check
         // if the right key has been found.
-        if(count == 10000) {
-            MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+//        if(count == 10000) {
+//            MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+//
+//            if(sum == 1 && !benchmark) {
+//                break;
+//            }
+//
+//            // not found yet, we'll check back after count is reached again
+//            count = 0;
+//        }
 
-            if(sum == 1 && !benchmark) {
-                break;
+        // need to send two ints because only want one rank to hit this code
+        // one int is flag, other int is the rank that found it
+        if (flags[0] == 1 && flags[1] == -1){
+            flags[0] = 1;
+            flags[1] = my_rank;
+            if(verbose) {
+                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            // not found yet, we'll check back after count is reached again
-            count = 0;
+            // alert all ranks that the key was found, including yourself
+            for (int i = 0; i < nprocs; i++) {
+                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUS_IGNORE);
+            }
+
+            if(!benchmark) {
+                break;
+            }
         }
+
+        // for all ranks that didn't find it first
+        if (flags[0] == 1 && !benchmark) {
+            //printf("rank: %d is breaking early\n", my_rank);
+            break;
+        }
+
         uint256_key_iter_next(iter);
     }
 
@@ -245,20 +282,40 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
     return found;
 }
 
+void *comm_worker(void *arg) {
+    int probe_flag = 0;
+
+    struct comm_arguments *args = (struct comm_arguments*)arg;
+
+    // this while loop avoids the busy wait caused by the mpi_recv
+    // we probe for a message, once found, move on and actually receive the message
+    while (!probe_flag) {
+        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+
+        usleep(1000);
+    }
+
+    MPI_Recv(&flags, 2, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Wait(&(args->request), MPI_STATUS_IGNORE);
+
+    return 0;
+}
+
 /// MPI implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
-    int my_rank, nprocs;
+    int my_rank, nprocs, level;
+    pthread_t comm_thread;
 
-    MPI_Init(&argc, &argv);
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &level);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Status status;
-    MPI_Request request = MPI_REQUEST_NULL;
 
     struct arguments arguments;
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
+
+    struct comm_arguments comm_args;
 
     gmp_randstate_t randstate;
 
@@ -417,6 +474,13 @@ int main(int argc, char *argv[]) {
 
     found = 0;
 
+    comm_args.request = MPI_REQUEST_NULL;
+
+    if (pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
+        fprintf(stderr, "Error while creating comm thread\n");
+        return ERROR_CODE_FAILURE;
+    }
+
     for (; mismatch <= ending_mismatch && !found; mismatch++) {
         if(arguments.verbose && my_rank == 0) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
@@ -424,7 +488,7 @@ int main(int argc, char *argv[]) {
 
         uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, mismatch, KEY_SIZE);
         subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
-                arguments.benchmark);
+                arguments.benchmark, arguments.verbose, my_rank, nprocs, comm_args.request);
         if (subfound < 0) {
             // Cleanup
             aes256_enc_key_scheduler_destroy(key_scheduler);
@@ -433,11 +497,9 @@ int main(int argc, char *argv[]) {
 
             MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
         }
-
-        // Reduce all the "found" answers to a single found statement.
-        // Also works as a natural barrier to make sure all processes are done validating before ending time.
-        MPI_Allreduce(&subfound, &found, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     }
+
+    pthread_join(comm_thread, NULL);
 
     if(my_rank == 0) {
         clock_gettime(CLOCK_MONOTONIC, &endTime);
@@ -445,7 +507,7 @@ int main(int argc, char *argv[]) {
 
         if(arguments.verbose) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
-            fprintf(stderr, "INFO: Found: %d\n", found);
+//            fprintf(stderr, "INFO: Found: %d\n", found);
         }
     }
 
@@ -461,10 +523,12 @@ int main(int argc, char *argv[]) {
 
     MPI_Finalize();
 
-    if(my_rank == 0) {
-        return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
-    }
-    else {
-        return ERROR_CODE_FOUND;
-    }
+//    if(my_rank == 0) {
+//        return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
+//    }
+//    else {
+//        return ERROR_CODE_FOUND;
+//    }
+
+    return 0;
 }
