@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
 
     int mismatch, ending_mismatch;
 
-    int found, subfound = 0;
+    int subfound = 0;
     uint256_t starting_perm, ending_perm;
     size_t max_count;
     mpz_t key_count;
@@ -477,8 +477,6 @@ int main(int argc, char *argv[]) {
         clock_gettime(CLOCK_MONOTONIC, &startTime);
     }
 
-    found = 0;
-
     comm_args.request = MPI_REQUEST_NULL;
 
     if (pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
@@ -486,7 +484,7 @@ int main(int argc, char *argv[]) {
         return ERROR_CODE_FAILURE;
     }
 
-    for (; mismatch <= ending_mismatch && !found; mismatch++) {
+    for (; mismatch <= ending_mismatch && !(flags[0]); mismatch++) {
         if(arguments.verbose && my_rank == 0) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
@@ -525,7 +523,6 @@ int main(int argc, char *argv[]) {
 
         if(arguments.verbose) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
-//            fprintf(stderr, "INFO: Found: %d\n", found);
         }
     }
 
