@@ -504,7 +504,7 @@ int main(int argc, char *argv[]) {
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count, mismatch, KEY_SIZE);
             subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
-                                     arguments.benchmark, arguments.verbose, my_rank, max_count, comm_args.request);
+                                     arguments.benchmark, arguments.verbose, my_rank, nprocs, comm_args.request);
             if (subfound < 0) {
                 // Cleanup
                 mpz_clear(key_count);
