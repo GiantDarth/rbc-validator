@@ -29,56 +29,39 @@ void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_
     mpz_clears(binom, curr_ordinal, NULL);
 }
 
-void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_randstate_t randstate, int numcores) {
-
-    mpz_t ordinal, binom, rank, cores;
-    mpz_inits(ordinal, binom, rank, NULL);
-    mpz_init_set_ui(cores,numcores);
+void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate) {
+    mpz_t ordinal, binom;
+    mpz_inits(ordinal, binom, NULL);
 
     mpz_bin_uiui(binom, key_size * 8, mismatches);
 
-      //gmp_printf("binom is: %Zu\n", binom);
-    // Choose a random rank from 0 to numcores - 1
-    mpz_urandomm(rank,randstate,cores);
-
-    //gmp_printf("Random rank first is: %Zu\n", rank);
-
-    mpz_mul_ui(rank, rank, 2);
-    mpz_add_ui(rank,rank, 1);
-    mpz_mul(ordinal, binom, rank);
-
-    // numcores * 2
-    //mpz_mul_ui(cores, cores, 2);
-    // good , mpz_tdiv_q(ordinal, binom, rank);
-
-    //gmp_printf("Ordinal before is: %Zu\n", ordinal);
-    mpz_tdiv_q_ui(ordinal, ordinal, numcores * 2);
-
-    //gmp_printf("Ordinal after is: %Zu\n", ordinal);
+    mpz_urandomm(ordinal, randstate, binom);
     decode_ordinal(perm, ordinal, mismatches, key_size);
 
-    //gmp_printf("Perm is: %#40Zx\n", perm);
-    mpz_clears(ordinal, binom, rank, cores, NULL);
+    mpz_clears(ordinal, binom, NULL);
 }
 
-void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, int mismatches,
-                                    size_t key_size) {
-    // Always set the first one to the global first permutation
-    gmp_assign_first_permutation(starting_perms[0], mismatches);
+void get_benchmark_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate,
+        int numcores) {
 
-    mpz_t ordinal, chunk_size;
-    mpz_inits(ordinal, chunk_size, NULL);
+    mpz_t ordinal, binom, rank, cores;
+    mpz_inits(ordinal, binom, rank, NULL);
+    mpz_init_set_ui(cores, numcores);
 
-    mpz_bin_uiui(chunk_size, key_size * 8, mismatches);
-    mpz_tdiv_q_ui(chunk_size, chunk_size, starting_perms_size);
+    mpz_bin_uiui(binom, key_size * 8, mismatches);
 
-    for(size_t i = 0; i < starting_perms_size; i++) {
-        mpz_mul_ui(ordinal, chunk_size, i);
+    // Choose a random rank from 0 to numcores - 1
+    mpz_urandomm(rank, randstate, cores);
 
-        decode_ordinal(starting_perms[i], ordinal, mismatches, key_size);
-    }
+    mpz_mul_ui(rank, rank, 2);
+    mpz_add_ui(rank, rank, 1);
+    mpz_mul(ordinal, binom, rank);
 
-    mpz_clears(ordinal, chunk_size, NULL);
+    mpz_tdiv_q_ui(ordinal, ordinal, numcores * 2);
+
+    decode_ordinal(perm, ordinal, mismatches, key_size);
+
+    mpz_clears(ordinal, binom, rank, cores, NULL);
 }
 
 void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
@@ -126,11 +109,16 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 }
 
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, gmp_randstate_t randstate, int numcores) {
+                              size_t key_size, gmp_randstate_t randstate, int benchmark, int numcores) {
     mpz_t key_mpz, corrupted_key_mpz, perm;
     mpz_inits(key_mpz, corrupted_key_mpz, perm, NULL);
 
-    get_random_permutation(perm, mismatches, key_size, randstate, numcores);
+    if(benchmark) {
+        get_benchmark_permutation(perm, mismatches, key_size, randstate, numcores);
+    }
+    else {
+        get_random_permutation(perm, mismatches, key_size, randstate);
+    }
 
     mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
 

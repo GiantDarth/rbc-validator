@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="hamming_validator_mpi" type="CMakeRunConfiguration" factoryName="Application" folderName="MPI" PASS_PARENT_ENVS_2="true" PROJECT_NAME="hamming_benchmark" TARGET_NAME="hamming_validator_mpi" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="hamming_benchmark" RUN_TARGET_NAME="hamming_validator_mpi">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>
