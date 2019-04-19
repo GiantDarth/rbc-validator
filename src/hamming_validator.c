@@ -61,16 +61,18 @@ static struct argp_option options[] = {
     {"mismatches", 'm', "value", 0, "The largest # of bits of corruption to test against,"
                                     " inclusively. Defaults to -1. If negative, then the"
                                     " size of key in bits will be the limit. If in random"
-                                    " mode, then this will also be used to corrupt the"
-                                    " random key by the same # of bits; for this reason, it"
-                                    " must be set and non-negative when in random mode."},
+                                    " or benchmark mode, then this will also be used to"
+                                    " corrupt the random key by the same # of bits; for"
+                                    " this reason, it must be set and non-negative when"
+                                    " in random or benchmark mode."},
     {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output."},
     {"fixed", 'f', 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
                          " --mismatches. This is only valid when --mismatches is set and"
                          " non-negative."},
     {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
                           " UUID. This must be accompanied by --mismatches, since it is used to"
-                          " corrupt the random key by the same # of bits."},
+                          " corrupt the random key by the same # of bits. --random and"
+                          " --benchmark cannot be used together."},
     {"benchmark", 'b', 0, 0, "Instead of using arguments, strategically generate CIPHER, KEY, and"
                              " UUID. Specifically, generates a corrupted key that's always 50% of"
                              " way through a rank's workload, but randomly chooses the thread."
