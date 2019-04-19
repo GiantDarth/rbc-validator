@@ -418,7 +418,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and randomly"
                                 " generated ones will be used in their place.\n");
             }
-            else if(arguments.random) {
+            else if(arguments.benchmark) {
                 fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and randomly"
                                 " generated ones will be used in their place.\n");
             }
