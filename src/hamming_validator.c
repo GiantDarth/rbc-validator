@@ -286,6 +286,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
+    int numcores = 0;
     struct arguments arguments;
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
 
@@ -360,7 +361,7 @@ int main(int argc, char *argv[]) {
         uuid_generate(userId);
 
         get_random_key(key, KEY_SIZE, randstate);
-        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate);
+        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate, numcores);
 
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
         if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
@@ -488,7 +489,7 @@ int main(int argc, char *argv[]) {
         fprint_hex(stdout, corrupted_key, KEY_SIZE);
         printf("\n");
     }
-  
+
     // Cleanup
     aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);

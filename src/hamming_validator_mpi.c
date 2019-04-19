@@ -399,7 +399,7 @@ int main(int argc, char *argv[]) {
             uuid_generate(userId);
 
             get_random_key(key, KEY_SIZE, randstate);
-            get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate);
+            get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate, nprocs);
 
             aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
             if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {

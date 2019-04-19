@@ -16,7 +16,7 @@
 /// \param key_size How big the bit string is (in bytes)
 void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_size);
 
-void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate);
+void get_random_permutation(mpz_t perm, size_t mismatches, size_t key_size, gmp_randstate_t randstate, int numcores);
 
 /// Generate a set of starting permutations based on mismatches and a maximum key_size.
 /// \param starting_perms The pre-allocated, pre-initialized array of starting_perms to fill.
@@ -53,7 +53,7 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 /// \param key_size The # of bytes to read from @param key and write to @param corrupted_key.
 /// \param randstate A GMP randomstate object that's pre-initialized and seeded.
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, gmp_randstate_t randstate);
+                              size_t key_size, gmp_randstate_t randstate, int numcores);
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of them.
 /// Meant to be used to feed into a gmp_key_iter.
