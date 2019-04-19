@@ -248,9 +248,18 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             flags[0] = 1;
+            flags[1] = my_rank;
             found = 1;
+
             if(verbose) {
-                fprintf(stderr, "INFO: Found: %d\n", found);
+                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
+            }
+            gmp_printf("Sub-validated keys: %Zd\n", *validated_keys);
+
+            // alert all ranks that the key was found, including yourself
+            for (int i = 0; i < nprocs; i++) {
+                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUS_IGNORE);
             }
         }
 
@@ -268,28 +277,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
 //            count = 0;
 //        }
 
-        // need to send two ints because only want one rank to hit this code
-        // one int is flag, other int is the rank that found it
-        if (flags[0] == 1 && flags[1] == -1){
-            flags[0] = 1;
-            flags[1] = my_rank;
-            if(verbose) {
-                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
-            }
-
-            // alert all ranks that the key was found, including yourself
-            for (int i = 0; i < nprocs; i++) {
-                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-                MPI_Wait(&request, MPI_STATUS_IGNORE);
-            }
-
-            if(!all) {
-                break;
-            }
-        }
-
-        // for all ranks that didn't find it first
-        if (flags[0] == 1 && !all) {
+        if(!all && flags[0]) {
             //printf("rank: %d is breaking early\n", my_rank);
             break;
         }
