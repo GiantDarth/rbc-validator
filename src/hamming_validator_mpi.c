@@ -28,6 +28,7 @@
 #define BLOCK_SIZE 16
 
 int flags[2] = {0, -1};
+double validated_keys = 0;
 
 struct comm_arguments {
     MPI_Request request;
@@ -214,6 +215,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter)) {
 //        count++;
+        validated_keys++;
         uint256_key_iter_get(iter, corrupted_key);
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
 
@@ -306,6 +308,7 @@ void *comm_worker(void *arg) {
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
     int my_rank, nprocs, level;
+
     pthread_t comm_thread;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &level);
@@ -332,6 +335,8 @@ int main(int argc, char *argv[]) {
 
     int found, subfound = 0;
     uint256_t starting_perm, ending_perm;
+    size_t max_count;
+    mpz_t key_count;
     struct timespec startTime, endTime;
 
     // Memory allocation
@@ -355,6 +360,8 @@ int main(int argc, char *argv[]) {
 
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
+
+    mpz_init(key_count);
 
     if(my_rank == 0) {
         memset(&arguments, 0, sizeof(arguments));
@@ -397,6 +404,7 @@ int main(int argc, char *argv[]) {
             aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
             if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
                 // Cleanup
+                mpz_clear(key_count);
                 aes256_enc_key_scheduler_destroy(key_scheduler);
                 free(corrupted_key);
                 free(key);
@@ -486,16 +494,29 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
 
-        uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, (size_t)nprocs, mismatch, KEY_SIZE);
-        subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
-                arguments.benchmark, arguments.verbose, my_rank, nprocs, comm_args.request);
-        if (subfound < 0) {
-            // Cleanup
-            aes256_enc_key_scheduler_destroy(key_scheduler);
-            free(corrupted_key);
-            free(key);
+        mpz_bin_uiui(key_count, KEY_SIZE * 8, mismatch);
 
-            MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
+        // Only have this rank run if it's within range of possible keys
+        if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0) {
+            max_count = nprocs;
+            // Set the count of pairs to the range of possible keys if there are more ranks
+            // than possible keys
+            if(mpz_cmp_ui(key_count, nprocs) < 0) {
+                max_count = mpz_get_ui(key_count);
+            }
+
+            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count, mismatch, KEY_SIZE);
+            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
+                                     arguments.benchmark, arguments.verbose, my_rank, max_count, comm_args.request);
+            if (subfound < 0) {
+                // Cleanup
+                mpz_clear(key_count);
+                aes256_enc_key_scheduler_destroy(key_scheduler);
+                free(corrupted_key);
+                free(key);
+
+                MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
+            }
         }
     }
 
@@ -509,6 +530,9 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
 //            fprintf(stderr, "INFO: Found: %d\n", found);
         }
+
+        fprintf(stderr, "INFO: Keys searched: %f\n",validated_keys);
+        fprintf(stderr, "INFO: Keys per second: %.17g\n",duration / validated_keys);
     }
 
     if(subfound) {
@@ -517,6 +541,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
+    mpz_clear(key_count);
     aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);
