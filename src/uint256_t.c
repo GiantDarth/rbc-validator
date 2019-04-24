@@ -157,3 +157,21 @@ void uint256_export(unsigned char *buffer, const uint256_t *rop) {
         }
     }
 }
+
+void uint256_from_mpz(uint256_t *rop, const mpz_t value) {
+    size_t count;
+    uint64_t *buffer;
+
+    buffer = mpz_export(NULL, &count, -1, sizeof(*buffer), 0, 0, value);
+
+    // If the # of bytes exceeds what can fit in uint256, clamp it
+    if(count > UINT256_LIMBS_SIZE) {
+        count = UINT256_LIMBS_SIZE;
+    }
+
+    // Zero-out the destination first
+    memset(rop->limbs, 0, sizeof(*(rop->limbs)) * UINT256_LIMBS_SIZE);
+    memcpy(rop->limbs, buffer, sizeof(*(rop->limbs)) * count);
+
+    free(buffer);
+}
