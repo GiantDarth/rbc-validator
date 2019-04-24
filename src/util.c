@@ -48,22 +48,17 @@ void get_benchmark_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_
     mpz_init_set_ui(cores, numcores);
 
     mpz_bin_uiui(binom, key_size * 8, mismatches);
-    gmp_printf("binom is: %Zu\n", binom);
 
     // Choose a random rank from 0 to numcores - 1
     mpz_urandomm(rank, randstate, cores);
-    gmp_printf("Random rank first is: %Zu\n", rank);
 
     mpz_mul_ui(rank, rank, 2);
     mpz_add_ui(rank, rank, 1);
     mpz_mul(ordinal, binom, rank);
 
-    gmp_printf("Ordinal before is: %Zu\n", ordinal);
     mpz_tdiv_q_ui(ordinal, ordinal, numcores * 2);
-    gmp_printf("Ordinal after is: %Zu\n", ordinal);
 
     decode_ordinal(perm, ordinal, mismatches, key_size);
-    gmp_printf("Perm is: %#40Zx\n", perm);
 
     mpz_clears(ordinal, binom, rank, cores, NULL);
 }

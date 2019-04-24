@@ -254,9 +254,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
-            if(validated_keys != NULL) {
-                gmp_printf("Sub-validated keys: %Zd\n", *validated_keys);
-            }
 
             // alert all ranks that the key was found, including yourself
             for (int i = 0; i < nprocs; i++) {
