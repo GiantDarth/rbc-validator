@@ -17,14 +17,8 @@
 void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_size);
 
 void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate);
-
-/// Generate a set of starting permutations based on mismatches and a maximum key_size.
-/// \param starting_perms The pre-allocated, pre-initialized array of starting_perms to fill.
-/// \param starting_perms_size The count of starting_perms.
-/// \param mismatches The hamming distance to base on (equivalent to # of bits set).
-/// \param key_size The # of bytes the permutations will be.
-void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, int mismatches,
-                                    size_t key_size);
+void get_benchmark_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate,
+        int numcores);
 
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
@@ -52,8 +46,11 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 /// \param mismatches The # of bits to randomly flip form @param key written to @param corrupted_key.
 /// \param key_size The # of bytes to read from @param key and write to @param corrupted_key.
 /// \param randstate A GMP randomstate object that's pre-initialized and seeded.
+/// \param benchmark If benchmark is non-zero, then generate a corrupted key 50% up the way of the keyspace
+/// for one randomly chosen slot.
+/// \param The total # of available slots (usually # of threads or # of ranks).
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, gmp_randstate_t randstate);
+                              size_t key_size, gmp_randstate_t randstate, int benchmark, int numcores);
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of them.
 /// Meant to be used to feed into a gmp_key_iter.

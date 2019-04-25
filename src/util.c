@@ -41,24 +41,26 @@ void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_ran
     mpz_clears(ordinal, binom, NULL);
 }
 
-void generate_starting_permutations(mpz_t *starting_perms, size_t starting_perms_size, int mismatches,
-                                    size_t key_size) {
-    // Always set the first one to the global first permutation
-    gmp_assign_first_permutation(starting_perms[0], mismatches);
+void get_benchmark_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate,
+        int numcores) {
+    mpz_t ordinal, binom, rank, cores;
+    mpz_inits(ordinal, binom, rank, NULL);
+    mpz_init_set_ui(cores, numcores);
 
-    mpz_t ordinal, chunk_size;
-    mpz_inits(ordinal, chunk_size, NULL);
+    mpz_bin_uiui(binom, key_size * 8, mismatches);
 
-    mpz_bin_uiui(chunk_size, key_size * 8, mismatches);
-    mpz_tdiv_q_ui(chunk_size, chunk_size, starting_perms_size);
+    // Choose a random rank from 0 to numcores - 1
+    mpz_urandomm(rank, randstate, cores);
 
-    for(size_t i = 0; i < starting_perms_size; i++) {
-        mpz_mul_ui(ordinal, chunk_size, i);
+    mpz_mul_ui(rank, rank, 2);
+    mpz_add_ui(rank, rank, 1);
+    mpz_mul(ordinal, binom, rank);
 
-        decode_ordinal(starting_perms[i], ordinal, mismatches, key_size);
-    }
+    mpz_tdiv_q_ui(ordinal, ordinal, numcores * 2);
 
-    mpz_clears(ordinal, chunk_size, NULL);
+    decode_ordinal(perm, ordinal, mismatches, key_size);
+
+    mpz_clears(ordinal, binom, rank, cores, NULL);
 }
 
 void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
@@ -106,22 +108,31 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 }
 
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, gmp_randstate_t randstate) {
-    mpz_t key_mpz, corrupted_key_mpz, perm;
-    mpz_inits(key_mpz, corrupted_key_mpz, perm, NULL);
+                              size_t key_size, gmp_randstate_t randstate, int benchmark, int numcores) {
+    mpz_t perm_mpz;
+    uint256_t key_uint, corrupted_key_uint, perm_uint;
 
-    get_random_permutation(perm, mismatches, key_size, randstate);
+    mpz_init(perm_mpz);
+    uint256_set_ui(&corrupted_key_uint, 0);
 
-    mpz_import(key_mpz, key_size, 1, sizeof(*key), 0, 0, key);
+    if(benchmark) {
+        get_benchmark_permutation(perm_mpz, mismatches, key_size, randstate, numcores);
+    }
+    else {
+        get_random_permutation(perm_mpz, mismatches, key_size, randstate);
+    }
+
+    uint256_import(&key_uint, key);
+    uint256_from_mpz(&perm_uint, perm_mpz);
 
     // Perform an XOR operation between the permutation and the key.
     // If a bit is set in permutation, then flip the bit in the key.
     // Otherwise, leave it as is.
-    mpz_xor(corrupted_key_mpz, key_mpz, perm);
+    uint256_xor(&corrupted_key_uint, &key_uint, &perm_uint);
 
-    mpz_export(corrupted_key, NULL, sizeof(*corrupted_key), 1, 0, 0, corrupted_key_mpz);
+    uint256_export(corrupted_key, &corrupted_key_uint);
 
-    mpz_clears(key_mpz, corrupted_key_mpz, perm, NULL);
+    mpz_clear(perm_mpz);
 }
 
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
@@ -157,25 +168,14 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
 void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
         size_t pair_count, int mismatches, size_t key_size) {
     mpz_t starting_perm_mpz, ending_perm_mpz;
-    uint64_t *starting_perm_buffer, *ending_perm_buffer;
 
     mpz_inits(starting_perm_mpz, ending_perm_mpz, NULL);
 
     gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size);
 
-    size_t count;
-    starting_perm_buffer = mpz_export(NULL, &count, -1, sizeof(*starting_perm_buffer),
-            0, 0, starting_perm_mpz);
-    memset(starting_perm->limbs, 0, 4 * sizeof(*starting_perm_buffer));
-    memcpy(starting_perm->limbs, starting_perm_buffer, count * sizeof(*starting_perm_buffer));
+    uint256_from_mpz(starting_perm, starting_perm_mpz);
+    uint256_from_mpz(ending_perm, ending_perm_mpz);
 
-    ending_perm_buffer = mpz_export(NULL, &count, -1, sizeof(*ending_perm_buffer),
-            0, 0, ending_perm_mpz);
-    memset(ending_perm->limbs, 0, 4 * sizeof(*ending_perm_buffer));
-    memcpy(ending_perm->limbs, ending_perm_buffer, count * sizeof(*ending_perm_buffer));
-
-    free(ending_perm_buffer);
-    free(starting_perm_buffer);
     mpz_clears(starting_perm_mpz, ending_perm_mpz, NULL);
 }
 

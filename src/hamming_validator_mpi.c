@@ -61,25 +61,32 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " sources encrypt and is previously agreed upon.";
 
 struct arguments {
-    int verbose, benchmark, random, fixed;
+    int verbose, benchmark, random, fixed, count, all;
     char *cipher_hex, *key_hex, *uuid_hex;
     int mismatches;
 };
 
 static struct argp_option options[] = {
-    {"benchmark", 'b', 0, 0, "Don't cut out early when key is found."},
+    {"all", 'a', 0, 0, "Don't cut out early when key is found."},
     {"mismatches", 'm', "value", 0, "The largest # of bits of corruption to test against,"
                                     " inclusively. Defaults to -1. If negative, then the"
                                     " size of key in bits will be the limit. If in random"
-                                    " mode, then this will also be used to corrupt the"
-                                    " random key by the same # of bits; for this reason, it"
-                                    " must be set and non-negative when in random mode."},
+                                    " or benchmark mode, then this will also be used to"
+                                    " corrupt the random key by the same # of bits; for"
+                                    " this reason, it must be set and non-negative when"
+                                    " in random or benchmark mode."},
+    {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output."},
     {"fixed", 'f', 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
                          " --mismatches. This is only valid when --mismatches is set and"
                          " non-negative."},
     {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
                           " UUID. This must be accompanied by --mismatches, since it is used to"
-                          " corrupt the random key by the same # of bits."},
+                          " corrupt the random key by the same # of bits. --random and"
+                          " --benchmark cannot be used together."},
+    {"benchmark", 'b', 0, 0, "Instead of using arguments, strategically generate CIPHER, KEY, and"
+                             " UUID. Specifically, generates a corrupted key that's always 50% of"
+                             " way through a rank's workload, but randomly chooses the rank."
+                             " --random and --benchmark cannot be used together."},
     {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
     { 0 }
 };
@@ -95,14 +102,20 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'v':
             arguments->verbose = 1;
             break;
-        case 'b':
-            arguments->benchmark = 1;
+        case 'c':
+            arguments->count = 1;
             break;
         case 'r':
             arguments->random = 1;
             break;
+        case 'b':
+            arguments->benchmark = 1;
+            break;
         case 'f':
             arguments->fixed = 1;
+            break;
+        case 'a':
+            arguments->all = 1;
             break;
         case 'm':
             errno = 0;
@@ -151,7 +164,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
             break;
         case ARGP_KEY_NO_ARGS:
-            if(!arguments->random) {
+            if(!arguments->random && !arguments->benchmark) {
                 argp_usage(state);
             }
             break;
@@ -160,9 +173,15 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 if(arguments->random) {
                     argp_error(state, "--mismatches must be set and non-negative when using --random.\n");
                 }
+                if(arguments->benchmark) {
+                    argp_error(state, "--mismatches must be set and non-negative when using --benchmark.\n");
+                }
                 if(arguments->fixed) {
                     argp_error(state, "--mismatches must be set and non-negative when using --fixed.\n");
                 }
+            }
+            if(arguments->random && arguments->benchmark) {
+                argp_error(state, "--random and --benchmark cannot be both set simultaneously.\n");
             }
             break;
         case ARGP_KEY_INIT:
@@ -183,11 +202,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param key The original AES key.
 /// \param userId A uuid_t that's used to as the message to encrypt.
 /// \param auth_cipher The authentication cipher to test against
-/// \param benchmark If benchmark mode is set to a non-zero value, then continue even if found.
+/// \param all If all mode is set to a non-zero value, then continue even if found.
+/// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is skipped.
+/// \param verbose If set to non-zero, print verbose information to stderr.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, int benchmark, int verbose,
-        int my_rank, int nprocs, MPI_Request request) {
+        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, int all, mpz_t *validated_keys,
+        int verbose, int my_rank, int nprocs, MPI_Request request) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -210,10 +231,11 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
         return -1;
     }
 
-//    int count = 0;
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter)) {
-//        count++;
+        if(validated_keys != NULL) {
+            mpz_add_ui(*validated_keys, *validated_keys, 1);
+        }
         uint256_key_iter_get(iter, corrupted_key);
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
 
@@ -226,9 +248,17 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             flags[0] = 1;
+            flags[1] = my_rank;
             found = 1;
+
             if(verbose) {
-                fprintf(stderr, "INFO: Found: %d\n", found);
+                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
+            }
+
+            // alert all ranks that the key was found, including yourself
+            for (int i = 0; i < nprocs; i++) {
+                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
+                MPI_Wait(&request, MPI_STATUS_IGNORE);
             }
         }
 
@@ -246,28 +276,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
 //            count = 0;
 //        }
 
-        // need to send two ints because only want one rank to hit this code
-        // one int is flag, other int is the rank that found it
-        if (flags[0] == 1 && flags[1] == -1){
-            flags[0] = 1;
-            flags[1] = my_rank;
-            if(verbose) {
-                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
-            }
-
-            // alert all ranks that the key was found, including yourself
-            for (int i = 0; i < nprocs; i++) {
-                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-                MPI_Wait(&request, MPI_STATUS_IGNORE);
-            }
-
-            if(!benchmark) {
-                break;
-            }
-        }
-
-        // for all ranks that didn't find it first
-        if (flags[0] == 1 && !benchmark) {
+        if(!all && flags[0]) {
             //printf("rank: %d is breaking early\n", my_rank);
             break;
         }
@@ -306,6 +315,7 @@ void *comm_worker(void *arg) {
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
     int my_rank, nprocs, level;
+
     pthread_t comm_thread;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &level);
@@ -333,8 +343,9 @@ int main(int argc, char *argv[]) {
     int subfound = 0;
     uint256_t starting_perm, ending_perm;
     size_t max_count;
-    mpz_t key_count;
+    mpz_t key_count, validated_keys;
     struct timespec startTime, endTime;
+    double duration = 0;
 
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
@@ -358,7 +369,7 @@ int main(int argc, char *argv[]) {
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-    mpz_init(key_count);
+    mpz_inits(key_count, validated_keys, NULL);
 
     if(my_rank == 0) {
         memset(&arguments, 0, sizeof(arguments));
@@ -389,19 +400,26 @@ int main(int argc, char *argv[]) {
             ending_mismatch = arguments.mismatches;
         }
 
-        if(arguments.random) {
-            fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and randomly"
-                            " generated ones will be used in their place.\n");
+        if(arguments.random || arguments.benchmark) {
+            if(arguments.random) {
+                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and randomly"
+                                " generated ones will be used in their place.\n");
+            }
+            else if(arguments.benchmark) {
+                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and randomly"
+                                " generated ones will be used in their place.\n");
+            }
 
             uuid_generate(userId);
 
             get_random_key(key, KEY_SIZE, randstate);
-            get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate);
+            get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate,
+                    arguments.benchmark, nprocs);
 
             aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
             if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
                 // Cleanup
-                mpz_clear(key_count);
+                mpz_clears(key_count, validated_keys, NULL);
                 aes256_enc_key_scheduler_destroy(key_scheduler);
                 free(corrupted_key);
                 free(key);
@@ -502,10 +520,11 @@ int main(int argc, char *argv[]) {
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count, mismatch, KEY_SIZE);
             subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
-                                     arguments.benchmark, arguments.verbose, my_rank, nprocs, comm_args.request);
+                                     arguments.all, arguments.count ? &validated_keys : NULL, arguments.verbose,
+                                     my_rank, max_count, comm_args.request);
             if (subfound < 0) {
                 // Cleanup
-                mpz_clear(key_count);
+                mpz_clears(key_count, validated_keys, NULL);
                 aes256_enc_key_scheduler_destroy(key_scheduler);
                 free(corrupted_key);
                 free(key);
@@ -519,10 +538,27 @@ int main(int argc, char *argv[]) {
 
     if(my_rank == 0) {
         clock_gettime(CLOCK_MONOTONIC, &endTime);
-        double duration = difftime(endTime.tv_sec, startTime.tv_sec) + ((endTime.tv_nsec - startTime.tv_nsec) / 1e9);
+        duration = difftime(endTime.tv_sec, startTime.tv_sec) + ((endTime.tv_nsec - startTime.tv_nsec) / 1e9);
 
         if(arguments.verbose) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
+        }
+
+        if(arguments.count) {
+            mpf_t duration_mpf, key_rate;
+
+            mpf_inits(duration_mpf, key_rate, NULL);
+
+            mpf_set_d(duration_mpf, duration);
+            mpf_set_z(key_rate, validated_keys);
+
+            // Divide validated_keys by duration
+            mpf_div(key_rate, key_rate, duration_mpf);
+
+            gmp_fprintf(stderr, "INFO: Keys searched: %Zu\n", validated_keys);
+            gmp_fprintf(stderr, "INFO: Keys per second: %.9Fg\n", key_rate);
+
+            mpf_clears(duration_mpf, key_rate, NULL);
         }
     }
 
@@ -532,7 +568,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    mpz_clear(key_count);
+    mpz_clears(key_count, validated_keys, NULL);
     aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);

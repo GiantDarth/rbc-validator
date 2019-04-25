@@ -6,13 +6,16 @@
 #define HAMMING_BENCHMARK_UINT256_T_H
 
 #include <stdint.h>
+#include <gmp.h>
 
 #define UINT256_ZERO (uint256_t){0, 0, 0, 0}
 #define UINT256_ONE (uint256_t){1, 0, 0, 0}
 #define UINT256_NEG_ONE (uint256_t){0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff}
 
+#define UINT256_LIMBS_SIZE 4
+
 typedef struct uint256_t {
-    uint64_t limbs[4];
+    uint64_t limbs[UINT256_LIMBS_SIZE];
 } uint256_t;
 
 /// Set an unsigned long long to a uint256 struct.
@@ -84,5 +87,7 @@ void uint256_import(uint256_t *rop, const unsigned char *buffer);
 /// \param buffer The array to write to. Must be at least 32 bytes allocated.
 /// \param rop The value to read from.
 void uint256_export(unsigned char *buffer, const uint256_t *rop);
+
+void uint256_from_mpz(uint256_t *rop, const mpz_t value);
 
 #endif //HAMMING_BENCHMARK_UINT256_T_H
