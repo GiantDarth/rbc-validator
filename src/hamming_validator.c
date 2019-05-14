@@ -27,7 +27,7 @@ const char *argp_program_version = "hamming_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "CIPHER KEY UUID\n-r/--random -m/--mismatches=value";
+static char args_doc[] = "UUID KEY CIPHER\n-r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
                           " progressively corrupt it by a certain number of bits until"
                           " a matching corrupted key is found. The matching key will be"
@@ -39,16 +39,16 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " 1. For any general error, such as parsing, out-of-memory,"
                           " etc., the program will have an exit code 2.\n\n"
 
-                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
-                          " generated in ECB mode, meaning given a 128-bit UUID, this"
-                          " should be 128-bits long as well.\n\n"
+                          "The UUID, passed in canonical form, is the message that both"
+                          " sources encrypt and is previously agreed upon.\n\n"
 
                           "The original KEY, passed in as hexadecimal, is corrupted by"
                           " a certain number of bits and compared against CIPHER. Only"
                           " AES-256 keys are currently supported.\n\n"
 
-                          "The UUID, passed in canonical form, is the message that both"
-                          " sources encrypt and is previously agreed upon.";
+                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
+                          " generated in ECB mode, meaning given a 128-bit UUID, this"
+                          " should be 128-bits long as well.";
 
 struct arguments {
     int verbose, benchmark, random, fixed, count, all;
@@ -154,10 +154,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case ARGP_KEY_ARG:
             switch(state->arg_num) {
                 case 0:
-                    if(strlen(arg) != BLOCK_SIZE * 2) {
-                        argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
+                    if(strlen(arg) != 36) {
+                        argp_error(state, "UUID not 36 characters long.\n");
                     }
-                    arguments->cipher_hex = arg;
+                    arguments->uuid_hex = arg;
                     break;
                 case 1:
                     if(strlen(arg) != KEY_SIZE * 2) {
@@ -167,10 +167,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     arguments->key_hex = arg;
                     break;
                 case 2:
-                    if(strlen(arg) != 36) {
-                        argp_error(state, "UUID not 36 characters long.\n");
+                    if(strlen(arg) != BLOCK_SIZE * 2) {
+                        argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
                     }
-                    arguments->uuid_hex = arg;
+                    arguments->cipher_hex = arg;
                     break;
                 default:
                     argp_usage(state);
