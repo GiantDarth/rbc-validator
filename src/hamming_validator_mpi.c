@@ -16,7 +16,7 @@
 #include <argp.h>
 #include <pthread.h>
 
-#include "uint256_key_iter.h"
+#include "iter/uint256_key_iter.h"
 #include "aes256-ni.h"
 #include "util.h"
 

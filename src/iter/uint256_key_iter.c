@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "util.h"
+#include "../util.h"
 
 uint256_key_iter* uint256_key_iter_create(const unsigned char *key, const uint256_t *first_perm,
         const uint256_t *last_perm) {
@@ -60,6 +60,6 @@ void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char* corrupted
     memcpy(corrupted_key, (unsigned char*)iter->corrupted_key_uint.limbs, 32);
 }
 
-int uint256_key_iter_end(const uint256_key_iter *iter) {
+bool uint256_key_iter_end(const uint256_key_iter *iter) {
     return uint256_cmp(&(iter->curr_perm), &(iter->last_perm)) > 0 || iter->overflow;
 }
