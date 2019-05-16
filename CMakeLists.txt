@@ -47,3 +47,6 @@ target_link_libraries(hamming_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP
 target_link_libraries(hamming_validator_mpi MPI::MPI_C Threads::Threads ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
+
+install(TARGETS hamming_validator RUNTIME DESTINATION bin)
+install(TARGETS hamming_validator_mpi RUNTIME DESTINATION bin)
