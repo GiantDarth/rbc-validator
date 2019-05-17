@@ -1,7 +1,3 @@
-//
-// Created by cp723 on 2/1/2019.
-//
-
 #include "uint128_key_iter.h"
 
 #include <stdlib.h>
