@@ -210,10 +210,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case ARGP_KEY_END:
             if(arguments->mismatches < 0) {
                 if(arguments->random) {
-                    argp_error(state, "--mismatches must be set and non-negative when using --random.\n");
+                    argp_error(state, "--mismatches must be set and non-negative when using --random."
+                                      "\n");
                 }
                 if(arguments->benchmark) {
-                    argp_error(state, "--mismatches must be set and non-negative when using --benchmark.\n");
+                    argp_error(state, "--mismatches must be set and non-negative when using --benchmark."
+                                      "\n");
                 }
                 if(arguments->fixed) {
                     argp_error(state, "--mismatches must be set and non-negative when using --fixed.\n");
@@ -238,10 +240,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
-/// Given a starting permutation, iterate forward through every possible permutation until one that's matching
-/// last_perm is found, or until a matching cipher is found.
-/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at least
-/// key_size bytes big.
+/// Given a starting permutation, iterate forward through every possible permutation until one that's
+/// matching last_perm is found, or until a matching cipher is found.
+/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at
+/// least key_size bytes big.
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param key The original AES key.
@@ -249,11 +251,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param auth_cipher The authentication cipher to test against
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \param all If benchmark mode is set to a non-zero value, then continue even if found.
-/// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is skipped.
+/// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is
+/// skipped.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, const int* signal,
-        int all, mpz_t *validated_keys) {
+int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
+        const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
+        const unsigned char *auth_cipher, const int* signal, int all, mpz_t *validated_keys) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -296,7 +299,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
             if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
                 found = 1;
                 // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible keys
+                // This might happen more than once if the # of threads exceeds the number of possible
+                // keys
 #pragma omp critical
                 memcpy(corrupted_key, current_key, KEY_SIZE);
             }
@@ -323,7 +327,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
             if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
                 found = 1;
                 // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible keys
+                // This might happen more than once if the # of threads exceeds the number of possible
+                // keys
 #pragma omp critical
                 memcpy(corrupted_key, current_key, KEY_SIZE);
                 break;
@@ -432,15 +437,15 @@ int main(int argc, char *argv[]) {
                             " generated ones will be used in their place.\n");
         }
         else if(arguments.benchmark) {
-            fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and randomly"
-                            " generated ones will be used in their place.\n");
+            fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and"
+                            " randomly generated ones will be used in their place.\n");
         }
 
         uuid_generate(userId);
 
         get_random_key(key, KEY_SIZE, randstate);
-        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, arguments.subkey_length,
-                randstate, arguments.benchmark, numcores);
+        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE,
+                arguments.subkey_length, randstate, arguments.benchmark, numcores);
 
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
         if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
@@ -521,10 +526,11 @@ int main(int argc, char *argv[]) {
             mpz_init(sub_validated_keys);
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
-                                  (size_t) omp_get_num_threads(), mismatch, KEY_SIZE, arguments.subkey_length);
+                                  (size_t) omp_get_num_threads(), mismatch, KEY_SIZE,
+                                  arguments.subkey_length);
 
-            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
-                    &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
+            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId,
+                    auth_cipher, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.
             if (subfound > 0) {
