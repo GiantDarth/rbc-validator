@@ -496,6 +496,7 @@ int main(int argc, char *argv[]) {
     // Broadcast all of the relevant variable to every rank
     MPI_Bcast(&(arguments.verbose), 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&(arguments.benchmark), 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&(arguments.subkey_length), 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     MPI_Bcast(auth_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
