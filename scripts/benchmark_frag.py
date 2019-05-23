@@ -10,6 +10,7 @@ from bitarray import bitarray
 
 KEY_SIZE = 32
 ITERATIONS = 10
+TIMEOUT = 10
 
 
 def choose(n, k):
@@ -69,9 +70,15 @@ def do_run(mismatches: int, subkey_size: int):
         # necessary subkey size set
         # Only extract the stderr output in verbose mode to get the actual time taken searching in text mode, and
         # make sure to check if the return code was zero or not
-        validator_proc = subprocess.run(["wsl", "hamming_validator", "-v", "-s", str(subkey_size * 8), str(user_id),
-                                         subkey.hex(), cipher.hex()],
-                                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, check=True)
+        try:
+            validator_proc = subprocess.run(["wsl", "hamming_validator", "-v", "-s", str(subkey_size * 8), str(user_id),
+                                            subkey.hex(), cipher.hex()],
+                                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+                                            check=True, timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            duration += TIMEOUT
+            continue
+
         # Get the first line such that "Clock" is contained within it.
         line = next(line for line in validator_proc.stderr.split('\n') if re.search(r'Clock', line))
         # Get only the decimal output (in seconds) and increment duration by its value
@@ -83,7 +90,7 @@ def do_run(mismatches: int, subkey_size: int):
 if __name__ == "__main__":
     print("Mismatches,1,2,4,8,16,32")
 
-    for mismatches in range(1, 21):
+    for mismatches in range(21):
         print(mismatches, end=",")
 
         for subkey_count in [1, 2, 4, 8, 16, 32]:
