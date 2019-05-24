@@ -1,28 +1,24 @@
 import secrets
-import math
 import random
 import uuid
 import subprocess
 import re
 
+from scipy.special import comb
 from Crypto.Cipher import AES
 from bitarray import bitarray
 
 KEY_SIZE = 32
-ITERATIONS = 10
+ITERATIONS = 100
 TIMEOUT = 10
-
-
-def choose(n, k):
-    return math.factorial(n) // (math.factorial(k) * math.factorial(n - k))
 
 
 def decode_ordinal(ordinal, mismatches, key_size):
     perm = 0
     for bit in range(key_size * 8 - 1, 0, -1):
-        binom = choose(bit, mismatches)
-        if ordinal >= binom:
-            ordinal -= binom
+        binomial = comb(bit, mismatches, exact=True)
+        if ordinal >= binomial:
+            ordinal -= binomial
             perm |= 0b1 << bit
             mismatches -= 1
 
@@ -30,8 +26,8 @@ def decode_ordinal(ordinal, mismatches, key_size):
 
 
 def get_corrupted_key(key, mismatches):
-    binom = choose(len(key) * 8, mismatches)
-    ordinal = random.randrange(binom)
+    binomial = comb(len(key) * 8, mismatches, exact=True)
+    ordinal = random.randrange(binomial)
 
     perm = decode_ordinal(ordinal, mismatches, KEY_SIZE)
     perm_bits = bitarray()
@@ -71,13 +67,12 @@ def do_run(mismatches: int, subkey_size: int):
         # Only extract the stderr output in verbose mode to get the actual time taken searching in text mode, and
         # make sure to check if the return code was zero or not
         try:
-            validator_proc = subprocess.run(["wsl", "hamming_validator", "-v", "-s", str(subkey_size * 8), str(user_id),
-                                            subkey.hex(), cipher.hex()],
-                                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
-                                            check=True, timeout=TIMEOUT)
+            validator_proc = subprocess.run(["hamming_validator", "-v", "-s", str(subkey_size * 8),
+                                             str(user_id), subkey.hex(), cipher.hex()],
+                                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                            universal_newlines=True, check=True, timeout=TIMEOUT)
         except subprocess.TimeoutExpired:
-            duration += TIMEOUT
-            continue
+            return float('inf')
 
         # Get the first line such that "Clock" is contained within it.
         line = next(line for line in validator_proc.stderr.split('\n') if re.search(r'Clock', line))
@@ -90,15 +85,28 @@ def do_run(mismatches: int, subkey_size: int):
 if __name__ == "__main__":
     print("Mismatches,1,2,4,8,16,32")
 
-    for mismatches in range(21):
-        print(mismatches, end=",")
+    for mismatches in range(KEY_SIZE * 8 + 1):
+        print(mismatches, end=",", flush=True)
+
+        values = []
 
         for subkey_count in [1, 2, 4, 8, 16, 32]:
             subkey_size = KEY_SIZE // subkey_count
 
+            total = 0
             # Print out the average time taken out of ITERATION number of runs
-            print(sum(do_run(mismatches, subkey_size) for _ in range(ITERATIONS)) / ITERATIONS, end="")
+            for _ in range(ITERATIONS):
+                total += do_run(mismatches, subkey_size)
+                if total == float('inf'):
+                    break
+
+            print(total / ITERATIONS, end="")
+            values.append(total / ITERATIONS)
+
             if subkey_count < 32:
-                print(",", end="")
+                print(",", end="", flush=True)
             else:
-                print()
+                print(flush=True)
+
+        if all(value == float('inf') for value in values):
+            break
