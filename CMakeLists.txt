@@ -37,6 +37,7 @@ find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(SQLite3 MODULE REQUIRED)
 find_package(UUID MODULE REQUIRED)
 find_package(Argp MODULE REQUIRED)
+find_package(RT MODULE REQUIRED)
 
 include_directories(${SQLITE3_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDES})
