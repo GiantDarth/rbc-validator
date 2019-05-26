@@ -12,7 +12,7 @@
 #include <omp.h>
 #include <argp.h>
 
-#include "uint256_key_iter.h"
+#include "iter/uint256_key_iter.h"
 #include "aes256-ni.h"
 #include "util.h"
 
@@ -27,7 +27,7 @@ const char *argp_program_version = "hamming_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "CIPHER KEY UUID\n-r/--random -m/--mismatches=value";
+static char args_doc[] = "UUID KEY CIPHER\n-r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
                           " progressively corrupt it by a certain number of bits until"
                           " a matching corrupted key is found. The matching key will be"
@@ -39,21 +39,21 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
                           " 1. For any general error, such as parsing, out-of-memory,"
                           " etc., the program will have an exit code 2.\n\n"
 
-                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
-                          " generated in ECB mode, meaning given a 128-bit UUID, this"
-                          " should be 128-bits long as well.\n\n"
+                          "The UUID, passed in canonical form, is the message that both"
+                          " sources encrypt and is previously agreed upon.\n\n"
 
                           "The original KEY, passed in as hexadecimal, is corrupted by"
                           " a certain number of bits and compared against CIPHER. Only"
                           " AES-256 keys are currently supported.\n\n"
 
-                          "The UUID, passed in canonical form, is the message that both"
-                          " sources encrypt and is previously agreed upon.";
+                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
+                          " generated in ECB mode, meaning given a 128-bit UUID, this"
+                          " should be 128-bits long as well.";
 
 struct arguments {
     int verbose, benchmark, random, fixed, count, all;
     char *cipher_hex, *key_hex, *uuid_hex;
-    int mismatches, threads;
+    int mismatches, subkey_length, threads;
 };
 
 static struct argp_option options[] = {
@@ -64,7 +64,10 @@ static struct argp_option options[] = {
                                     " or benchmark mode, then this will also be used to"
                                     " corrupt the random key by the same # of bits; for"
                                     " this reason, it must be set and non-negative when"
-                                    " in random or benchmark mode."},
+                                    " in random or benchmark mode. Cannot be larger than"
+                                    " what --subkey-size is set to."},
+    {"subkey", 's', "value", 0, "How many of the first bits to corrupt and iterate over."
+                                " Must be between 1 and 256 bits. Defaults to 256."},
     {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output."},
     {"fixed", 'f', 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
                          " --mismatches. This is only valid when --mismatches is set and"
@@ -131,6 +134,29 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             arguments->mismatches = (int)value;
 
             break;
+        case 's':
+            errno = 0;
+            value = strtol(arg, &endptr, 10);
+
+            if((errno == ERANGE && (value == LONG_MAX || value == LONG_MIN))
+               || (errno && value == 0)) {
+                argp_failure(state, ERROR_CODE_FAILURE, errno, "--subkey");
+            }
+
+            if(*endptr != '\0') {
+                argp_error(state, "--subkey contains invalid characters.\n");
+            }
+
+            if (value > KEY_SIZE * 8) {
+                argp_error(state, "--subkey cannot exceed the key size for AES-256 in bits.\n");
+            }
+            else if (value < 1) {
+                argp_error(state, "--subkey must be at least 1.\n");
+            }
+
+            arguments->subkey_length = (int)value;
+
+            break;
         case 't':
             errno = 0;
             value = strtol(arg, &endptr, 10);
@@ -154,10 +180,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case ARGP_KEY_ARG:
             switch(state->arg_num) {
                 case 0:
-                    if(strlen(arg) != BLOCK_SIZE * 2) {
-                        argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
+                    if(strlen(arg) != 36) {
+                        argp_error(state, "UUID not 36 characters long.\n");
                     }
-                    arguments->cipher_hex = arg;
+                    arguments->uuid_hex = arg;
                     break;
                 case 1:
                     if(strlen(arg) != KEY_SIZE * 2) {
@@ -167,10 +193,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     arguments->key_hex = arg;
                     break;
                 case 2:
-                    if(strlen(arg) != 36) {
-                        argp_error(state, "UUID not 36 characters long.\n");
+                    if(strlen(arg) != BLOCK_SIZE * 2) {
+                        argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
                     }
-                    arguments->uuid_hex = arg;
+                    arguments->cipher_hex = arg;
                     break;
                 default:
                     argp_usage(state);
@@ -184,18 +210,26 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case ARGP_KEY_END:
             if(arguments->mismatches < 0) {
                 if(arguments->random) {
-                    argp_error(state, "--mismatches must be set and non-negative when using --random.\n");
+                    argp_error(state, "--mismatches must be set and non-negative when using --random."
+                                      "\n");
                 }
                 if(arguments->benchmark) {
-                    argp_error(state, "--mismatches must be set and non-negative when using --benchmark.\n");
+                    argp_error(state, "--mismatches must be set and non-negative when using --benchmark."
+                                      "\n");
                 }
                 if(arguments->fixed) {
                     argp_error(state, "--mismatches must be set and non-negative when using --fixed.\n");
                 }
             }
+
             if(arguments->random && arguments->benchmark) {
                 argp_error(state, "--random and --benchmark cannot be both set simultaneously.\n");
             }
+
+            if(arguments->mismatches > arguments->subkey_length) {
+                argp_error(state, "--mismatches cannot be set larger than --subkey.\n");
+            }
+
             break;
         case ARGP_KEY_INIT:
             break;
@@ -206,10 +240,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
-/// Given a starting permutation, iterate forward through every possible permutation until one that's matching
-/// last_perm is found, or until a matching cipher is found.
-/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at least
-/// key_size bytes big.
+/// Given a starting permutation, iterate forward through every possible permutation until one that's
+/// matching last_perm is found, or until a matching cipher is found.
+/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at
+/// least key_size bytes big.
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param key The original AES key.
@@ -217,11 +251,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param auth_cipher The authentication cipher to test against
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \param all If benchmark mode is set to a non-zero value, then continue even if found.
-/// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is skipped.
+/// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is
+/// skipped.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, const uint256_t *last_perm,
-        const unsigned char *key, uuid_t userId, const unsigned char *auth_cipher, const int* signal,
-        int all, mpz_t *validated_keys) {
+int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
+        const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
+        const unsigned char *auth_cipher, const int* signal, int all, mpz_t *validated_keys) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -264,7 +299,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
             if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
                 found = 1;
                 // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible keys
+                // This might happen more than once if the # of threads exceeds the number of possible
+                // keys
 #pragma omp critical
                 memcpy(corrupted_key, current_key, KEY_SIZE);
             }
@@ -291,7 +327,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm, 
             if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
                 found = 1;
                 // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible keys
+                // This might happen more than once if the # of threads exceeds the number of possible
+                // keys
 #pragma omp critical
                 memcpy(corrupted_key, current_key, KEY_SIZE);
                 break;
@@ -361,6 +398,7 @@ int main(int argc, char *argv[]) {
     arguments.uuid_hex = NULL;
     // Default to -1 for no mismatches provided, aka. go through all mismatches.
     arguments.mismatches = -1;
+    arguments.subkey_length = KEY_SIZE * 8;
 
     // Parse arguments
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
@@ -371,7 +409,7 @@ int main(int argc, char *argv[]) {
     gmp_randseed_ui(randstate, (unsigned long)time(NULL));
 
     mismatch = 0;
-    ending_mismatch = KEY_SIZE * 8;
+    ending_mismatch = arguments.subkey_length;
 
     // If --fixed option was set, set the validation range to only use the --mismatches value.
     if (arguments.fixed) {
@@ -399,15 +437,15 @@ int main(int argc, char *argv[]) {
                             " generated ones will be used in their place.\n");
         }
         else if(arguments.benchmark) {
-            fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and randomly"
-                            " generated ones will be used in their place.\n");
+            fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and"
+                            " randomly generated ones will be used in their place.\n");
         }
 
         uuid_generate(userId);
 
         get_random_key(key, KEY_SIZE, randstate);
-        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE, randstate, arguments.benchmark,
-                numcores);
+        get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE,
+                arguments.subkey_length, randstate, arguments.benchmark, numcores);
 
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
         if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
@@ -488,10 +526,11 @@ int main(int argc, char *argv[]) {
             mpz_init(sub_validated_keys);
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
-                                  (size_t) omp_get_num_threads(), mismatch, KEY_SIZE);
+                                  (size_t) omp_get_num_threads(), mismatch, KEY_SIZE,
+                                  arguments.subkey_length);
 
-            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId, auth_cipher,
-                    &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
+            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId,
+                    auth_cipher, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.
             if (subfound > 0) {

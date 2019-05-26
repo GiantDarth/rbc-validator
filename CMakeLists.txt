@@ -11,7 +11,7 @@ set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 
-set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/uint256_key_iter.c src/uint256_key_iter.h
+set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
         src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h )
 
 add_executable(hamming_validator src/hamming_validator.c ${SOURCE_FILES})
@@ -47,3 +47,6 @@ target_link_libraries(hamming_validator rt OpenMP::OpenMP_C ${UUID_LIBRARIES} ${
 target_link_libraries(hamming_validator_mpi rt MPI::MPI_C Threads::Threads ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 
 target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
+
+install(TARGETS hamming_validator RUNTIME DESTINATION bin)
+install(TARGETS hamming_validator_mpi RUNTIME DESTINATION bin)
