@@ -6,8 +6,9 @@
 #define UINT256_KEY_ITER_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
-#include "uint256_t.h"
+#include "../uint256_t.h"
 
 typedef struct uint256_key_iter {
     // Private members
@@ -17,7 +18,7 @@ typedef struct uint256_key_iter {
     uint256_t tmp;
     uint256_t key_uint;
     uint256_t corrupted_key_uint;
-    unsigned char overflow;
+    bool overflow;
 } uint256_key_iter;
 
 /// Allocate and initialize a iterator based on the parameters passed in.
@@ -45,7 +46,7 @@ void uint256_key_iter_get(const uint256_key_iter *iter, unsigned char *corrupted
 /// Return a boolean value of whether the iterator has reached the end or not.
 /// \param iter A pointer to an iterator that won't be modified.
 /// Passing in a NULL pointer is undefined behavior.
-/// \return Returns a 0 if the iterator hasn't reached the end, or a 1 if it has.
-int uint256_key_iter_end(const uint256_key_iter *iter);
+/// \return Returns false if the iterator hasn't reached the end, or true if it has.
+bool uint256_key_iter_end(const uint256_key_iter *iter);
 
 #endif // UINT256_PERM_ITER_H

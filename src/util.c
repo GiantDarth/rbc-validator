@@ -1,21 +1,22 @@
-//
-// Created by cp723 on 2/7/2019.
-//
-
 #include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_size) {
+/// Based on https://cs.stackexchange.com/a/67669
+/// \param perm The permutation to set.
+/// \param ordinal The ordinal as the input.
+/// \param mismatches How many bits to set.
+/// \param subkey_length How big the actual bit string is in bits
+void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subkey_length) {
     mpz_t binom, curr_ordinal;
     mpz_inits(binom, curr_ordinal, NULL);
 
     mpz_set(curr_ordinal, ordinal);
 
     mpz_set_ui(perm, 0);
-    for (unsigned long bit = key_size * 8 - 1; mismatches > 0; bit--)
+    for (unsigned long bit = subkey_length - 1; mismatches > 0; bit--)
     {
         mpz_bin_uiui(binom, bit, mismatches);
         if (mpz_cmp(curr_ordinal, binom) >= 0)
@@ -29,25 +30,26 @@ void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t key_
     mpz_clears(binom, curr_ordinal, NULL);
 }
 
-void get_random_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate) {
+void get_random_permutation(mpz_t perm, int mismatches, size_t subkey_length,
+        gmp_randstate_t randstate) {
     mpz_t ordinal, binom;
     mpz_inits(ordinal, binom, NULL);
 
-    mpz_bin_uiui(binom, key_size * 8, mismatches);
+    mpz_bin_uiui(binom, subkey_length, mismatches);
 
     mpz_urandomm(ordinal, randstate, binom);
-    decode_ordinal(perm, ordinal, mismatches, key_size);
+    decode_ordinal(perm, ordinal, mismatches, subkey_length);
 
     mpz_clears(ordinal, binom, NULL);
 }
 
-void get_benchmark_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_randstate_t randstate,
-        int numcores) {
+void get_benchmark_permutation(mpz_t perm, int mismatches, size_t subkey_length,
+        gmp_randstate_t randstate, int numcores) {
     mpz_t ordinal, binom, rank, cores;
     mpz_inits(ordinal, binom, rank, NULL);
     mpz_init_set_ui(cores, numcores);
 
-    mpz_bin_uiui(binom, key_size * 8, mismatches);
+    mpz_bin_uiui(binom, subkey_length, mismatches);
 
     // Choose a random rank from 0 to numcores - 1
     mpz_urandomm(rank, randstate, cores);
@@ -58,11 +60,14 @@ void get_benchmark_permutation(mpz_t perm, int mismatches, size_t key_size, gmp_
 
     mpz_tdiv_q_ui(ordinal, ordinal, numcores * 2);
 
-    decode_ordinal(perm, ordinal, mismatches, key_size);
+    decode_ordinal(perm, ordinal, mismatches, subkey_length);
 
     mpz_clears(ordinal, binom, rank, cores, NULL);
 }
 
+/// Assigns the first possible permutation for a given # of mismatches.
+/// \param perm A pre-allocated mpz_t to fill the permutation to.
+/// \param mismatches The hamming distance that you want to base the permutation on.
 void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
     // Set perm to first key
     // Equivalent to: (perm << mismatches) - 1
@@ -71,13 +76,17 @@ void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
     mpz_sub_ui(perm, perm, 1);
 }
 
-void gmp_assign_last_permutation(mpz_t perm, int mismatches, size_t key_size) {
+/// Assigns the first possible permutation for a given # of mismatches and key size
+/// \param perm A pre-allocated mpz_t to fill the permutation to.
+/// \param mismatches The hamming distance that you want to base the permutation on.
+/// \param subkey_length How big the relevant key is in # of bits.
+void gmp_assign_last_permutation(mpz_t perm, int mismatches, size_t subkey_length) {
     // First set the value to the first permutation.
     gmp_assign_first_permutation(perm, mismatches);
-    // Equivalent to: perm << ((key_size * 8) - mismatches)
-    // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
+    // Equivalent to: perm << (subkey_length - mismatches)
+    // E.g. if subkey_length = 256 and mismatches = 5
     // Then we want to shift left 256 - 5 = 251 times.
-    mpz_mul_2exp(perm, perm, (key_size * 8) - mismatches);
+    mpz_mul_2exp(perm, perm, subkey_length - mismatches);
 }
 
 void uint256_assign_first_permutation(uint256_t *perm, int mismatches) {
@@ -87,13 +96,13 @@ void uint256_assign_first_permutation(uint256_t *perm, int mismatches) {
     uint256_add(perm, perm, &UINT256_NEG_ONE);
 }
 
-void uint256_assign_last_permutation(uint256_t *perm, int mismatches, size_t key_size) {
+void uint256_assign_last_permutation(uint256_t *perm, int mismatches, size_t subkey_length) {
     // First set the value to the first permutation.
     uint256_assign_first_permutation(perm, mismatches);
-    // Equivalent to: perm << ((key_size * 8) - mismatches)
-    // E.g. if key_size = 32 and mismatches = 5, then there are 256-bits
+    // Equivalent to: perm << (key_length - mismatches)
+    // E.g. if key_length = 256 and mismatches = 5
     // Then we want to shift left 256 - 5 = 251 times.
-    uint256_shift_left(perm, perm, (int)((key_size * 8) - mismatches));
+    uint256_shift_left(perm, perm, (int)(subkey_length - mismatches));
 }
 
 void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randstate) {
@@ -108,7 +117,8 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 }
 
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, gmp_randstate_t randstate, int benchmark, int numcores) {
+                              size_t key_size, size_t subkey_length, gmp_randstate_t randstate,
+                              int benchmark, int numcores) {
     mpz_t perm_mpz;
     uint256_t key_uint, corrupted_key_uint, perm_uint;
 
@@ -116,11 +126,14 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
     uint256_set_ui(&corrupted_key_uint, 0);
 
     if(benchmark) {
-        get_benchmark_permutation(perm_mpz, mismatches, key_size, randstate, numcores);
+        get_benchmark_permutation(perm_mpz, mismatches, subkey_length, randstate, numcores);
     }
     else {
-        get_random_permutation(perm_mpz, mismatches, key_size, randstate);
+        get_random_permutation(perm_mpz, mismatches, subkey_length, randstate);
     }
+
+    // Left shift permutation by (key_size * 8) - subkey_length bits to make it most significant bit
+    // aligned.
 
     uint256_import(&key_uint, key);
     uint256_from_mpz(&perm_uint, perm_mpz);
@@ -136,11 +149,11 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 }
 
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
-                   int mismatches, size_t key_size) {
+                   int mismatches, size_t key_size, size_t subkey_length) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
 
-    mpz_bin_uiui(total_perms, key_size * 8, mismatches);
+    mpz_bin_uiui(total_perms, subkey_length, mismatches);
 
     if(pair_index == 0) {
         gmp_assign_first_permutation(starting_perm, mismatches);
@@ -149,29 +162,33 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
         mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
         mpz_mul_ui(starting_ordinal, starting_ordinal, pair_index);
 
-        decode_ordinal(starting_perm, starting_ordinal, mismatches, key_size);
+        decode_ordinal(starting_perm, starting_ordinal, mismatches, subkey_length);
     }
 
     if(pair_index == pair_count - 1) {
-        gmp_assign_last_permutation(ending_perm, mismatches, key_size);
+        gmp_assign_last_permutation(ending_perm, mismatches, subkey_length);
     }
     else {
         mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
         mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
 
-        decode_ordinal(ending_perm, ending_ordinal, mismatches, key_size);
+        decode_ordinal(ending_perm, ending_ordinal, mismatches, subkey_length);
     }
+
+    // Left shift permutations by (key_size * 8) - subkey_length bits to make them most significant bit
+    // aligned.
 
     mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
 }
 
 void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
-        size_t pair_count, int mismatches, size_t key_size) {
+        size_t pair_count, int mismatches, size_t key_size, size_t subkey_length) {
     mpz_t starting_perm_mpz, ending_perm_mpz;
 
     mpz_inits(starting_perm_mpz, ending_perm_mpz, NULL);
 
-    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size);
+    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size,
+            subkey_length);
 
     uint256_from_mpz(starting_perm, starting_perm_mpz);
     uint256_from_mpz(ending_perm, ending_perm_mpz);
