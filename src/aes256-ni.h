@@ -17,25 +17,31 @@ typedef struct aes256_dec_key_scheduler {
 } aes256_dec_key_scheduler;
 
 /// Allocate a key_scheduler meant for AES-256 encryption
-/// \return Returns a memory allocated pointer to a aes256_enc_key_scheduler, or NULL if something went wrong.
+/// \return Returns a memory allocated pointer to a aes256_enc_key_scheduler, or NULL if something went
+/// wrong.
 aes256_enc_key_scheduler* aes256_enc_key_scheduler_create();
 /// Deallocate a passed in key_scheduler.
 /// \param key_scheduler A pointer to an key_scheduler. Passing in a NULL pointer is undefined behavior.
 void aes256_enc_key_scheduler_destroy(aes256_enc_key_scheduler *key_scheduler);
 /// Update a decryption scheduler with a new AES-256 key.
-/// \param key_scheduler A pointer to an aes256_enc_key_scheduler. Passing in a NULL pointer is undefined behavior.
-/// \param key A pointer to at least 32 bytes of key data. Passing in a NULL pointer is undefined behavior.
+/// \param key_scheduler A pointer to an aes256_enc_key_scheduler. Passing in a NULL pointer is undefined
+/// behavior.
+/// \param key A pointer to at least 32 bytes of key data. Passing in a NULL pointer is undefined
+/// behavior.
 void aes256_enc_key_scheduler_update(aes256_enc_key_scheduler *key_scheduler, const unsigned char *key);
 
 /// Allocate a key_scheduler meant for AES-256 decryption
-/// \return Returns a memory allocated pointer to a aes256_dec_key_scheduler, or NULL if something went wrong.
+/// \return Returns a memory allocated pointer to a aes256_dec_key_scheduler, or NULL if something went
+/// wrong.
 aes256_dec_key_scheduler* aes256_dec_key_scheduler_create();
 /// Deallocate a passed in key_scheduler.
 /// \param key_scheduler A pointer to a key_scheduler. Passing in a NULL pointer is undefined behavior.
 void aes256_dec_key_scheduler_destroy(aes256_dec_key_scheduler *key_scheduler);
 /// Update an encryption scheduler with a new AES-256 key.
-/// \param key_scheduler A pointer to an aes256_dec_key_scheduler. Passing in a NULL pointer is undefined behavior.
-/// \param key A pointer to at least 32 bytes of key data. Passing in a NULL pointer is undefined behavior.
+/// \param key_scheduler A pointer to an aes256_dec_key_scheduler. Passing in a NULL pointer is undefined
+/// behavior.
+/// \param key A pointer to at least 32 bytes of key data. Passing in a NULL pointer is undefined
+/// behavior.
 void aes256_dec_key_scheduler_update(aes256_dec_key_scheduler *key_scheduler, const unsigned char *key);
 
 /// Encrypts some message data using AES-256-ECB without padding

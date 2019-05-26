@@ -30,7 +30,8 @@ void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subk
     mpz_clears(binom, curr_ordinal, NULL);
 }
 
-void get_random_permutation(mpz_t perm, int mismatches, size_t subkey_length, gmp_randstate_t randstate) {
+void get_random_permutation(mpz_t perm, int mismatches, size_t subkey_length,
+        gmp_randstate_t randstate) {
     mpz_t ordinal, binom;
     mpz_inits(ordinal, binom, NULL);
 
@@ -42,8 +43,8 @@ void get_random_permutation(mpz_t perm, int mismatches, size_t subkey_length, gm
     mpz_clears(ordinal, binom, NULL);
 }
 
-void get_benchmark_permutation(mpz_t perm, int mismatches, size_t subkey_length, gmp_randstate_t randstate,
-        int numcores) {
+void get_benchmark_permutation(mpz_t perm, int mismatches, size_t subkey_length,
+        gmp_randstate_t randstate, int numcores) {
     mpz_t ordinal, binom, rank, cores;
     mpz_inits(ordinal, binom, rank, NULL);
     mpz_init_set_ui(cores, numcores);
@@ -116,8 +117,8 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 }
 
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, size_t subkey_length, gmp_randstate_t randstate, int benchmark,
-                              int numcores) {
+                              size_t key_size, size_t subkey_length, gmp_randstate_t randstate,
+                              int benchmark, int numcores) {
     mpz_t perm_mpz;
     uint256_t key_uint, corrupted_key_uint, perm_uint;
 
@@ -131,8 +132,8 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
         get_random_permutation(perm_mpz, mismatches, subkey_length, randstate);
     }
 
-    // Left shift permutation by (key_size * 8) - subkey_length bits to make it most significant bit aligned.
-//    mpz_mul_2exp(perm_mpz, perm_mpz, (key_size * 8) - subkey_length);
+    // Left shift permutation by (key_size * 8) - subkey_length bits to make it most significant bit
+    // aligned.
 
     uint256_import(&key_uint, key);
     uint256_from_mpz(&perm_uint, perm_mpz);
@@ -174,9 +175,8 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
         decode_ordinal(ending_perm, ending_ordinal, mismatches, subkey_length);
     }
 
-    // Left shift permutations by (key_size * 8) - subkey_length bits to make them most significant bit aligned.
-//    mpz_mul_2exp(starting_perm, starting_perm, (key_size * 8) - subkey_length);
-//    mpz_mul_2exp(ending_perm, ending_perm, (key_size * 8) - subkey_length);
+    // Left shift permutations by (key_size * 8) - subkey_length bits to make them most significant bit
+    // aligned.
 
     mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
 }
@@ -187,7 +187,8 @@ void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, siz
 
     mpz_inits(starting_perm_mpz, ending_perm_mpz, NULL);
 
-    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size, subkey_length);
+    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size,
+            subkey_length);
 
     uint256_from_mpz(starting_perm, starting_perm_mpz);
     uint256_from_mpz(ending_perm, ending_perm_mpz);
