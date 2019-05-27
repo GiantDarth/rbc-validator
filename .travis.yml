@@ -26,14 +26,12 @@ addons:
       - openmpi-bin
       - libgmp-dev
       - uuid-dev
-      - libsqlite3-dev
   homebrew:
     packages:
       - libomp
       - open-mpi
       - gmp
       - ossp-uuid
-      - sqlite
       - argp-standalone
 
 script:
@@ -51,7 +49,6 @@ script:
     fi
   - cmake --build .
   - ./aes256_test
-  - ./lookupwork
   - ./hamming_validator --usage
   - ./hamming_validator --help
   - ./hamming_validator -rv -m3

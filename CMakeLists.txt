@@ -17,8 +17,6 @@ set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src
 add_executable(hamming_validator src/hamming_validator.c ${SOURCE_FILES})
 add_executable(hamming_validator_mpi src/hamming_validator_mpi.c ${SOURCE_FILES})
 
-add_executable(lookupwork src/lookupwork.c)
-
 add_executable(aes256_test src/aes256_test.c src/aes256-ni.c src/aes256-ni.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -26,7 +24,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 # Append expected search paths for Mac OS X via Homebrew
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
-        /usr/local/opt/gmp /usr/local/opt/sqlite)
+        /usr/local/opt/gmp)
 
 set(CMAKE_THREAD_PREFER_PTHREAD ON)
 
@@ -34,19 +32,15 @@ find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
 find_package(Threads REQUIRED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
-find_package(SQLite3 MODULE REQUIRED)
 find_package(UUID MODULE REQUIRED)
 find_package(Argp MODULE REQUIRED)
 
-include_directories(${SQLITE3_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
 target_link_libraries(hamming_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 target_link_libraries(hamming_validator_mpi MPI::MPI_C Threads::Threads ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
-
-target_link_libraries(lookupwork ${SQLITE3_LIBRARIES})
 
 install(TARGETS hamming_validator RUNTIME DESTINATION bin)
 install(TARGETS hamming_validator_mpi RUNTIME DESTINATION bin)

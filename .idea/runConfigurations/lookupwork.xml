@@ -1,7 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="lookupwork" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" PROJECT_NAME="hamming_benchmark" TARGET_NAME="lookupwork" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="hamming_benchmark" RUN_TARGET_NAME="lookupwork">
-    <method v="2">
-      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-    </method>
-  </configuration>
-</component>
