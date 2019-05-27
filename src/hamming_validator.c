@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 
     int mismatch, ending_mismatch;
 
-    double startTime;
+    double start_time, duration;
     mpz_t validated_keys;
     int found, subfound, signal, error;
 
@@ -508,7 +508,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "\n");
     }
 
-    startTime = omp_get_wtime();
+    start_time = omp_get_wtime();
     found = 0;
     signal = 0;
     error = 0;
@@ -572,7 +572,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    double duration = omp_get_wtime() - startTime;
+    duration = omp_get_wtime() - start_time;
 
     if(arguments.verbose) {
         fprintf(stderr, "INFO: Clock time: %f s\n", duration);

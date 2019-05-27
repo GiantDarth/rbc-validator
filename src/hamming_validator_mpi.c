@@ -379,8 +379,7 @@ int main(int argc, char *argv[]) {
     uint256_t starting_perm, ending_perm;
     size_t max_count;
     mpz_t key_count, validated_keys;
-    struct timespec startTime, endTime;
-    double duration = 0;
+    double start_time, duration;
 
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
@@ -530,7 +529,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Initialize time for root rank
-        clock_gettime(CLOCK_MONOTONIC, &startTime);
+        start_time = MPI_Wtime();
     }
 
     comm_args.request = MPI_REQUEST_NULL;
@@ -576,8 +575,7 @@ int main(int argc, char *argv[]) {
     pthread_join(comm_thread, NULL);
 
     if(my_rank == 0) {
-        clock_gettime(CLOCK_MONOTONIC, &endTime);
-        duration = difftime(endTime.tv_sec, startTime.tv_sec) + ((endTime.tv_nsec - startTime.tv_nsec) / 1e9);
+        duration = MPI_Wtime() - start_time;
 
         if(arguments.verbose) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
