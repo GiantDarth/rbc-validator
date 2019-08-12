@@ -263,7 +263,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     int found = 0;
 
     EC_GROUP *curve;
-    EC_KEY *key;
+    EC_KEY *ec_key;
 
     unsigned char current_priv_key[PRIV_KEY_SIZE];
     unsigned char current_pub_key[PUB_KEY_SIZE];
@@ -275,7 +275,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         return -1;
     }
 
-    if((key = EC_KEY_new_by_curve_name(NID_secp256k1)) == NULL) {
+    if((ec_key = EC_KEY_new_by_curve_name(NID_secp256k1)) == NULL) {
         perror("ERROR");
         EC_GROUP_clear_free(curve);
         return -1;
@@ -294,12 +294,13 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
                 mpz_add_ui(*validated_keys, *validated_keys, 1);
             }
             uint256_key_iter_get(iter, current_priv_key);
+            EC_KEY_set_private_key(ec_key, )
 
             // If encryption fails for some reason, break prematurely.
-//            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-//                found = -1;
-//                break;
-//            }
+            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+                found = -1;
+                break;
+            }
 
             // If the new cipher is the same as the passed in auth_cipher, set found to true and break
             if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {

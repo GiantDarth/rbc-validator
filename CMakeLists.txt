@@ -12,9 +12,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 
 set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
-        src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h )
+        src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h)
 
-add_executable(ecc_validator src/ecc_validator.c ${SOURCE_FILES})
+add_executable(ecc_validator src/ecc_validator.c src/uECC.c src/uECC.h ${SOURCE_FILES})
 add_executable(hamming_validator src/hamming_validator.c ${SOURCE_FILES})
 add_executable(hamming_validator_mpi src/hamming_validator_mpi.c ${SOURCE_FILES})
 
