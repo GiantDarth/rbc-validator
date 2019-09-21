@@ -12,12 +12,13 @@
 
 #include <omp.h>
 #include <argp.h>
-#include <openssl/obj_mac.h>
-#include <openssl/ec.h>
+//#include <openssl/obj_mac.h>
+//#include <openssl/ec.h>
 
 #include "iter/uint256_key_iter.h"
 #include "aes256-ni.h"
 #include "util.h"
+#include "../../micro-ecc/uECC.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -262,28 +263,28 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     // Declaration
     int found = 0;
 
-    EC_GROUP *curve;
-    EC_KEY *ec_key;
+    //EC_GROUP *curve;
+    //EC_KEY *ec_key;
+    const struct uECC_Curve_t * curve = uECC_secp256k1();
 
     unsigned char current_priv_key[PRIV_KEY_SIZE];
     unsigned char current_pub_key[PUB_KEY_SIZE];
     uint256_key_iter *iter;
 
     // Allocation and initialization
-    if((curve = EC_GROUP_new_by_curve_name(NID_secp256k1)) == NULL) {
-        perror("ERROR");
-        return -1;
-    }
-
-    if((ec_key = EC_KEY_new_by_curve_name(NID_secp256k1)) == NULL) {
-        perror("ERROR");
-        EC_GROUP_clear_free(curve);
-        return -1;
-    }
+//    if((curve = EC_GROUP_new_by_curve_name(NID_secp256k1)) == NULL) {
+//        perror("ERROR");
+//        return -1;
+//    }
+//
+//    if((ec_key = EC_KEY_new_by_curve_name(NID_secp256k1)) == NULL) {
+//        perror("ERROR");
+//        EC_GROUP_clear_free(curve);
+//        return -1;
+//    }
 
     if((iter = uint256_key_iter_create(host_priv_key, starting_perm, last_perm)) == NULL) {
         perror("ERROR");
-
         return -1;
     }
 
@@ -294,13 +295,13 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
                 mpz_add_ui(*validated_keys, *validated_keys, 1);
             }
             uint256_key_iter_get(iter, current_priv_key);
-            EC_KEY_set_private_key(ec_key, )
+            //EC_KEY_set_private_key(ec_key, )
 
             // If encryption fails for some reason, break prematurely.
-            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-                found = -1;
-                break;
-            }
+//            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+//                found = -1;
+//                break;
+//            }
 
             // If the new cipher is the same as the passed in auth_cipher, set found to true and break
             if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {

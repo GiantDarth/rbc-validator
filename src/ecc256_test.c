@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <memory.h>
-#include "uECC.h"
+#include "../../micro-ecc/uECC.h"
 
 #define	EXIT_FAILURE	1	/* Failing exit status.  */
 #define	EXIT_SUCCESS	0	/* Successful exit status.  */
@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     const char msg[] = "Hello world x2!\n";
     const struct uECC_Curve_t * curve = uECC_secp256k1();
 
-    printf("ecc prikey:\n");
+    printf("0-ecc prikey:\n");
     print_hex(priKey, sizeof(priKey));
     printf("\n");
 
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    printf("ecc pubkey:\n");
+    printf("1-ecc pubkey:\n");
     print_hex(pubKey, sizeof(pubKey));
     printf("\n");
 
@@ -45,12 +45,14 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    printf("2-ecc pubkey has been verified\n");
+
     if (! uECC_sign(priKey, msg, sizeof(msg), signature, curve)) {
         printf("ERROR uECC_sign - abort run");
         return EXIT_FAILURE;
     }
 
-    printf("ecdsa signature:\n");
+    printf("3-ecdsa signature:\n");
     print_hex(signature, sizeof(signature));
     printf("\n");
 
@@ -59,7 +61,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    printf("ecdsa message + signature has been verified\n");
+    printf("4-ecdsa message + signature has been verified\n");
 
     return EXIT_SUCCESS;
 }
