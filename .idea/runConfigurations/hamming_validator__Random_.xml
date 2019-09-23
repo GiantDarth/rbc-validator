@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="hamming_validator (Random)" type="CMakeRunConfiguration" factoryName="Application" folderName="OpenMP" PROGRAM_PARAMS="-rvc -m4" PASS_PARENT_ENVS_2="true" PROJECT_NAME="hamming_benchmark" TARGET_NAME="hamming_validator" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="hamming_benchmark" RUN_TARGET_NAME="hamming_validator">
+  <configuration default="false" name="hamming_validator (Random)" type="CMakeRunConfiguration" factoryName="Application" folderName="OpenMP" PROGRAM_PARAMS="-rvc -m2" PASS_PARENT_ENVS_2="true" PROJECT_NAME="hamming_benchmark" TARGET_NAME="hamming_validator" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="hamming_benchmark" RUN_TARGET_NAME="hamming_validator">
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>

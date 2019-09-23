@@ -8,15 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
 
 #include <omp.h>
 #include <argp.h>
-//#include <openssl/obj_mac.h>
-//#include <openssl/ec.h>
 
 #include "iter/uint256_key_iter.h"
-#include "aes256-ni.h"
 #include "util.h"
 #include "../../micro-ecc/uECC.h"
 
@@ -26,7 +22,7 @@
 
 #define PRIV_KEY_SIZE 32
 #define PUB_KEY_SIZE 64
-#define UNCOMPRESSED_SIZE PUB_KEY_SIZE + 1
+//#define UNCOMPRESSED_SIZE PUB_KEY_SIZE + 1
 
 const char *argp_program_version = "ecc_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
@@ -192,13 +188,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     }
                     arguments->host_priv_key_hex = arg;
                     break;
-                case 2:
-                    if(strlen(arg) != UNCOMPRESSED_SIZE * 2) {
-                        argp_error(state, "The CLIENT_PUB_KEY (client public key) must be 65 bytes"
-                                          " long for Secp256k1 in uncompressed form.\n");
-                    }
-                    arguments->client_pub_key_hex = arg;
-                    break;
+//                case 2:
+//                  CURRENTLY NOT USING UNCOMPRESSED
+//                    if(strlen(arg) != UNCOMPRESSED_SIZE * 2) {
+//                        argp_error(state, "The CLIENT_PUB_KEY (client public key) must be 65 bytes"
+//                                          " long for Secp256k1 in uncompressed form.\n");
+//                    }
+//                    arguments->client_pub_key_hex = arg;
+//                    break;
                 default:
                     argp_usage(state);
             }
@@ -259,80 +256,67 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *host_priv_key,
-        const unsigned char *client_pub_key,const int* signal, int all, mpz_t *validated_keys) {
+        const unsigned char *host_pub_key,const int* signal, int all, mpz_t *validated_keys) {
     // Declaration
     int found = 0;
 
-    //EC_GROUP *curve;
-    //EC_KEY *ec_key;
     const struct uECC_Curve_t * curve = uECC_secp256k1();
-
-    unsigned char current_priv_key[PRIV_KEY_SIZE];
-    unsigned char current_pub_key[PUB_KEY_SIZE];
+    unsigned char current_priv_key[PRIV_KEY_SIZE]; // this one changes, until found
+    unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from current_priv_key
     uint256_key_iter *iter;
 
-    // Allocation and initialization
-//    if((curve = EC_GROUP_new_by_curve_name(NID_secp256k1)) == NULL) {
-//        perror("ERROR");
-//        return -1;
-//    }
-//
-//    if((ec_key = EC_KEY_new_by_curve_name(NID_secp256k1)) == NULL) {
-//        perror("ERROR");
-//        EC_GROUP_clear_free(curve);
-//        return -1;
-//    }
-
-    if((iter = uint256_key_iter_create(host_priv_key, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(corrupted_key, starting_perm, last_perm)) == NULL) {
         perror("ERROR");
         return -1;
     }
 
-    if(all) {
+    if(all) { // all == don't cut out early if end is found
         // While we haven't reached the end of iteration
         while(!uint256_key_iter_end(iter)) {
             if(validated_keys != NULL) {
                 mpz_add_ui(*validated_keys, *validated_keys, 1);
             }
+            // get next current_priv_key
             uint256_key_iter_get(iter, current_priv_key);
-            //EC_KEY_set_private_key(ec_key, )
 
-            // If encryption fails for some reason, break prematurely.
-//            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-//                found = -1;
-//                break;
-//            }
+            // If fails for some reason, break prematurely.
+            if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
+                printf("ERROR uECC_compute_public_key - abort run");
+                found = -1;
+                break;
+            }
 
             // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-            if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
+            if(memcmp(current_pub_key, host_pub_key, PUB_KEY_SIZE) == 0) {
                 found = 1;
                 // Only have one thread copy the key at a time
                 // This might happen more than once if the # of threads exceeds the number of possible
                 // keys
 #pragma omp critical
-                memcpy(corrupted_key, client_pub_key, PRIV_KEY_SIZE);
+                memcpy(corrupted_key, current_priv_key, PRIV_KEY_SIZE);
             }
 
             uint256_key_iter_next(iter);
-        }
+        } // while(!uint256_key_iter_end(iter))
     }
-    else {
+    else { // all == false : cut out early if end is found
         // While we haven't reached the end of iteration
         while(!uint256_key_iter_end(iter) && !(*signal)) {
             if(validated_keys != NULL) {
                 mpz_add_ui(*validated_keys, *validated_keys, 1);
             }
+            // get next current_priv_key
             uint256_key_iter_get(iter, current_priv_key);
-//            aes256_enc_key_scheduler_update(key_scheduler, current_priv_key);
 
-            // If encryption fails for some reason, break prematurely.
-//            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-//                found = -1;
-//                break;
-//            }
+            // If fails for some reason, break prematurely.
+            if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
+                printf("ERROR uECC_compute_public_key - abort run");
+                found = -1;
+                break;
+            }
 
             // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-            if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
+            if(memcmp(current_pub_key, host_pub_key, PUB_KEY_SIZE) == 0) {
                 found = 1;
                 // Only have one thread copy the key at a time
                 // This might happen more than once if the # of threads exceeds the number of possible
@@ -343,8 +327,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
             }
 
             uint256_key_iter_next(iter);
-        }
-    }
+        } // while(!uint256_key_iter_end(iter) && !(*signal))
+    } // else all
 
     // Cleanup
     uint256_key_iter_destroy(iter);
@@ -362,10 +346,11 @@ int main(int argc, char *argv[]) {
 
     gmp_randstate_t randstate;
 
+    const struct uECC_Curve_t * curve = uECC_secp256k1();
     unsigned char *host_priv_key;
     unsigned char pub_prefix;
-    unsigned char *client_pub_key;
-    unsigned char *corrupted_key;
+    unsigned char *host_pub_key;
+    unsigned char *corrupted_key; // the key is corrupted, until it is not
 
     int mismatch, ending_mismatch;
 
@@ -379,7 +364,7 @@ int main(int argc, char *argv[]) {
         return ERROR_CODE_FAILURE;
     }
 
-    if ((client_pub_key = malloc(sizeof(*client_pub_key) * PUB_KEY_SIZE)) == NULL) {
+    if ((host_pub_key = malloc(sizeof(*host_pub_key) * PUB_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(host_priv_key);
         return ERROR_CODE_FAILURE;
@@ -387,7 +372,7 @@ int main(int argc, char *argv[]) {
 
     if ((corrupted_key = malloc(sizeof(*corrupted_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
-        free(client_pub_key);
+        free(host_pub_key);
         free(host_priv_key);
         return ERROR_CODE_FAILURE;
     }
@@ -442,19 +427,18 @@ int main(int argc, char *argv[]) {
                             " randomly generated ones will be used in their place.\n");
         }
 
+        // good key - random
         get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
+        // corrupt key
         get_random_corrupted_key(corrupted_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
                 arguments.subkey_length, randstate, arguments.benchmark, numcores);
 
-//        if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
-//            // Cleanup
-//            mpz_clear(validated_keys);
-//            aes256_enc_key_scheduler_destroy(key_scheduler);
-//            free(corrupted_key);
-//            free(key);
-//
-//            return ERROR_CODE_FAILURE;
-//        }
+        if (! uECC_compute_public_key(host_priv_key, host_pub_key, curve)) {
+            printf("ERROR host uECC_compute_public_key - abort run");
+            //found = -1;
+            return ERROR_CODE_FAILURE;
+        }
+
     }
     else {
         switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
@@ -468,20 +452,20 @@ int main(int argc, char *argv[]) {
                 break;
         }
 
-        switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
-            case 1:
-                fprintf(stderr, "ERROR: HOST_PRIV_KEY had non-hexadecimal characters.\n");
-                return ERROR_CODE_FAILURE;
-            case 2:
-                fprintf(stderr, "ERROR: HOST_PRIV_KEY did not have even length.\n");
-                return ERROR_CODE_FAILURE;
-            default:
-                break;
-        }
+//        switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
+//            case 1:
+//                fprintf(stderr, "ERROR: HOST_PRIV_KEY had non-hexadecimal characters.\n");
+//                return ERROR_CODE_FAILURE;
+//            case 2:
+//                fprintf(stderr, "ERROR: HOST_PRIV_KEY did not have even length.\n");
+//                return ERROR_CODE_FAILURE;
+//            default:
+//                break;
+//        }
     }
 
     if (arguments.verbose) {
-        fprintf(stderr, "INFO: Using Secp256k1 Host Private Key: ");
+        fprintf(stderr, "INFO: Using Secp256k1 Host Private Key            : ");
         fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
         fprintf(stderr, "\n");
 
@@ -491,10 +475,10 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
         }
 
-        fprintf(stderr, "INFO: Using Secp256k1 Host Public Key: ");
-        fprint_hex(stderr, host_priv_key, PUB_KEY_SIZE / 2);
+        fprintf(stderr, "INFO: Using Secp256k1 Host Public Key:\n ");
+        fprint_hex(stderr, host_pub_key, PUB_KEY_SIZE / 2);
         fprintf(stderr, " ");
-        fprint_hex(stderr, &(host_priv_key[PUB_KEY_SIZE]), PUB_KEY_SIZE / 2);
+        fprint_hex(stderr, &(host_pub_key[PUB_KEY_SIZE/2]), PUB_KEY_SIZE / 2);
         fprintf(stderr, "\n");
     }
 
@@ -520,7 +504,7 @@ int main(int argc, char *argv[]) {
                                   arguments.subkey_length);
 
             int subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, host_priv_key,
-                    client_pub_key, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
+                    host_pub_key, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.
             if (subfound > 0) {
@@ -548,7 +532,7 @@ int main(int argc, char *argv[]) {
             }
 
             mpz_clear(sub_validated_keys);
-        }
+        } // omp parallel
     }
 
     // Check if an error occurred in one of the threads.
@@ -556,7 +540,7 @@ int main(int argc, char *argv[]) {
         // Cleanup
         mpz_clear(validated_keys);
         free(corrupted_key);
-        free(client_pub_key);
+        free(host_pub_key);
         free(host_priv_key);
 
         return EXIT_FAILURE;
@@ -586,14 +570,17 @@ int main(int argc, char *argv[]) {
     }
 
     if(found) {
+        if(arguments.verbose) fprintf(stdout, "found:\n");
         fprint_hex(stdout, corrupted_key, PRIV_KEY_SIZE);
         printf("\n");
+    } else {
+        if(arguments.verbose) fprintf(stdout, "not-found <============\n");
     }
 
     // Cleanup
     mpz_clear(validated_keys);
     free(corrupted_key);
-    free(client_pub_key);
+    free(host_pub_key);
     free(host_priv_key);
 
     return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
