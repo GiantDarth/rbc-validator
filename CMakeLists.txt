@@ -14,6 +14,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
         src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h)
 
+# note micro-ecc from https://github.com/kmackay/micro-ecc.git 
 add_executable(ecc_validator src/ecc_validator.c ../micro-ecc/uECC.c ../micro-ecc/uECC.h
         src/iter/uint256_key_iter.h src/iter/uint256_key_iter.c
         src/uint256_t.h src/uint256_t.c
@@ -24,6 +25,7 @@ add_executable(hamming_validator src/hamming_validator.c ${SOURCE_FILES})
 add_executable(hamming_validator_mpi src/hamming_validator_mpi.c ${SOURCE_FILES})
 
 add_executable(aes256_test src/aes256_test.c src/aes256-ni.c src/aes256-ni.h)
+# note micro-ecc from https://github.com/kmackay/micro-ecc.git 
 add_executable(ecc256_test src/ecc256_test.c ../micro-ecc/uECC.c ../micro-ecc/uECC.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")

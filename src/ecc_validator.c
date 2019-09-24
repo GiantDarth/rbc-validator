@@ -570,7 +570,6 @@ int main(int argc, char *argv[]) {
     }
 
     if(found) {
-        if(arguments.verbose) fprintf(stdout, "found:\n");
         fprint_hex(stdout, corrupted_key, PRIV_KEY_SIZE);
         printf("\n");
     } else {
