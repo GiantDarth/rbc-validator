@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <memory.h>
+#include "util.h"
 #include "../../micro-ecc/uECC.h"
 
 #define	EXIT_FAILURE	1	/* Failing exit status.  */
@@ -13,12 +14,30 @@ void print_hex(const unsigned char *array, size_t count) {
 }
 
 int main(int argc, char **argv) {
-    const unsigned char priKey[] = { // 32 bytes long
+    unsigned char priKey[] = { // 32 bytes long
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
             0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
             0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
             0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
     };
+
+    if (argc > 1) {
+        if (strlen(argv[1]) != 32*2) {
+            fprintf(stderr, "ERROR: PRIV_KEY incorrect length %ld\n", strlen(argv[1]));
+            return EXIT_FAILURE;
+        }
+        switch(parse_hex(priKey, argv[1])) {
+            case 1:
+                fprintf(stderr, "ERROR: PRIV_KEY had non-hexadecimal characters.\n");
+                return EXIT_FAILURE;
+            case 2:
+                fprintf(stderr, "ERROR: PRIV_KEY did not have even length.\n");
+                return EXIT_FAILURE;
+            default:
+                break;
+        }
+
+    }
     unsigned char pubKey[64];
     unsigned char signature[64];
     // A message that's exactly 16 bytes long.
