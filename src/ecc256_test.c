@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     unsigned char signature[64];
     // A message that's exactly 16 bytes long.
     const char msg[] = "Hello world x2!\n";
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
+    const struct uECC_Curve_t * curve = uECC_secp256r1();
 
     printf("0-ecc prikey:\n");
     print_hex(priKey, sizeof(priKey));

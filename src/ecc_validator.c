@@ -258,7 +258,7 @@ int gmp_validator(unsigned char *corrupted_priv_key, const uint256_t *starting_p
         const unsigned char *client_pub_key,const int* signal, int all, mpz_t *validated_keys) {
     // Declarations
     int found = 0;
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
+    const struct uECC_Curve_t * curve = uECC_secp256r1();
     unsigned char current_priv_key[PRIV_KEY_SIZE]; // this one changes, until found
     unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from current_priv_key
     uint256_key_iter *iter;
@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
 
     gmp_randstate_t randseed;
 
-    const struct uECC_Curve_t * curve = uECC_secp256k1();
+    const struct uECC_Curve_t * curve = uECC_secp256r1();
     unsigned char *host_priv_key;
     //unsigned char pub_prefix;
     unsigned char *client_pub_key;
