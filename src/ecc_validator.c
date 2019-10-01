@@ -22,14 +22,13 @@
 
 #define PRIV_KEY_SIZE 32
 #define PUB_KEY_SIZE 64
-//#define UNCOMPRESSED_SIZE PUB_KEY_SIZE + 1
 
 const char *argp_program_version = "ecc_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
 static char args_doc[] = "HOST_PRIV_KEY CLIENT_PUB_KEY\n-r/--random -m/--mismatches=value";
-static char prog_desc[] = "Given an ECC Secp256k1 and a HOST_PRIV_KEY (host private key)"
+static char prog_desc[] = "Given an ECC secp256r1 and a HOST_PRIV_KEY (host private key)"
                           " and a CLIENT_PUB_KEY (client public key) from an unreliable"
                           " source, progressively corrupt the host private key by a"
                           " certain number of bits until a matching corrupted key is"
@@ -49,7 +48,7 @@ static char prog_desc[] = "Given an ECC Secp256k1 and a HOST_PRIV_KEY (host priv
                           " the CLIENT_PUB_KEY (client public key) which is also passed"
                           " in hexadecimal in uncompressed form."
 
-                          "\n\nOnly ECC Secp256k1 keys are currently supported.";
+                          "\n\nOnly ECC secp256r1 keys are currently supported.";
 
 struct arguments {
     int verbose, benchmark, random, fixed, count, all;
@@ -128,7 +127,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
 
             if (value > PRIV_KEY_SIZE * 8) {
-                fprintf(stderr, "--mismatches cannot exceed the private key size for Secp256k1"
+                fprintf(stderr, "--mismatches cannot exceed the private key size for secp256r1"
                                 " in bits.\n");
             }
 
@@ -149,7 +148,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
 
             if (value > PRIV_KEY_SIZE * 8) {
-                argp_error(state, "--subkey cannot exceed the private key size for Secp256k1"
+                argp_error(state, "--subkey cannot exceed the private key size for secp256r1"
                                   "in bits.\n");
             }
             else if (value < 1) {
@@ -184,14 +183,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 case 0:
                     if(strlen(arg) != PRIV_KEY_SIZE * 2) {
                         argp_error(state, "The HOST_PRIV_KEY (host private key) must be 32 bytes"
-                                          " long for Secp256k1.\n");
+                                          " long for secp256r1.\n");
                     }
                     arguments->host_priv_key_hex = arg;
                     break;
                 case 1:
                     if(strlen(arg) != PUB_KEY_SIZE * 2) {
                         argp_error(state, "The CLIENT_PUB_KEY (client public key) must be 64 bytes"
-                                          " long for Secp256k1.\n");
+                                          " long for secp256r1.\n");
                     }
                     arguments->client_pub_key_hex = arg;
                     break;
@@ -499,17 +498,17 @@ int main(int argc, char *argv[]) {
     }
 
     if (arguments.verbose) {
-        fprintf(stderr, "INFO: Using Secp256k1 Host Private Key            : ");
+        fprintf(stderr, "INFO: Using secp256r1 Host Private Key            : ");
         fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
         fprintf(stderr, "\n");
 
         if(arguments.random) {
-            fprintf(stderr, "INFO: Using Secp256k1 Corrupted Key (%d mismatches): ", arguments.mismatches);
+            fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ", arguments.mismatches);
             fprint_hex(stderr, corrupted_priv_key, PRIV_KEY_SIZE);
             fprintf(stderr, "\n");
         }
 
-        fprintf(stderr, "INFO: Using Secp256k1 Client Public Key:\n ");
+        fprintf(stderr, "INFO: Using secp256r1 Client Public Key:\n ");
         fprint_hex(stderr, client_pub_key, PUB_KEY_SIZE);
         fprintf(stderr, "\n");
     }
