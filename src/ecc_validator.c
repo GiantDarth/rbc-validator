@@ -239,7 +239,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.
-/// \param corrupted_priv_key An allocated corrupted key to fill if the corrupted key was found. Must be at
+/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at
 /// least key_size bytes big.
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
@@ -252,7 +252,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is
 /// skipped.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(unsigned char *corrupted_priv_key, const uint256_t *starting_perm,
+int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *host_priv_key,
         const unsigned char *client_pub_key,const int* signal, int all, mpz_t *validated_keys) {
     // Declarations
@@ -262,7 +262,8 @@ int gmp_validator(unsigned char *corrupted_priv_key, const uint256_t *starting_p
     unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from current_priv_key
     uint256_key_iter *iter;
 
-    if((iter = uint256_key_iter_create(corrupted_priv_key, starting_perm, last_perm)) == NULL) {
+    // Allocation and initialization
+    if((iter = uint256_key_iter_create(corrupted_key, starting_perm, last_perm)) == NULL) {
         perror("ERROR");
         return -1;
     }
@@ -290,7 +291,7 @@ int gmp_validator(unsigned char *corrupted_priv_key, const uint256_t *starting_p
                 // This might happen more than once if the # of threads exceeds the number of possible
                 // keys
 #pragma omp critical
-                memcpy(corrupted_priv_key, current_priv_key, PRIV_KEY_SIZE);
+                memcpy(corrupted_key, current_priv_key, PRIV_KEY_SIZE);
             }
 
             uint256_key_iter_next(iter);
@@ -319,7 +320,7 @@ int gmp_validator(unsigned char *corrupted_priv_key, const uint256_t *starting_p
                 // This might happen more than once if the # of threads exceeds the number of possible
                 // keys
 #pragma omp critical
-                memcpy(corrupted_priv_key, current_priv_key, PRIV_KEY_SIZE);
+                memcpy(corrupted_key, current_priv_key, PRIV_KEY_SIZE);
                 break;
             }
 
@@ -341,13 +342,12 @@ int main(int argc, char *argv[]) {
     struct arguments arguments;
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
 
-    gmp_randstate_t randseed;
+    gmp_randstate_t randstate;
 
     const struct uECC_Curve_t * curve = uECC_secp256r1();
     unsigned char *host_priv_key;
-    //unsigned char pub_prefix;
     unsigned char *client_pub_key;
-    unsigned char *corrupted_priv_key; // the key is corrupted, unless it is found
+    unsigned char *corrupted_key; // the key is corrupted, unless it is found
 
     int mismatch, ending_mismatch;
 
@@ -367,7 +367,7 @@ int main(int argc, char *argv[]) {
         return ERROR_CODE_FAILURE;
     }
 
-    if ((corrupted_priv_key = malloc(sizeof(*corrupted_priv_key) * PRIV_KEY_SIZE)) == NULL) {
+    if ((corrupted_key = malloc(sizeof(*corrupted_priv_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(client_pub_key);
         free(host_priv_key);
@@ -388,8 +388,8 @@ int main(int argc, char *argv[]) {
 
     // Initialize values
     // Set the gmp prng algorithm and set a seed based on the current time
-    gmp_randinit_default(randseed);
-    gmp_randseed_ui(randseed, (unsigned long)time(NULL));
+    gmp_randinit_default(randstate);
+    gmp_randstate_ui(randseed, (unsigned long)time(NULL));
 
     mismatch = 0;
     ending_mismatch = arguments.subkey_length;
@@ -425,10 +425,10 @@ int main(int argc, char *argv[]) {
         }
 
         // good key - random
-        get_random_key(host_priv_key, PRIV_KEY_SIZE, randseed);
+        get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
         // get a corrupt key from a good key
-        get_random_corrupted_key(corrupted_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
-                arguments.subkey_length, randseed, arguments.benchmark, numcores);
+        get_random_corrupted_key(corrupted_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
+                arguments.subkey_length, randstate, arguments.benchmark, numcores);
 
         if (! uECC_compute_public_key(host_priv_key, client_pub_key, curve)) {
             printf("ERROR host uECC_compute_public_key - abort run");
@@ -464,7 +464,7 @@ int main(int argc, char *argv[]) {
             perror("ERROR");
             // Cleanup
             mpz_clear(validated_keys);
-            free(corrupted_priv_key);
+            free(corrupted_key);
             free(client_pub_key);
             free(host_priv_key);
             return ERROR_CODE_FAILURE;
@@ -473,7 +473,7 @@ int main(int argc, char *argv[]) {
             printf("ERROR host uECC_compute_public_key - abort run");
             // Cleanup
             mpz_clear(validated_keys);
-            free(corrupted_priv_key);
+            free(corrupted_key);
             free(client_pub_key);
             free(host_priv_key);
             free(temp_host_pub_key);
@@ -486,15 +486,15 @@ int main(int argc, char *argv[]) {
             fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
             printf("\n");
             mpz_clear(validated_keys);
-            free(corrupted_priv_key);
+            free(corrupted_key);
             free(client_pub_key);
             free(host_priv_key);
             free(temp_host_pub_key);
             return ERROR_CODE_FOUND;
         }
 
-        // errors, so let try to find a valid corrupted_priv_key / client_pub_key pair
-        memcpy(corrupted_priv_key, host_priv_key, PRIV_KEY_SIZE);
+        // errors, so let try to find a valid corrupted_key / client_pub_key pair
+        memcpy(corrupted_key, host_priv_key, PRIV_KEY_SIZE);
     }
 
     if (arguments.verbose) {
@@ -504,7 +504,7 @@ int main(int argc, char *argv[]) {
 
         if(arguments.random) {
             fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ", arguments.mismatches);
-            fprint_hex(stderr, corrupted_priv_key, PRIV_KEY_SIZE);
+            fprint_hex(stderr, corrupted_key, PRIV_KEY_SIZE);
             fprintf(stderr, "\n");
         }
 
@@ -534,7 +534,7 @@ int main(int argc, char *argv[]) {
                                   (size_t) omp_get_num_threads(), mismatch, PRIV_KEY_SIZE,
                                   arguments.subkey_length);
 
-            int subfound = gmp_validator(corrupted_priv_key, &starting_perm, &ending_perm, host_priv_key,
+            int subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, host_priv_key,
                     client_pub_key, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.
@@ -570,7 +570,7 @@ int main(int argc, char *argv[]) {
     if(error) {
         // Cleanup
         mpz_clear(validated_keys);
-        free(corrupted_priv_key);
+        free(corrupted_key);
         free(client_pub_key);
         free(host_priv_key);
         return EXIT_FAILURE;
@@ -601,7 +601,7 @@ int main(int argc, char *argv[]) {
 
     if(found) {
         if(arguments.verbose) fprintf(stdout, "found:\n");
-        fprint_hex(stdout, corrupted_priv_key, PRIV_KEY_SIZE);
+        fprint_hex(stdout, corrupted_key, PRIV_KEY_SIZE);
         printf("\n");
     } else {
         if(arguments.verbose) fprintf(stdout, "not-found <============\n");
@@ -609,7 +609,7 @@ int main(int argc, char *argv[]) {
 
     // Cleanup
     mpz_clear(validated_keys);
-    free(corrupted_priv_key);
+    free(corrupted_key);
     free(client_pub_key);
     free(host_priv_key);
 
