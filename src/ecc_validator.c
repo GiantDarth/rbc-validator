@@ -237,6 +237,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
+void xor1(unsigned char* in1, unsigned char* in2, int len) {
+    for (int i=0; i<len; i++) {
+        printf("%02x", in1[i] ^ in2[i]);
+    }
+}
+
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.
 /// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at
@@ -367,7 +373,7 @@ int main(int argc, char *argv[]) {
         return ERROR_CODE_FAILURE;
     }
 
-    if ((corrupted_key = malloc(sizeof(*corrupted_priv_key) * PRIV_KEY_SIZE)) == NULL) {
+    if ((corrupted_key = malloc(sizeof(*corrupted_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(client_pub_key);
         free(host_priv_key);
@@ -389,7 +395,7 @@ int main(int argc, char *argv[]) {
     // Initialize values
     // Set the gmp prng algorithm and set a seed based on the current time
     gmp_randinit_default(randstate);
-    gmp_randstate_ui(randseed, (unsigned long)time(NULL));
+    gmp_randseed_ui(randstate, (unsigned long)time(NULL));
 
     mismatch = 0;
     ending_mismatch = arguments.subkey_length;
@@ -429,6 +435,10 @@ int main(int argc, char *argv[]) {
         // get a corrupt key from a good key
         get_random_corrupted_key(corrupted_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
                 arguments.subkey_length, randstate, arguments.benchmark, numcores);
+        
+        printf("xor: corrupted_key, host_priv_key:\n");
+        xor1(corrupted_key, host_priv_key, PRIV_KEY_SIZE);
+        printf("\n");
 
         if (! uECC_compute_public_key(host_priv_key, client_pub_key, curve)) {
             printf("ERROR host uECC_compute_public_key - abort run");

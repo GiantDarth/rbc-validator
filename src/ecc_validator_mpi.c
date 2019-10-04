@@ -268,6 +268,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
             break;
         }
 
+        memcpy(corrupted_key, current_priv_key, PRIV_KEY_SIZE);
+
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
             flags[0] = 1;
@@ -378,7 +380,7 @@ int main(int argc, char *argv[]) {
         free(host_priv_key);
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
-    if((corrupted_key = malloc(sizeof(*corrupted_priv_key) * PRIV_KEY_SIZE)) == NULL) {
+    if((corrupted_key = malloc(sizeof(*corrupted_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(host_priv_key);
         free(client_pub_key);
