@@ -245,7 +245,7 @@ void xor1(unsigned char* in1, unsigned char* in2, int len) {
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.
-/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at
+/// \param corrupt_priv_key An allocated corrupted key to fill if the corrupted key was found. Must be at
 /// least key_size bytes big.
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
@@ -258,9 +258,10 @@ void xor1(unsigned char* in1, unsigned char* in2, int len) {
 /// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then this is
 /// skipped.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
-        const uint256_t *last_perm, const unsigned char *host_priv_key,
-        const unsigned char *client_pub_key,const int* signal, int all, mpz_t *validated_keys) {
+int gmp_validator(unsigned char *corrupt_priv_key, 
+        const uint256_t *starting_perm, const uint256_t *last_perm, 
+        const unsigned char *host_priv_key, const unsigned char *client_pub_key,
+        const int* signal, int all, mpz_t *validated_keys) {
     // Declarations
     int found = 0;
     const struct uECC_Curve_t * curve = uECC_secp256r1();
@@ -268,8 +269,9 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from current_priv_key
     uint256_key_iter *iter;
 
+    memcpy(current_priv_key, host_priv_key, PRIV_KEY_SIZE);
     // Allocation and initialization
-    if((iter = uint256_key_iter_create(corrupted_key, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(current_priv_key, starting_perm, last_perm)) == NULL) {
         perror("ERROR");
         return -1;
     }
@@ -297,7 +299,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
                 // This might happen more than once if the # of threads exceeds the number of possible
                 // keys
 #pragma omp critical
-                memcpy(corrupted_key, current_priv_key, PRIV_KEY_SIZE);
+                memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
             }
 
             uint256_key_iter_next(iter);
@@ -326,7 +328,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
                 // This might happen more than once if the # of threads exceeds the number of possible
                 // keys
 #pragma omp critical
-                memcpy(corrupted_key, current_priv_key, PRIV_KEY_SIZE);
+                memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
                 break;
             }
 
@@ -351,9 +353,11 @@ int main(int argc, char *argv[]) {
     gmp_randstate_t randstate;
 
     const struct uECC_Curve_t * curve = uECC_secp256r1();
+    // rbc-goal: cp host_priv_key->corrupt_priv_key, and manipulate until ecc(corrupt_priv_key) == client_pub_key is found
+    // within desired hamming distance tolerance
     unsigned char *host_priv_key;
     unsigned char *client_pub_key;
-    unsigned char *corrupted_key; // the key is corrupted, unless it is found
+    unsigned char *corrupt_priv_key;
 
     int mismatch, ending_mismatch;
 
@@ -373,7 +377,7 @@ int main(int argc, char *argv[]) {
         return ERROR_CODE_FAILURE;
     }
 
-    if ((corrupted_key = malloc(sizeof(*corrupted_key) * PRIV_KEY_SIZE)) == NULL) {
+    if ((corrupt_priv_key = malloc(sizeof(*corrupt_priv_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(client_pub_key);
         free(host_priv_key);
@@ -420,7 +424,7 @@ int main(int argc, char *argv[]) {
 #pragma omp single
     numcores = omp_get_num_threads();
 
-    if (arguments.random || arguments.benchmark) {
+    if (arguments.random || arguments.benchmark) { // generated host_priv_key, client_pub_key
         if(arguments.random) {
             fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and randomly"
                             " generated ones will be used in their place.\n");
@@ -430,23 +434,25 @@ int main(int argc, char *argv[]) {
                             " randomly generated ones will be used in their place.\n");
         }
 
-        // good key - random
+        // good host pri key - random
         get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
         // get a corrupt key from a good key
-        get_random_corrupted_key(corrupted_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
+        get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
                 arguments.subkey_length, randstate, arguments.benchmark, numcores);
-        
-        printf("xor: corrupted_key, host_priv_key:\n");
-        xor1(corrupted_key, host_priv_key, PRIV_KEY_SIZE);
-        printf("\n");
 
-        if (! uECC_compute_public_key(host_priv_key, client_pub_key, curve)) {
+        if (arguments.verbose) {
+            printf("INFO: xor corrupt_priv_key, host_priv_key         : ");
+            xor1(corrupt_priv_key, host_priv_key, PRIV_KEY_SIZE);
+            printf("\n");
+        }
+
+        if (! uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
             printf("ERROR host uECC_compute_public_key - abort run");
             //found = -1;
             return ERROR_CODE_FAILURE;
         }
     }
-    else { // not arguments.random || arguments.benchmark
+    else { // not arguments.random || arguments.benchmark -> user specified host_priv_key, client_pub_key
         switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
             case 1:
                 fprintf(stderr, "ERROR: HOST_PRIV_KEY had non-hexadecimal characters.\n");
@@ -468,43 +474,6 @@ int main(int argc, char *argv[]) {
             default:
                 break;
         }
-
-        unsigned char *temp_host_pub_key;
-        if ((temp_host_pub_key = malloc(sizeof(*temp_host_pub_key) * PUB_KEY_SIZE)) == NULL) {
-            perror("ERROR");
-            // Cleanup
-            mpz_clear(validated_keys);
-            free(corrupted_key);
-            free(client_pub_key);
-            free(host_priv_key);
-            return ERROR_CODE_FAILURE;
-        }
-        if (! uECC_compute_public_key(host_priv_key, temp_host_pub_key, curve)) {
-            printf("ERROR host uECC_compute_public_key - abort run");
-            // Cleanup
-            mpz_clear(validated_keys);
-            free(corrupted_key);
-            free(client_pub_key);
-            free(host_priv_key);
-            free(temp_host_pub_key);
-            return ERROR_CODE_FAILURE;
-        }
-
-        // is the initial client_pub_key free of errors?
-        if (memcmp(temp_host_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-            if(arguments.verbose) fprintf(stdout, "found with no errors:\n");
-            fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
-            printf("\n");
-            mpz_clear(validated_keys);
-            free(corrupted_key);
-            free(client_pub_key);
-            free(host_priv_key);
-            free(temp_host_pub_key);
-            return ERROR_CODE_FOUND;
-        }
-
-        // errors, so let try to find a valid corrupted_key / client_pub_key pair
-        memcpy(corrupted_key, host_priv_key, PRIV_KEY_SIZE);
     }
 
     if (arguments.verbose) {
@@ -512,17 +481,18 @@ int main(int argc, char *argv[]) {
         fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
         fprintf(stderr, "\n");
 
-        if(arguments.random) {
+        //if(arguments.random) {
             fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ", arguments.mismatches);
-            fprint_hex(stderr, corrupted_key, PRIV_KEY_SIZE);
+            fprint_hex(stderr, corrupt_priv_key, PRIV_KEY_SIZE);
             fprintf(stderr, "\n");
-        }
+        //}
 
         fprintf(stderr, "INFO: Using secp256r1 Client Public Key:\n ");
         fprint_hex(stderr, client_pub_key, PUB_KEY_SIZE);
         fprintf(stderr, "\n");
     }
 
+    memset(corrupt_priv_key, 0, PRIV_KEY_SIZE);
     start_time = omp_get_wtime();
     found = 0;
     signal = 0;
@@ -544,7 +514,7 @@ int main(int argc, char *argv[]) {
                                   (size_t) omp_get_num_threads(), mismatch, PRIV_KEY_SIZE,
                                   arguments.subkey_length);
 
-            int subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, host_priv_key,
+            int subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
                     client_pub_key, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.
@@ -580,7 +550,7 @@ int main(int argc, char *argv[]) {
     if(error) {
         // Cleanup
         mpz_clear(validated_keys);
-        free(corrupted_key);
+        free(corrupt_priv_key);
         free(client_pub_key);
         free(host_priv_key);
         return EXIT_FAILURE;
@@ -611,15 +581,16 @@ int main(int argc, char *argv[]) {
 
     if(found) {
         if(arguments.verbose) fprintf(stdout, "found:\n");
-        fprint_hex(stdout, corrupted_key, PRIV_KEY_SIZE);
+        fprint_hex(stdout, corrupt_priv_key, PRIV_KEY_SIZE);
         printf("\n");
+        // todo: consider verification?
     } else {
         if(arguments.verbose) fprintf(stdout, "not-found <============\n");
     }
 
     // Cleanup
     mpz_clear(validated_keys);
-    free(corrupted_key);
+    free(corrupt_priv_key);
     free(client_pub_key);
     free(host_priv_key);
 
