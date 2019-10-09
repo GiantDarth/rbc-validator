@@ -243,13 +243,13 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
     // Declaration
     int found = 0;
     const struct uECC_Curve_t * curve = uECC_secp256r1();
-    //unsigned char current_priv_key[PRIV_KEY_SIZE]; // this one changes, until found
+    unsigned char current_priv_key[PRIV_KEY_SIZE]; // this one changes, until found
     unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from current_priv_key
     uint256_key_iter *iter;
 
-    //memcpy(current_priv_key, host_priv_key, PRIV_KEY_SIZE);
+    memcpy(current_priv_key, host_priv_key, PRIV_KEY_SIZE);
     // Allocation and initialization
-    if((iter = uint256_key_iter_create(host_priv_key, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(current_priv_key, starting_perm, last_perm)) == NULL) {
         perror("Error");
         return -1;
     }
@@ -260,10 +260,10 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
             mpz_add_ui(*validated_keys, *validated_keys, 1);
         }
         // get next current_priv_key
-        uint256_key_iter_get(iter, corrupt_priv_key);
+        uint256_key_iter_get(iter, current_priv_key);
 
         // If fails for some reason, break prematurely.
-        if (! uECC_compute_public_key(corrupt_priv_key, current_pub_key, curve)) {
+        if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
             printf("ERROR uECC_compute_public_key - abort run");
             found = -1;
             break;
@@ -271,12 +271,12 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-            printf("gmp_validator found\n");
+            printf("**gmp_validator found\n");
             flags[0] = 1;
             flags[1] = my_rank;
             found = 1;
 
-            //memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
+            memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
@@ -516,6 +516,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
+//    printf("%d - host_priv_key: ", my_rank);
+//    fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
+//    fprintf(stdout, "\n");
+
+
     // Broadcast all of the relevant variable to every rank
     MPI_Bcast(&(arguments.verbose), 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&(arguments.benchmark), 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -525,10 +530,14 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(host_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(corrupt_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     //MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    //MPI_Bcast(client_pub_key, PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Bcast(client_pub_key, PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
     MPI_Bcast(&mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ending_mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+//    printf("%d - host_priv_key: ", my_rank);
+//    fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
+//    fprintf(stdout, "\n");
 
     if (my_rank == 0) {
         if(arguments.verbose) {
@@ -547,7 +556,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
         }
 
-        memset(corrupt_priv_key, 0, PRIV_KEY_SIZE);
+        //memset(corrupt_priv_key, 0, PRIV_KEY_SIZE);
         // Initialize time for root rank
         start_time = MPI_Wtime();
     }
