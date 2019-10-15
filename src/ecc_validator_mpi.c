@@ -9,7 +9,6 @@
 //#include <math.h>
 #include <mpi.h>
 
-//#include <uuid/uuid.h>
 #include <gmp.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -17,7 +16,6 @@
 #include <pthread.h>
 
 #include "iter/uint256_key_iter.h"
-//#include "aes256-ni.h"
 #include "util.h"
 #include "../../micro-ecc/uECC.h"
 
@@ -288,20 +286,6 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
             }
         }
 
-        // remove this comment block to enable early exit on valid key found
-        // count is a tuning knob for how often the MPI collective should check
-        // if the right key has been found.
-//        if(count == 10000) {
-//            MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-//
-//            if(sum == 1 && !benchmark) {
-//                break;
-//            }
-//
-//            // not found yet, we'll check back after count is reached again
-//            count = 0;
-//        }
-
         if(!all && flags[0]) {
             printf("rank: %d is breaking early\n", my_rank);
             break;
@@ -354,14 +338,10 @@ int main(int argc, char *argv[]) {
 
     gmp_randstate_t randstate;
 
-    //uuid_t userId;
-    //char uuid_str[37];
-
-    const struct uECC_Curve_t * curve = uECC_secp256r1();
+    const struct uECC_Curve_t *curve = uECC_secp256r1();
     unsigned char *host_priv_key;
     unsigned char *client_pub_key;
     unsigned char *corrupt_priv_key;
-    //unsigned char auth_cipher[BLOCK_SIZE];
 
     int mismatch, ending_mismatch;
 
@@ -388,20 +368,12 @@ int main(int argc, char *argv[]) {
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-//    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
-//        perror("ERROR");
-//        free(corrupt_priv_key);
-//        free(key);
-//        MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
-//    }
-
     mpz_inits(key_count, validated_keys, NULL);
 
     if(my_rank == 0) {
         memset(&arguments, 0, sizeof(arguments));
         arguments.host_priv_key_hex = NULL;
         arguments.client_pub_key_hex = NULL;
-        //arguments.uuid_hex = NULL;
         // Default to -1 for no mismatches provided, aka. go through all mismatches.
         arguments.mismatches = -1;
         arguments.subkey_length = PUB_KEY_SIZE * 8;
@@ -437,17 +409,16 @@ int main(int argc, char *argv[]) {
                                 " randomly generated ones will be used in their place.\n");
             }
 
-            //uuid_generate(userId);
-
             get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
             get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
                     arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
-            if (! uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
+            if (!uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
                 printf("ERROR host uECC_compute_public_key - abort run");
                 free(host_priv_key);
                 free(client_pub_key);
                 free(corrupt_priv_key);
+
                 return ERROR_CODE_FAILURE;
             }
         }
@@ -473,46 +444,6 @@ int main(int argc, char *argv[]) {
                 default:
                     break;
             }
-
-            unsigned char *temp_host_pub_key;
-            if ((temp_host_pub_key = malloc(sizeof(*temp_host_pub_key) * PUB_KEY_SIZE)) == NULL) {
-                perror("ERROR");
-                // Cleanup
-                mpz_clear(validated_keys);
-                free(corrupt_priv_key);
-                free(client_pub_key);
-                free(host_priv_key);
-                // todo fix this
-                return ERROR_CODE_FAILURE;
-            }
-            if (! uECC_compute_public_key(host_priv_key, temp_host_pub_key, curve)) {
-                printf("ERROR host uECC_compute_public_key - abort run");
-                // Cleanup
-                mpz_clear(validated_keys);
-                free(corrupt_priv_key);
-                free(client_pub_key);
-                free(host_priv_key);
-                free(temp_host_pub_key);
-                // todo fix this
-                return ERROR_CODE_FAILURE;
-            }
-
-            // is the initial client_pub_key free of errors?
-            if (memcmp(temp_host_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-                if(arguments.verbose) fprintf(stdout, "found with no errors:\n");
-                fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
-                printf("\n");
-                mpz_clear(validated_keys);
-                free(corrupt_priv_key);
-                free(client_pub_key);
-                free(host_priv_key);
-                free(temp_host_pub_key);
-                // todo fix this
-                return ERROR_CODE_FOUND;
-            }
-
-            // errors, so let try to find a valid corrupt_priv_key / client_pub_key pair
-            memcpy(corrupt_priv_key, host_priv_key, PRIV_KEY_SIZE);
         }
     }
 
@@ -526,10 +457,8 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(&(arguments.benchmark), 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&(arguments.subkey_length), 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    //MPI_Bcast(auth_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(host_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(corrupt_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    //MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     MPI_Bcast(client_pub_key, PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
     MPI_Bcast(&mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -592,10 +521,10 @@ int main(int argc, char *argv[]) {
             if (subfound < 0) {
                 // Cleanup
                 mpz_clears(key_count, validated_keys, NULL);
-                //aes256_enc_key_scheduler_destroy(key_scheduler);
                 free(corrupt_priv_key);
                 free(client_pub_key);
                 free(host_priv_key);
+
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
         }
