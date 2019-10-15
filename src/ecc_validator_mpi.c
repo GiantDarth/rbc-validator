@@ -241,14 +241,13 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
     // Declaration
     int found = 0;
     const struct uECC_Curve_t * curve = uECC_secp256r1();
-    unsigned char current_priv_key[PRIV_KEY_SIZE]; // this one changes, until found
-    unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from current_priv_key
+    unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from corrupt_priv_key
     uint256_key_iter *iter;
 
-    memcpy(current_priv_key, host_priv_key, PRIV_KEY_SIZE);
     // Allocation and initialization
-    if((iter = uint256_key_iter_create(current_priv_key, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(host_priv_key, starting_perm, last_perm)) == NULL) {
         perror("Error");
+
         return -1;
     }
 
@@ -258,23 +257,17 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
             mpz_add_ui(*validated_keys, *validated_keys, 1);
         }
         // get next current_priv_key
-        uint256_key_iter_get(iter, current_priv_key);
+        uint256_key_iter_get(iter, corrupt_priv_key);
 
-        // If fails for some reason, break prematurely.
-        if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
-            printf("ERROR uECC_compute_public_key - abort run");
-            found = -1;
-            break;
-        }
-
-        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
+        // If the public key exists and if the new cipher is the same as the passed in
+        // auth_cipher, set found to true and break
+        if (uECC_compute_public_key(corrupt_priv_key, current_pub_key, curve) &&
+                memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
             printf("**gmp_validator found\n");
             flags[0] = 1;
             flags[1] = my_rank;
             found = 1;
 
-            memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
