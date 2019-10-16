@@ -369,7 +369,7 @@ int main(int argc, char *argv[]) {
         arguments.client_pub_key_hex = NULL;
         // Default to -1 for no mismatches provided, aka. go through all mismatches.
         arguments.mismatches = -1;
-        arguments.subkey_length = PUB_KEY_SIZE * 8;
+        arguments.subkey_length = PRIV_KEY_SIZE * 8;
 
         // Parse arguments
         argp_parse(&argp, argc, argv, 0, 0, &arguments);
