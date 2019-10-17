@@ -263,7 +263,6 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
         // auth_cipher, set found to true and break
         if (uECC_compute_public_key(corrupt_priv_key, current_pub_key, curve) &&
                 memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-            printf("**gmp_validator found\n");
             flags[0] = 1;
             flags[1] = my_rank;
             found = 1;
@@ -440,11 +439,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-//    printf("%d - host_priv_key: ", my_rank);
-//    fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
-//    fprintf(stdout, "\n");
-
-
     // Broadcast all of the relevant variable to every rank
     MPI_Bcast(&(arguments.verbose), 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&(arguments.benchmark), 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -456,10 +450,6 @@ int main(int argc, char *argv[]) {
 
     MPI_Bcast(&mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ending_mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-//    printf("%d - host_priv_key: ", my_rank);
-//    fprint_hex(stdout, host_priv_key, PRIV_KEY_SIZE);
-//    fprintf(stdout, "\n");
 
     if (my_rank == 0) {
         if(arguments.verbose) {
@@ -523,9 +513,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printf("%d wait join comm_thread\n", my_rank);
     pthread_join(comm_thread, NULL);
-    printf("%d done join comm_thread\n", my_rank);
 
     if(my_rank == 0) {
         duration = MPI_Wtime() - start_time;
