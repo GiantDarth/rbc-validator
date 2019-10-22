@@ -28,7 +28,6 @@ addons:
       - uuid-dev
   homebrew:
     packages:
-      - llvm
       - libomp
       - open-mpi
       - gmp
