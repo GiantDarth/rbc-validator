@@ -23,8 +23,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
 list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 # Append expected search paths for Mac OS X via Homebrew
-list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
-        /usr/local/opt/gmp)
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/llvm /usr/local/opt/open-mpi
+        /usr/local/opt/ossp-uuid /usr/local/opt/gmp)
 
 set(CMAKE_THREAD_PREFER_PTHREAD ON)
 
