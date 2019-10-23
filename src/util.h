@@ -7,6 +7,7 @@
 
 #include <gmp.h>
 #include <stdio.h>
+
 #include "uint256_t.h"
 
 /// Generate a random key using GMP's pseudo-random number generator functionality.

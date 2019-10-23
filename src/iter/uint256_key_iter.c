@@ -1,9 +1,7 @@
 #include "uint256_key_iter.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include "../util.h"
 
 uint256_key_iter* uint256_key_iter_create(const unsigned char *key, const uint256_t *first_perm,
         const uint256_t *last_perm) {

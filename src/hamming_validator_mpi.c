@@ -6,13 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
 #include <mpi.h>
 
 #include <uuid/uuid.h>
 #include <gmp.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include <argp.h>
 #include <pthread.h>
 
