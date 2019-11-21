@@ -575,25 +575,65 @@ int main(int argc, char *argv[]) {
     if(my_rank == 0) {
         duration = MPI_Wtime() - start_time;
 
-        if(arguments.verbose) {
+        if (arguments.verbose) {
             fprintf(stderr, "INFO: Clock time: %f s\n", duration);
         }
+    }
 
-        if(arguments.count) {
+
+    if(arguments.count) {
+        unsigned char validated_keys_buffer[KEY_SIZE + 1];
+
+        gmp_fprintf(stderr, "INFO: Rank %d Keys searched: %Zu\n", my_rank, validated_keys);
+
+        if(my_rank == 0) {
+            mpz_t total_keys;
             mpf_t duration_mpf, key_rate;
 
+            mpz_init(total_keys);
             mpf_inits(duration_mpf, key_rate, NULL);
 
+            mpz_set(total_keys, validated_keys);
+
+            for(int i = 1; i < nprocs; i++) {
+                memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
+                MPI_Recv(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, i, 0,
+                        MPI_COMM_WORLD, NULL);
+
+                mpz_import(validated_keys, KEY_SIZE + 1, -1, sizeof(*validated_keys_buffer), -1, 0,
+                        validated_keys_buffer);
+                mpz_add(total_keys, total_keys, validated_keys);
+
+//                gmp_fprintf(stderr, "INFO: Rank %d Keys (Received):        %#Zx\n", i, validated_keys);
+//                fprintf(stderr, "INFO: Rank %d Keys (Received Buffer): 0x", i);
+//                fprint_hex(stderr, validated_keys_buffer, KEY_SIZE + 1);
+//                fprintf(stderr, "\n");
+            }
+
             mpf_set_d(duration_mpf, duration);
-            mpf_set_z(key_rate, validated_keys);
+            mpf_set_z(key_rate, total_keys);
 
             // Divide validated_keys by duration
             mpf_div(key_rate, key_rate, duration_mpf);
 
-            gmp_fprintf(stderr, "INFO: Keys searched: %Zu\n", validated_keys);
+            gmp_fprintf(stderr, "INFO: Keys searched: %Zu\n", total_keys);
             gmp_fprintf(stderr, "INFO: Keys per second: %.9Fg\n", key_rate);
 
             mpf_clears(duration_mpf, key_rate, NULL);
+            mpz_clear(total_keys);
+        }
+        else {
+            memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
+            mpz_export(validated_keys_buffer, NULL, -1, sizeof(*validated_keys_buffer), -1, 0,
+                    validated_keys);
+
+//            gmp_fprintf(stderr, "INFO: Rank %d Keys Validated:         %#Zx\n", my_rank, validated_keys);
+//            fprintf(stderr, "INFO: Rank %d Keys (Exported):        0x", my_rank);
+//            fprint_hex(stderr, validated_keys_buffer, KEY_SIZE + 1);
+//            fprintf(stderr, "\n");
+
+            MPI_Send(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, 0, 0,
+                    MPI_COMM_WORLD);
         }
     }
 
