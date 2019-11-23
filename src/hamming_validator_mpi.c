@@ -592,11 +592,6 @@ int main(int argc, char *argv[]) {
                 mpz_import(validated_keys, KEY_SIZE + 1, -1, sizeof(*validated_keys_buffer), -1, 0,
                         validated_keys_buffer);
                 mpz_add(total_keys, total_keys, validated_keys);
-
-//                gmp_fprintf(stderr, "INFO: Rank %d Keys (Received):        %#Zx\n", i, validated_keys);
-//                fprintf(stderr, "INFO: Rank %d Keys (Received Buffer): 0x", i);
-//                fprint_hex(stderr, validated_keys_buffer, KEY_SIZE + 1);
-//                fprintf(stderr, "\n");
             }
 
             mpf_set_d(duration_mpf, duration);
@@ -615,11 +610,6 @@ int main(int argc, char *argv[]) {
             memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
             mpz_export(validated_keys_buffer, NULL, -1, sizeof(*validated_keys_buffer), -1, 0,
                     validated_keys);
-
-//            gmp_fprintf(stderr, "INFO: Rank %d Keys Validated:         %#Zx\n", my_rank, validated_keys);
-//            fprintf(stderr, "INFO: Rank %d Keys (Exported):        0x", my_rank);
-//            fprint_hex(stderr, validated_keys_buffer, KEY_SIZE + 1);
-//            fprintf(stderr, "\n");
 
             MPI_Send(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, 0, 0,
                     MPI_COMM_WORLD);
