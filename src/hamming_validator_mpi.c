@@ -355,10 +355,10 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    struct arguments arguments;
+    struct arguments arguments = { 0 };
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
 
-    struct comm_arguments comm_args;
+    struct comm_arguments comm_args = { 0 };
 
     gmp_randstate_t randstate;
 
@@ -371,7 +371,8 @@ int main(int argc, char *argv[]) {
 
     aes256_enc_key_scheduler *key_scheduler;
 
-    int mismatch, ending_mismatch;
+    int mismatch = 0;
+    int ending_mismatch = KEY_SIZE * 8;
 
     int subfound = 0;
     uint256_t starting_perm, ending_perm;
@@ -403,51 +404,44 @@ int main(int argc, char *argv[]) {
 
     mpz_inits(key_count, validated_keys, NULL);
 
-    if(my_rank == 0) {
-        memset(&arguments, 0, sizeof(arguments));
-        arguments.cipher_hex = NULL;
-        arguments.key_hex = NULL;
-        arguments.uuid_hex = NULL;
-        // Default to -1 for no mismatches provided, aka. go through all mismatches.
-        arguments.mismatches = -1;
-        arguments.subkey_length = KEY_SIZE * 8;
+    // Default to -1 for no mismatches provided, aka. go through all mismatches.
+    arguments.mismatches = -1;
+    arguments.subkey_length = KEY_SIZE * 8;
 
-        // Parse arguments
-        argp_parse(&argp, argc, argv, 0, 0, &arguments);
+    // Parse arguments
+    argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-        // Initialize values
-        // Set the gmp prng algorithm and set a seed based on the current time
-        gmp_randinit_default(randstate);
-        gmp_randseed_ui(randstate, (unsigned long)time(NULL));
+    // If --fixed option was set, set the validation range to only use the --mismatches value.
+    if (arguments.fixed) {
+        mismatch = arguments.mismatches;
+        ending_mismatch = arguments.mismatches;
+    }
+    // If --mismatches is set and non-negative, set the ending_mismatch to its value.
+    else if (arguments.mismatches >= 0) {
+        ending_mismatch = arguments.mismatches;
+    }
 
-        mismatch = 0;
-        ending_mismatch = KEY_SIZE * 8;
+    if (arguments.random || arguments.benchmark) {
+        if (my_rank == 0) {
+            // Initialize values
+            // Set the gmp prng algorithm and set a seed based on the current time
+            gmp_randinit_default(randstate);
+            gmp_randseed_ui(randstate, (unsigned long) time(NULL));
 
-        // If --fixed option was set, set the validation range to only use the --mismatches value.
-        if (arguments.fixed) {
-            mismatch = arguments.mismatches;
-            ending_mismatch = arguments.mismatches;
-        }
-        // If --mismatches is set and non-negative, set the ending_mismatch to its value.
-        else if(arguments.mismatches >= 0) {
-            ending_mismatch = arguments.mismatches;
-        }
-
-        if(arguments.random || arguments.benchmark) {
-            if(arguments.random) {
-                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and"
-                                " randomly generated ones will be used in their place.\n");
+            if (arguments.random) {
+                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored"
+                                " and randomly generated ones will be used in their place.\n");
             }
-            else if(arguments.benchmark) {
-                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and"
-                                " randomly generated ones will be used in their place.\n");
+            else if (arguments.benchmark) {
+                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored"
+                                " and randomly generated ones will be used in their place.\n");
             }
 
             uuid_generate(userId);
 
             get_random_key(key, KEY_SIZE, randstate);
             get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE,
-                    arguments.subkey_length, randstate, arguments.benchmark, nprocs);
+                                     arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
             aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
             if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
@@ -460,85 +454,76 @@ int main(int argc, char *argv[]) {
                 return ERROR_CODE_FAILURE;
             }
         }
-        else {
-            switch(parse_hex(auth_cipher, arguments.cipher_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
-            }
 
-            switch(parse_hex(key, arguments.key_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: KEY did not have even length.\n");
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
-            }
-
-            if (uuid_parse(arguments.uuid_hex, userId) < 0) {
-                fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+        // Broadcast all of the relevant variable to every rank
+        MPI_Bcast(auth_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(corrupted_key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+    }
+    else {
+        switch (parse_hex(auth_cipher, arguments.cipher_hex)) {
+            case 1:
+                fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
                 return ERROR_CODE_FAILURE;
-            }
+            case 2:
+                fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+                return ERROR_CODE_FAILURE;
+            default:
+                break;
+        }
+
+        switch (parse_hex(key, arguments.key_hex)) {
+            case 1:
+                fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
+                return ERROR_CODE_FAILURE;
+            case 2:
+                fprintf(stderr, "ERROR: KEY did not have even length.\n");
+                return ERROR_CODE_FAILURE;
+            default:
+                break;
+        }
+
+        if (uuid_parse(arguments.uuid_hex, userId) < 0) {
+            fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+            return ERROR_CODE_FAILURE;
         }
     }
 
-    // Broadcast all of the relevant variable to every rank
-    MPI_Bcast(&(arguments.verbose), 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&(arguments.benchmark), 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&(arguments.subkey_length), 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (my_rank == 0 && arguments.verbose) {
+        // Convert the uuid to a string for printing
+        uuid_unparse(userId, uuid_str);
 
-    MPI_Bcast(auth_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(corrupted_key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        fprintf(stderr, "INFO: Using UUID:                                 %s\n", uuid_str);
 
-    MPI_Bcast(&mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&ending_mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        fprintf(stderr, "INFO: Using AES-256 Key:                          ");
+        fprint_hex(stderr, key, KEY_SIZE);
+        fprintf(stderr, "\n");
 
-    if (my_rank == 0) {
-        if(arguments.verbose) {
-            // Convert the uuid to a string for printing
-            uuid_unparse(userId, uuid_str);
-
-            fprintf(stderr, "INFO: Using UUID:                                 %s\n", uuid_str);
-
-            fprintf(stderr, "INFO: Using AES-256 Key:                          ");
-            fprint_hex(stderr, key, KEY_SIZE);
-            fprintf(stderr, "\n");
-
-            if(arguments.random) {
-                fprintf(stderr, "INFO: Using AES-256 Corrupted Key (%d mismatches): ",
-                        arguments.mismatches);
-                fprint_hex(stderr, corrupted_key, KEY_SIZE);
-                fprintf(stderr, "\n");
-            }
-
-            fprintf(stderr, "INFO: AES-256 Authentication Cipher:              ");
-            fprint_hex(stderr, auth_cipher, BLOCK_SIZE);
+        if(arguments.random) {
+            fprintf(stderr, "INFO: Using AES-256 Corrupted Key (%d mismatches): ",
+                    arguments.mismatches);
+            fprint_hex(stderr, corrupted_key, KEY_SIZE);
             fprintf(stderr, "\n");
         }
 
-        // Initialize time for root rank
-        start_time = MPI_Wtime();
+        fprintf(stderr, "INFO: AES-256 Authentication Cipher:              ");
+        fprint_hex(stderr, auth_cipher, BLOCK_SIZE);
+        fprintf(stderr, "\n");
     }
 
     comm_args.request = MPI_REQUEST_NULL;
 
     if (pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
-        fprintf(stderr, "Error while creating comm thread\n");
+        fprintf(stderr, "ERROR: Error while creating comm thread for rank %d\n", my_rank);
         return ERROR_CODE_FAILURE;
     }
 
+    // Initialize time for root rank
+    start_time = MPI_Wtime();
+
     for (; mismatch <= ending_mismatch && !(flags[0]); mismatch++) {
-        if(arguments.verbose && my_rank == 0) {
+        if(my_rank == 0 && arguments.verbose) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
 
@@ -572,14 +557,18 @@ int main(int argc, char *argv[]) {
 
     pthread_join(comm_thread, NULL);
 
-    if(my_rank == 0) {
-        duration = MPI_Wtime() - start_time;
+    duration = MPI_Wtime() - start_time;
 
-        if (arguments.verbose) {
-            fprintf(stderr, "INFO: Clock time: %f s\n", duration);
-        }
+    if(my_rank == 0) {
+        MPI_Reduce(MPI_IN_PLACE, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Reduce(&duration, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     }
 
+    if(my_rank == 0 && arguments.verbose) {
+        fprintf(stderr, "INFO: Clock time: %f s\n", duration);
+    }
 
     if(arguments.count) {
         unsigned char validated_keys_buffer[KEY_SIZE + 1];
