@@ -426,7 +426,7 @@ int main(int argc, char *argv[]) {
 
     // omp_get_num_threads() must be called in a parallel region, but
     // ensure that only one thread calls it
-#pragma omp parallel
+#pragma omp parallel default(none) shared(numcores)
 #pragma omp single
     numcores = omp_get_num_threads();
 
@@ -517,7 +517,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
 
-#pragma omp parallel
+#pragma omp parallel default(shared)
         {
             uint256_t starting_perm, ending_perm;
             mpz_t sub_validated_keys;

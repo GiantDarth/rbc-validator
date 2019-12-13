@@ -25,10 +25,9 @@
 #define KEY_SIZE 32
 #define BLOCK_SIZE 16
 
-int flags[2] = {0, -1};
-
 struct comm_arguments {
     MPI_Request request;
+    int *global_found;
 };
 
 const char *argp_program_version = "hamming_validator MPI 0.1.0";
@@ -241,7 +240,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
         const unsigned char *auth_cipher, int all, mpz_t *validated_keys, int verbose, int my_rank,
-        int nprocs, MPI_Request request) {
+        int nprocs, MPI_Request request, int *global_found) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -265,7 +264,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     }
 
     // While we haven't reached the end of iteration
-    while(!uint256_key_iter_end(iter)) {
+    while(!uint256_key_iter_end(iter) && (all || !(*global_found))) {
         if(validated_keys != NULL) {
             mpz_add_ui(*validated_keys, *validated_keys, 1);
         }
@@ -280,38 +279,20 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
-            flags[0] = 1;
-            flags[1] = my_rank;
+            *global_found = 1;
             found = 1;
 
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            // alert all ranks that the key was found, including yourself
-            for (int i = 0; i < nprocs; i++) {
-                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-                MPI_Wait(&request, MPI_STATUS_IGNORE);
+            if(!all) {
+                // alert all ranks that the key was found, including yourself
+                for (int i = 0; i < nprocs; i++) {
+                    MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
+                    MPI_Wait(&request, MPI_STATUS_IGNORE);
+                }
             }
-        }
-
-        // remove this comment block to enable early exit on valid key found
-        // count is a tuning knob for how often the MPI collective should check
-        // if the right key has been found.
-//        if(count == 10000) {
-//            MPI_Allreduce(&found, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-//
-//            if(sum == 1 && !benchmark) {
-//                break;
-//            }
-//
-//            // not found yet, we'll check back after count is reached again
-//            count = 0;
-//        }
-
-        if(!all && flags[0]) {
-            //printf("rank: %d is breaking early\n", my_rank);
-            break;
         }
 
         uint256_key_iter_next(iter);
@@ -337,7 +318,7 @@ void *comm_worker(void *arg) {
         usleep(1000);
     }
 
-    MPI_Recv(&flags, 2, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(args->global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     MPI_Wait(&(args->request), MPI_STATUS_IGNORE);
 
     return 0;
@@ -358,7 +339,10 @@ int main(int argc, char *argv[]) {
     struct arguments arguments = { 0 };
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
 
-    struct comm_arguments comm_args = { 0 };
+    int global_found = 0;
+    int subfound = 0;
+
+    struct comm_arguments comm_args = { 0, &global_found };
 
     gmp_randstate_t randstate;
 
@@ -374,7 +358,6 @@ int main(int argc, char *argv[]) {
     int mismatch = 0;
     int ending_mismatch = KEY_SIZE * 8;
 
-    int subfound = 0;
     uint256_t starting_perm, ending_perm;
     size_t max_count;
     mpz_t key_count, validated_keys;
@@ -514,7 +497,7 @@ int main(int argc, char *argv[]) {
 
     comm_args.request = MPI_REQUEST_NULL;
 
-    if (pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
+    if (!(arguments.all) && pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
         fprintf(stderr, "ERROR: Error while creating comm thread for rank %d\n", my_rank);
         return ERROR_CODE_FAILURE;
     }
@@ -522,7 +505,7 @@ int main(int argc, char *argv[]) {
     // Initialize time for root rank
     start_time = MPI_Wtime();
 
-    for (; mismatch <= ending_mismatch && !(flags[0]); mismatch++) {
+    for (; mismatch <= ending_mismatch && !global_found; mismatch++) {
         if(my_rank == 0 && arguments.verbose) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
@@ -542,7 +525,7 @@ int main(int argc, char *argv[]) {
                     KEY_SIZE, arguments.subkey_length);
             subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId,
                     auth_cipher, arguments.all, arguments.count ? &validated_keys : NULL,
-                    arguments.verbose, my_rank, max_count, comm_args.request);
+                    arguments.verbose, my_rank, max_count, comm_args.request, &global_found);
             if (subfound < 0) {
                 // Cleanup
                 mpz_clears(key_count, validated_keys, NULL);
@@ -553,9 +536,21 @@ int main(int argc, char *argv[]) {
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
         }
+
+        // Do an Allreduce after every hamming distance when doing arguments.all in place of signalling
+        if(arguments.all) {
+            if(my_rank == 0) {
+                MPI_Allreduce(MPI_IN_PLACE, &global_found, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
+            }
+            else {
+                MPI_Allreduce(&global_found, &global_found, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
+            }
+        }
     }
 
-    pthread_join(comm_thread, NULL);
+    if(!(arguments.all)) {
+        pthread_join(comm_thread, NULL);
+    }
 
     duration = MPI_Wtime() - start_time;
 
@@ -572,8 +567,6 @@ int main(int argc, char *argv[]) {
 
     if(arguments.count) {
         unsigned char validated_keys_buffer[KEY_SIZE + 1];
-
-        gmp_fprintf(stderr, "INFO: Rank %d Keys searched: %Zu\n", my_rank, validated_keys);
 
         if(my_rank == 0) {
             mpz_t total_keys;
