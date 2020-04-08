@@ -26,7 +26,6 @@
 #define BLOCK_SIZE 16
 
 struct comm_arguments {
-    MPI_Request request;
     int *global_found;
 };
 
@@ -240,13 +239,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
         const unsigned char *auth_cipher, int all, mpz_t *validated_keys, int verbose, int my_rank,
-        int nprocs, MPI_Request request, int *global_found) {
+        int nprocs, int *global_found) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
 
     uint256_key_iter *iter;
     aes256_enc_key_scheduler *key_scheduler;
+
+    MPI_Request *requests;
+    MPI_Status *statuses;
 
     // Memory allocation
     if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
@@ -258,7 +260,28 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     // Allocation and initialization
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("Error");
+
         aes256_enc_key_scheduler_destroy(key_scheduler);
+
+        return -1;
+    }
+
+    if((requests = malloc(sizeof(MPI_Request) * nprocs)) == NULL) {
+        perror("Error");
+
+        uint256_key_iter_destroy(iter);
+        aes256_enc_key_scheduler_destroy(key_scheduler);
+
+        return -1;
+    }
+
+    if((statuses = malloc(sizeof(MPI_Status) * nprocs)) == NULL) {
+        perror("Error");
+
+        uint256_key_iter_destroy(iter);
+        aes256_enc_key_scheduler_destroy(key_scheduler);
+
+        free(requests);
 
         return -1;
     }
@@ -289,9 +312,10 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
             if(!all) {
                 // alert all ranks that the key was found, including yourself
                 for (int i = 0; i < nprocs; i++) {
-                    MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-                    MPI_Wait(&request, MPI_STATUS_IGNORE);
+                    MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &(requests[i]));
                 }
+
+                MPI_Waitall(nprocs, requests, statuses);
             }
         }
 
@@ -299,6 +323,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     }
 
     // Cleanup
+    free(statuses);
+    free(requests);
     uint256_key_iter_destroy(iter);
     aes256_enc_key_scheduler_destroy(key_scheduler);
 
@@ -307,19 +333,19 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
 void *comm_worker(void *arg) {
     int probe_flag = 0;
+    MPI_Status status;
 
     struct comm_arguments *args = (struct comm_arguments*)arg;
 
     // this while loop avoids the busy wait caused by the mpi_recv
     // we probe for a message, once found, move on and actually receive the message
     while (!probe_flag) {
-        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, &status);
 
         usleep(1000);
     }
 
-    MPI_Recv(args->global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Wait(&(args->request), MPI_STATUS_IGNORE);
+    MPI_Recv(args->global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
 
     return 0;
 }
@@ -342,7 +368,7 @@ int main(int argc, char *argv[]) {
     int global_found = 0;
     int subfound = 0;
 
-    struct comm_arguments comm_args = { 0, &global_found };
+    struct comm_arguments comm_args = { &global_found };
 
     gmp_randstate_t randstate;
 
@@ -495,8 +521,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "\n");
     }
 
-    comm_args.request = MPI_REQUEST_NULL;
-
     if (!(arguments.all) && pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
         fprintf(stderr, "ERROR: Error while creating comm thread for rank %d\n", my_rank);
         return ERROR_CODE_FAILURE;
@@ -525,7 +549,7 @@ int main(int argc, char *argv[]) {
                     KEY_SIZE, arguments.subkey_length);
             subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId,
                     auth_cipher, arguments.all, arguments.count ? &validated_keys : NULL,
-                    arguments.verbose, my_rank, max_count, comm_args.request, &global_found);
+                    arguments.verbose, my_rank, max_count, &global_found);
             if (subfound < 0) {
                 // Cleanup
                 mpz_clears(key_count, validated_keys, NULL);
@@ -554,6 +578,8 @@ int main(int argc, char *argv[]) {
 
     duration = MPI_Wtime() - start_time;
 
+    fprintf(stderr, "INFO Rank %d: Clock time: %f s\n", my_rank, duration);
+
     if(my_rank == 0) {
         MPI_Reduce(MPI_IN_PLACE, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     }
@@ -562,7 +588,7 @@ int main(int argc, char *argv[]) {
     }
 
     if(my_rank == 0 && arguments.verbose) {
-        fprintf(stderr, "INFO: Clock time: %f s\n", duration);
+        fprintf(stderr, "INFO: Max Clock time: %f s\n", duration);
     }
 
     if(arguments.count) {
