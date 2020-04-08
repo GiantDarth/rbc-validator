@@ -278,10 +278,10 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     if((statuses = malloc(sizeof(MPI_Status) * nprocs)) == NULL) {
         perror("Error");
 
+        free(requests);
+
         uint256_key_iter_destroy(iter);
         aes256_enc_key_scheduler_destroy(key_scheduler);
-
-        free(requests);
 
         return -1;
     }
@@ -325,6 +325,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     // Cleanup
     free(statuses);
     free(requests);
+
     uint256_key_iter_destroy(iter);
     aes256_enc_key_scheduler_destroy(key_scheduler);
 
@@ -606,7 +607,7 @@ int main(int argc, char *argv[]) {
             for(int i = 1; i < nprocs; i++) {
                 memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
                 MPI_Recv(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, i, 0,
-                        MPI_COMM_WORLD, NULL);
+                        MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
                 mpz_import(validated_keys, KEY_SIZE + 1, -1, sizeof(*validated_keys_buffer), -1, 0,
                         validated_keys_buffer);
