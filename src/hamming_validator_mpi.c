@@ -612,6 +612,8 @@ int main(int argc, char *argv[]) {
                 mpz_import(validated_keys, KEY_SIZE + 1, -1, sizeof(*validated_keys_buffer), -1, 0,
                         validated_keys_buffer);
                 mpz_add(total_keys, total_keys, validated_keys);
+
+                fprintf(stderr, "INFO: Received keys from rank %d\n", i);
             }
 
             mpf_set_d(duration_mpf, duration);
