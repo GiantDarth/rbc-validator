@@ -604,9 +604,9 @@ int main(int argc, char *argv[]) {
 
             mpz_set(total_keys, validated_keys);
 
-            start_time = MPI_Wtime();
-
             for(int i = 1; i < nprocs; i++) {
+                start_time = MPI_Wtime();
+
                 memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
                 MPI_Recv(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, i, 0,
                         MPI_COMM_WORLD, MPI_STATUS_IGNORE);
