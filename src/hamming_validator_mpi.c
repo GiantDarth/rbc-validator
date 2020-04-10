@@ -604,6 +604,8 @@ int main(int argc, char *argv[]) {
 
             mpz_set(total_keys, validated_keys);
 
+            start_time = MPI_Wtime();
+
             for(int i = 1; i < nprocs; i++) {
                 memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
                 MPI_Recv(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, i, 0,
@@ -613,7 +615,7 @@ int main(int argc, char *argv[]) {
                         validated_keys_buffer);
                 mpz_add(total_keys, total_keys, validated_keys);
 
-                fprintf(stderr, "INFO: Received keys from rank %d\n", i);
+                fprintf(stderr, "INFO %f s: Received keys from rank %d\n", MPI_Wtime() - start_time, i);
             }
 
             mpf_set_d(duration_mpf, duration);
