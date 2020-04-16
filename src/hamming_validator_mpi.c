@@ -25,10 +25,6 @@
 #define KEY_SIZE 32
 #define BLOCK_SIZE 16
 
-struct comm_arguments {
-    int *global_found;
-};
-
 const char *argp_program_version = "hamming_validator MPI 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
@@ -242,7 +238,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         int nprocs, int *global_found) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
-    int found = 0;
+    int status = 0;
+    int probe_flag = 0;
 
     uint256_key_iter *iter;
     aes256_enc_key_scheduler *key_scheduler;
@@ -296,26 +293,42 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
         // If encryption fails for some reason, break prematurely.
         if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-            found = -1;
+            status = -1;
             break;
         }
 
         // If the new cipher is the same as the passed in auth_cipher, set found to true and break
         if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
             *global_found = 1;
-            found = 1;
+            status = 1;
 
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            if(!all) {
-                // alert all ranks that the key was found, including yourself
-                for (int i = 0; i < nprocs; i++) {
-                    MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &(requests[i]));
+            // alert all ranks that the key was found, including yourself
+            for (int i = 0; i < nprocs; i++) {
+                if(i != my_rank) {
+                    MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                            &(requests[i]));
                 }
+            }
 
-                MPI_Waitall(nprocs, requests, statuses);
+            for (int i = 0; i < nprocs; i++) {
+                if(i != my_rank) {
+                    MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
+                }
+            }
+        }
+
+        // this while loop avoids the busy wait caused by the mpi_recv
+        // we probe for a message, once found, move on and actually receive the message
+        if (!(*global_found)) {
+            MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+
+            if(probe_flag) {
+                MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                        MPI_STATUS_IGNORE);
             }
         }
 
@@ -329,37 +342,16 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     uint256_key_iter_destroy(iter);
     aes256_enc_key_scheduler_destroy(key_scheduler);
 
-    return found;
-}
-
-void *comm_worker(void *arg) {
-    int probe_flag = 0;
-    MPI_Status status;
-
-    struct comm_arguments *args = (struct comm_arguments*)arg;
-
-    // this while loop avoids the busy wait caused by the mpi_recv
-    // we probe for a message, once found, move on and actually receive the message
-    while (!probe_flag) {
-        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, &status);
-
-        usleep(1000);
-    }
-
-    MPI_Recv(args->global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
-
-    return 0;
+    return status;
 }
 
 /// MPI implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
-    int my_rank, nprocs, level;
+    int my_rank, nprocs;
 
-    pthread_t comm_thread;
-
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &level);
+    MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
@@ -368,8 +360,6 @@ int main(int argc, char *argv[]) {
 
     int global_found = 0;
     int subfound = 0;
-
-    struct comm_arguments comm_args = { &global_found };
 
     gmp_randstate_t randstate;
 
@@ -522,11 +512,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "\n");
     }
 
-    if (!(arguments.all) && pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
-        fprintf(stderr, "ERROR: Error while creating comm thread for rank %d\n", my_rank);
-        return ERROR_CODE_FAILURE;
-    }
-
     // Initialize time for root rank
     start_time = MPI_Wtime();
 
@@ -561,20 +546,6 @@ int main(int argc, char *argv[]) {
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
         }
-
-        // Do an Allreduce after every hamming distance when doing arguments.all in place of signalling
-        if(arguments.all) {
-            if(my_rank == 0) {
-                MPI_Allreduce(MPI_IN_PLACE, &global_found, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
-            }
-            else {
-                MPI_Allreduce(&global_found, &global_found, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
-            }
-        }
-    }
-
-    if(!(arguments.all)) {
-        pthread_join(comm_thread, NULL);
     }
 
     duration = MPI_Wtime() - start_time;
