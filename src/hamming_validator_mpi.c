@@ -240,6 +240,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     unsigned char cipher[BLOCK_SIZE];
     int status = 0;
     int probe_flag = 0;
+    int count = 0;
 
     uint256_key_iter *iter;
     aes256_enc_key_scheduler *key_scheduler;
@@ -285,6 +286,8 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter) && (all || !(*global_found))) {
+        ++count;
+
         if(validated_keys != NULL) {
             mpz_add_ui(*validated_keys, *validated_keys, 1);
         }
@@ -323,7 +326,9 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
         // this while loop avoids the busy wait caused by the mpi_recv
         // we probe for a message, once found, move on and actually receive the message
-        if (!(*global_found)) {
+        if (!(*global_found) && count >= 100) {
+            count = 0;
+
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
@@ -333,6 +338,15 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         }
 
         uint256_key_iter_next(iter);
+    }
+
+    if(status == 0 && !(*global_found) && count < 100) {
+        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+
+        if(probe_flag) {
+            MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                     MPI_STATUS_IGNORE);
+        }
     }
 
     // Cleanup
