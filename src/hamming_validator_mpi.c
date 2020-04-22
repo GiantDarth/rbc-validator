@@ -309,24 +309,26 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            // alert all ranks that the key was found, including yourself
-            for (int i = 0; i < nprocs; i++) {
-                if(i != my_rank) {
-                    MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
-                            &(requests[i]));
+            if(!all) {
+                // alert all ranks that the key was found, including yourself
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                                  &(requests[i]));
+                    }
                 }
-            }
 
-            for (int i = 0; i < nprocs; i++) {
-                if(i != my_rank) {
-                    MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
+                    }
                 }
             }
         }
 
         // this while loop avoids the busy wait caused by the mpi_recv
         // we probe for a message, once found, move on and actually receive the message
-        if (!(*global_found) && iter_count % 128 == 0) {
+        if (!all && !(*global_found) && iter_count % 128 == 0) {
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
@@ -542,7 +544,7 @@ int main(int argc, char *argv[]) {
                     arguments.verbose, my_rank, max_count, &global_found);
             if (subfound < 0) {
                 // Cleanup
-                mpz_clears(key_count, validated_keys, NULL);
+                mpz_clear(key_count);
                 aes256_enc_key_scheduler_destroy(key_scheduler);
                 free(corrupted_key);
                 free(key);
@@ -552,7 +554,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if(subfound == 0 && !global_found) {
+    if(!(arguments.all) && subfound == 0 && !global_found) {
         fprintf(stderr, "Rank %d Bleh\n", my_rank);
         MPI_Recv(&global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
