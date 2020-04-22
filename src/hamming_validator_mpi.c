@@ -234,13 +234,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
-        const unsigned char *auth_cipher, int all, mpz_t *validated_keys, int verbose, int my_rank,
+        const unsigned char *auth_cipher, int all, long long int *validated_keys, int verbose, int my_rank,
         int nprocs, int *global_found) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int status = 0;
     int probe_flag = 0;
-    long long int count = 0;
+    long long int iter_count = 0;
 
     uint256_key_iter *iter;
     aes256_enc_key_scheduler *key_scheduler;
@@ -286,10 +286,10 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter) && (all || !(*global_found))) {
-        ++count;
+        ++iter_count;
 
         if(validated_keys != NULL) {
-            mpz_add_ui(*validated_keys, *validated_keys, 1);
+            ++(*validated_keys);
         }
         uint256_key_iter_get(iter, corrupted_key);
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
@@ -326,7 +326,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
         // this while loop avoids the busy wait caused by the mpi_recv
         // we probe for a message, once found, move on and actually receive the message
-        if (!(*global_found) && count % 128 == 0) {
+        if (!(*global_found) && iter_count % 128 == 0) {
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
@@ -380,8 +380,9 @@ int main(int argc, char *argv[]) {
 
     uint256_t starting_perm, ending_perm;
     size_t max_count;
-    mpz_t key_count, validated_keys;
-    double start_time, duration;
+    mpz_t key_count;
+    double start_time, duration, key_rate;
+    long long int validated_keys = 0;
 
     // Memory allocation
     if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
@@ -405,7 +406,7 @@ int main(int argc, char *argv[]) {
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-    mpz_inits(key_count, validated_keys, NULL);
+    mpz_init(key_count);
 
     // Default to -1 for no mismatches provided, aka. go through all mismatches.
     arguments.mismatches = -1;
@@ -449,7 +450,7 @@ int main(int argc, char *argv[]) {
             aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
             if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
                 // Cleanup
-                mpz_clears(key_count, validated_keys, NULL);
+                mpz_clear(key_count);
                 aes256_enc_key_scheduler_destroy(key_scheduler);
                 free(corrupted_key);
                 free(key);
@@ -572,49 +573,18 @@ int main(int argc, char *argv[]) {
     }
 
     if(arguments.count) {
-        unsigned char validated_keys_buffer[KEY_SIZE + 1];
-
         if(my_rank == 0) {
-            mpz_t total_keys;
-            mpf_t duration_mpf, key_rate;
-
-            mpz_init(total_keys);
-            mpf_inits(duration_mpf, key_rate, NULL);
-
-            mpz_set(total_keys, validated_keys);
-
-            for(int i = 1; i < nprocs; i++) {
-//                start_time = MPI_Wtime();
-
-                memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
-                MPI_Recv(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, i, 0,
-                        MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-                mpz_import(validated_keys, KEY_SIZE + 1, -1, sizeof(*validated_keys_buffer), -1, 0,
-                        validated_keys_buffer);
-                mpz_add(total_keys, total_keys, validated_keys);
-
-//                fprintf(stderr, "INFO %f s: Received keys from rank %d\n", MPI_Wtime() - start_time, i);
-            }
-
-            mpf_set_d(duration_mpf, duration);
-            mpf_set_z(key_rate, total_keys);
+            MPI_Reduce(MPI_IN_PLACE, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
+                    MPI_COMM_WORLD);
 
             // Divide validated_keys by duration
-            mpf_div(key_rate, key_rate, duration_mpf);
+            key_rate = (double)validated_keys / duration;
 
-            gmp_fprintf(stderr, "INFO: Keys searched: %Zu\n", total_keys);
-            gmp_fprintf(stderr, "INFO: Keys per second: %.9Fg\n", key_rate);
-
-            mpf_clears(duration_mpf, key_rate, NULL);
-            mpz_clear(total_keys);
+            gmp_fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
+            gmp_fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
         }
         else {
-            memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
-            mpz_export(validated_keys_buffer, NULL, -1, sizeof(*validated_keys_buffer), -1, 0,
-                    validated_keys);
-
-            MPI_Send(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, 0, 0,
+            MPI_Reduce(&validated_keys, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
                     MPI_COMM_WORLD);
         }
     }
@@ -625,7 +595,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    mpz_clears(key_count, validated_keys, NULL);
+    mpz_clear(key_count);
     aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);
