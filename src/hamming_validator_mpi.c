@@ -240,7 +240,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     unsigned char cipher[BLOCK_SIZE];
     int status = 0;
     int probe_flag = 0;
-    int count = 0;
+    long long int count = 0;
 
     uint256_key_iter *iter;
     aes256_enc_key_scheduler *key_scheduler;
@@ -326,9 +326,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
         // this while loop avoids the busy wait caused by the mpi_recv
         // we probe for a message, once found, move on and actually receive the message
-        if (!(*global_found) && count >= 100) {
-            count = 0;
-
+        if (!(*global_found) && count % 128 == 0) {
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
@@ -338,15 +336,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         }
 
         uint256_key_iter_next(iter);
-    }
-
-    if(status == 0 && !(*global_found) && count < 100) {
-        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
-
-        if(probe_flag) {
-            MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
-                     MPI_STATUS_IGNORE);
-        }
     }
 
     // Cleanup
@@ -562,6 +551,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if(subfound == 0 && !global_found) {
+        fprintf(stderr, "Rank %d Bleh\n", my_rank);
+        MPI_Recv(&global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
     duration = MPI_Wtime() - start_time;
 
     fprintf(stderr, "INFO Rank %d: Clock time: %f s\n", my_rank, duration);
@@ -590,7 +584,7 @@ int main(int argc, char *argv[]) {
             mpz_set(total_keys, validated_keys);
 
             for(int i = 1; i < nprocs; i++) {
-                start_time = MPI_Wtime();
+//                start_time = MPI_Wtime();
 
                 memset(validated_keys_buffer, 0, sizeof(*validated_keys_buffer) * (KEY_SIZE + 1));
                 MPI_Recv(validated_keys_buffer, KEY_SIZE + 1, MPI_UNSIGNED_CHAR, i, 0,
@@ -600,7 +594,7 @@ int main(int argc, char *argv[]) {
                         validated_keys_buffer);
                 mpz_add(total_keys, total_keys, validated_keys);
 
-                fprintf(stderr, "INFO %f s: Received keys from rank %d\n", MPI_Wtime() - start_time, i);
+//                fprintf(stderr, "INFO %f s: Received keys from rank %d\n", MPI_Wtime() - start_time, i);
             }
 
             mpf_set_d(duration_mpf, duration);
