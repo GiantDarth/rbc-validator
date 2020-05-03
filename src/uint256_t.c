@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <string.h>
 #include <x86intrin.h>
-#include <stdio.h>
 #include "uint256_t.h"
 
 void uint256_set_ui(uint256_t *rop, unsigned long long value) {

@@ -9,10 +9,10 @@ matrix:
       dist: xenial
       compiler: clang
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode10.3
       compiler: clang
     - os: osx
-      osx_image: xcode10.2
+      osx_image: xcode11.3
       compiler: clang
 
 env:
@@ -33,13 +33,15 @@ addons:
       - gmp
       - ossp-uuid
       - argp-standalone
+    update: true
 
 script:
   - cmake --version
   - |
     # For Mojave (10.14)
     # Source: https://github.com/henry0312/LightGBM/blob/master/docs/Installation-Guide.rst#apple-clang
-    if [[ "$TRAVIS_OS_NAME" == "osx" ]] && [[ "$TRAVIS_OSX_IMAGE" == "xcode10.2" ]]; then cmake \
+    if [[ "$TRAVIS_OS_NAME" == "osx" && ("$TRAVIS_OSX_IMAGE" == "xcode10.3" || \
+          "$TRAVIS_OSX_IMAGE" == "xcode11.2") ]]; then cmake \
       -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
       -DOpenMP_C_LIB_NAMES="omp" \
       -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \

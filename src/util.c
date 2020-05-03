@@ -1,7 +1,6 @@
 #include "util.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /// Based on https://cs.stackexchange.com/a/67669
