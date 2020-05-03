@@ -12,7 +12,7 @@ matrix:
       osx_image: xcode10.3
       compiler: clang
     - os: osx
-      osx_image: xcode11.2
+      osx_image: xcode11.3
       compiler: clang
 
 env:
@@ -33,6 +33,7 @@ addons:
       - gmp
       - ossp-uuid
       - argp-standalone
+    update: true
 
 script:
   - cmake --version
