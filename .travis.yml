@@ -33,6 +33,7 @@ addons:
       - gmp
       - ossp-uuid
       - argp-standalone
+    update: true
 
 script:
   - cmake --version
