@@ -32,22 +32,24 @@ static char args_doc[] = "UUID KEY CIPHER\n-r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
                           " progressively corrupt it by a certain number of bits until"
                           " a matching corrupted key is found. The matching key will be"
-                          " sent to stdout.\n\nThis implementation uses OpenMP.\v"
+                          " sent to stdout."
 
-                          "If the key is found then the program will have an exit code"
+                          "\n\nThis implementation uses OpenMP."
+
+                          "\vIf the key is found then the program will have an exit code"
                           " 0. If not found, e.g. when providing --mismatches and"
                           " especially --exact, then the program will have an exit code"
                           " 1. For any general error, such as parsing, out-of-memory,"
-                          " etc., the program will have an exit code 2.\n\n"
+                          " etc., the program will have an exit code 2."
 
-                          "The UUID, passed in canonical form, is the message that both"
-                          " sources encrypt and is previously agreed upon.\n\n"
+                          "\n\nThe UUID, passed in canonical form, is the message that both"
+                          " sources encrypt and is previously agreed upon."
 
-                          "The original KEY, passed in as hexadecimal, is corrupted by"
+                          "\n\nThe original KEY, passed in as hexadecimal, is corrupted by"
                           " a certain number of bits and compared against CIPHER. Only"
-                          " AES-256 keys are currently supported.\n\n"
+                          " AES-256 keys are currently supported."
 
-                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
+                          "\n\nThe CIPHER, passed in as hexadecimal, is assumed to have been"
                           " generated in ECB mode, meaning given a 128-bit UUID, this"
                           " should be 128-bits long as well.";
 
