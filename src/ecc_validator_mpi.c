@@ -8,51 +8,50 @@
 #include <time.h>
 #include <mpi.h>
 
-#include <uuid/uuid.h>
 #include <gmp.h>
 #include <argp.h>
 
 #include "iter/uint256_key_iter.h"
-#include "aes256-ni.h"
 #include "util.h"
+#include "../lib/micro-ecc/uECC.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
 #define ERROR_CODE_FAILURE 2
 
-#define KEY_SIZE 32
-#define BLOCK_SIZE 16
+#define PRIV_KEY_SIZE 32
+#define PUB_KEY_SIZE 64
 
-const char *argp_program_version = "aes_validator MPI 0.1.0";
-const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
+const char *argp_program_version = "ecc_validator MPI 0.1.0";
+const char *argp_program_bug_address = "<Duane.Booher@nau.edu, cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "UUID KEY CIPHER\n-r/--random -m/--000=value";
-static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
-                          " progressively corrupt it by a certain number of bits until"
-                          " a matching corrupted key is found. The matching key will be"
-                          " sent to stdout.\n\nThis implementation uses MPI.\v"
+static char args_doc[] = "HOST_PRIV_KEY CLIENT_PUB_KEY\n-r/--random -m/--mismatches=value";
+static char prog_desc[] = "Given an ECC secp256r1 and a HOST_PRIV_KEY (host private key)"
+                          " and a CLIENT_PUB_KEY (client public key) from an unreliable"
+                          " source, progressively corrupt the host private key by a"
+                          " certain number of bits until a matching corrupted key is"
+                          " found. The matching key will be sent to stdout."
 
-                          "If the key is found then the program will have an exit code"
+                          "\n\nThis implementation uses MPI."
+
+                          "\vIf the key is found then the program will have an exit code"
                           " 0. If not found, e.g. when providing --mismatches and"
                           " especially --exact, then the program will have an exit code"
                           " 1. For any general error, such as parsing, out-of-memory,"
-                          " etc., the program will have an exit code 2.\n\n"
+                          " etc., the program will have an exit code 2."
 
-                          "The UUID, passed in canonical form, is the message that both"
-                          " sources encrypt and is previously agreed upon.\n\n"
+                          "\n\nThe original HOST_PRIV_KEY (host private key), passed in as"
+                          " hexadecimal, is corrupted by a certain number of bits. The"
+                          " resulting new private key's public key is compared against"
+                          " the CLIENT_PUB_KEY (client public key) which is also passed"
+                          " in hexadecimal in uncompressed form."
 
-                          "The original KEY, passed in as hexadecimal, is corrupted by"
-                          " a certain number of bits and compared against CIPHER. Only"
-                          " AES-256 keys are currently supported.\n\n"
-
-                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
-                          " generated in ECB mode, meaning given a 128-bit UUID, this"
-                          " should be 128-bits long as well.";
+                          "\n\nOnly ECC secp256r1 keys are currently supported.";
 
 struct arguments {
     int verbose, benchmark, random, fixed, count, all;
-    char *cipher_hex, *key_hex, *uuid_hex;
+    char *host_priv_key_hex, *client_pub_key_hex;
     int mismatches, subkey_length;
 };
 
@@ -122,7 +121,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 argp_error(state, "--mismatches contains invalid characters.\n");
             }
 
-            if (value > KEY_SIZE * 8) {
+            if (value > PRIV_KEY_SIZE * 8) {
                 fprintf(stderr, "--mismatches cannot exceed the key size for AES-256"
                                 " in bits.\n");
             }
@@ -143,7 +142,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 argp_error(state, "--subkey contains invalid characters.\n");
             }
 
-            if (value > KEY_SIZE * 8) {
+            if (value > PRIV_KEY_SIZE * 8) {
                 argp_error(state, "--subkey cannot exceed the key size for AES-256 in bits.\n");
             }
             else if (value < 1) {
@@ -156,23 +155,18 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case ARGP_KEY_ARG:
             switch(state->arg_num) {
                 case 0:
-                    if(strlen(arg) != 36) {
-                        argp_error(state, "UUID not 36 characters long.\n");
+                    if(strlen(arg) != PRIV_KEY_SIZE * 2) {
+                        argp_error(state, "The HOST_PRIV_KEY (host private key) must be 32 bytes"
+                                          " long for secp256r1.\n");
                     }
-                    arguments->uuid_hex = arg;
+                    arguments->host_priv_key_hex = arg;
                     break;
                 case 1:
-                    if(strlen(arg) != KEY_SIZE * 2) {
-                        argp_error(state, "Only AES-256 keys supported. KEY not"
-                                          " equivalent to 256-bits long.\n");
+                    if(strlen(arg) != PUB_KEY_SIZE * 2) {
+                        argp_error(state, "The CLIENT_PUB_KEY (client public key) must be 64 bytes"
+                                          " long for secp256r1.\n");
                     }
-                    arguments->key_hex = arg;
-                    break;
-                case 2:
-                    if(strlen(arg) != BLOCK_SIZE * 2) {
-                        argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
-                    }
-                    arguments->cipher_hex = arg;
+                    arguments->client_pub_key_hex = arg;
                     break;
                 default:
                     argp_usage(state);
@@ -218,7 +212,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.
-/// \param corrupted_key An allocated corrupted key to fill if the corrupted key was found. Must be at
+/// \param corrupt_priv_key An allocated corrupted key to fill if the corrupted key was found. Must be at
 /// least key_size bytes big.
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
@@ -230,34 +224,25 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// skipped.
 /// \param verbose If set to non-zero, print verbose information to stderr.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
-int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
-        const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
-        const unsigned char *auth_cipher, int all, long long int *validated_keys, int verbose, int my_rank,
-        int nprocs, int *global_found) {
+int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_perm,
+        const uint256_t *last_perm, const unsigned char *host_priv_key,
+        const unsigned char *client_pub_key, int all, long long int *validated_keys, int verbose,
+        int my_rank, int nprocs, int *global_found) {
     // Declaration
-    unsigned char cipher[BLOCK_SIZE];
     int status = 0;
     int probe_flag = 0;
     long long int iter_count = 0;
 
+    const struct uECC_Curve_t *curve = uECC_secp256r1();
+    unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from corrupt_priv_key
     uint256_key_iter *iter;
-    aes256_enc_key_scheduler *key_scheduler;
 
     MPI_Request *requests;
     MPI_Status *statuses;
 
-    // Memory allocation
-    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
-        perror("Error");
-
-        return -1;
-    }
-
     // Allocation and initialization
-    if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
+    if((iter = uint256_key_iter_create(host_priv_key, starting_perm, last_perm)) == NULL) {
         perror("Error");
-
-        aes256_enc_key_scheduler_destroy(key_scheduler);
 
         return -1;
     }
@@ -266,7 +251,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         perror("Error");
 
         uint256_key_iter_destroy(iter);
-        aes256_enc_key_scheduler_destroy(key_scheduler);
 
         return -1;
     }
@@ -277,7 +261,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         free(requests);
 
         uint256_key_iter_destroy(iter);
-        aes256_enc_key_scheduler_destroy(key_scheduler);
 
         return -1;
     }
@@ -289,17 +272,13 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         if(validated_keys != NULL) {
             ++(*validated_keys);
         }
-        uint256_key_iter_get(iter, corrupted_key);
-        aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
+        // get next current_priv_key
+        uint256_key_iter_get(iter, corrupt_priv_key);
 
-        // If encryption fails for some reason, break prematurely.
-        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-            status = -1;
-            break;
-        }
-
-        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-        if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
+        // If the public key exists and if the new cipher is the same as the passed in
+        // auth_cipher, set found to true and break
+        if (uECC_compute_public_key(corrupt_priv_key, current_pub_key, curve) &&
+                memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
             *global_found = 1;
             status = 1;
 
@@ -329,7 +308,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
             if(probe_flag) {
                 MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
-                        MPI_STATUS_IGNORE);
+                         MPI_STATUS_IGNORE);
             }
         }
 
@@ -341,7 +320,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     free(requests);
 
     uint256_key_iter_destroy(iter);
-    aes256_enc_key_scheduler_destroy(key_scheduler);
 
     return status;
 }
@@ -364,17 +342,13 @@ int main(int argc, char *argv[]) {
 
     gmp_randstate_t randstate;
 
-    uuid_t userId;
-    char uuid_str[37];
-
-    unsigned char *key;
-    unsigned char *corrupted_key;
-    unsigned char auth_cipher[BLOCK_SIZE];
-
-    aes256_enc_key_scheduler *key_scheduler;
+    const struct uECC_Curve_t *curve = uECC_secp256r1();
+    unsigned char *host_priv_key;
+    unsigned char *client_pub_key;
+    unsigned char *corrupt_priv_key;
 
     int mismatch = 0;
-    int ending_mismatch = KEY_SIZE * 8;
+    int ending_mismatch = PRIV_KEY_SIZE * 8;
 
     uint256_t starting_perm, ending_perm;
     size_t max_count;
@@ -383,32 +357,36 @@ int main(int argc, char *argv[]) {
     long long int validated_keys = 0;
 
     // Memory allocation
-    if((key = malloc(sizeof(*key) * KEY_SIZE)) == NULL) {
+    if((host_priv_key = malloc(sizeof(*host_priv_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
 
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-    if((corrupted_key = malloc(sizeof(*corrupted_key) * KEY_SIZE)) == NULL) {
+    if((client_pub_key = malloc(sizeof(*client_pub_key) * PUB_KEY_SIZE)) == NULL) {
         perror("ERROR");
-        free(key);
+        free(host_priv_key);
 
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
+    if((corrupt_priv_key = malloc(sizeof(*corrupt_priv_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
-        free(corrupted_key);
-        free(key);
+        free(host_priv_key);
+        free(client_pub_key);
 
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
     mpz_init(key_count);
 
+    memset(&arguments, 0, sizeof(arguments));
+
+    arguments.host_priv_key_hex = NULL;
+    arguments.client_pub_key_hex = NULL;
     // Default to -1 for no mismatches provided, aka. go through all mismatches.
     arguments.mismatches = -1;
-    arguments.subkey_length = KEY_SIZE * 8;
+    arguments.subkey_length = PRIV_KEY_SIZE * 8;
 
     // Parse arguments
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
@@ -419,12 +397,12 @@ int main(int argc, char *argv[]) {
         ending_mismatch = arguments.mismatches;
     }
     // If --mismatches is set and non-negative, set the ending_mismatch to its value.
-    else if (arguments.mismatches >= 0) {
+    else if(arguments.mismatches >= 0) {
         ending_mismatch = arguments.mismatches;
     }
 
-    if (arguments.random || arguments.benchmark) {
-        if (my_rank == 0) {
+    if(arguments.random || arguments.benchmark) {
+        if(my_rank == 0) {
             // Initialize values
             // Set the gmp prng algorithm and set a seed based on the current time
             gmp_randinit_default(randstate);
@@ -439,78 +417,63 @@ int main(int argc, char *argv[]) {
                                 " and randomly generated ones will be used in their place.\n");
             }
 
-            uuid_generate(userId);
-
-            get_random_key(key, KEY_SIZE, randstate);
-            get_random_corrupted_key(corrupted_key, key, arguments.mismatches, KEY_SIZE,
+            get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
+            get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
                                      arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
-            aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
-            if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
-                // Cleanup
-                mpz_clear(key_count);
-                aes256_enc_key_scheduler_destroy(key_scheduler);
-                free(corrupted_key);
-                free(key);
+            if (!uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
+                printf("ERROR host uECC_compute_public_key - abort run");
+                free(host_priv_key);
+                free(client_pub_key);
+                free(corrupt_priv_key);
 
                 return ERROR_CODE_FAILURE;
             }
         }
 
         // Broadcast all of the relevant variable to every rank
-        MPI_Bcast(auth_cipher, BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        MPI_Bcast(key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        MPI_Bcast(corrupted_key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(host_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(corrupt_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(client_pub_key, PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     }
     else {
-        switch (parse_hex(auth_cipher, arguments.cipher_hex)) {
+        switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
             case 1:
-                fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
+                fprintf(stderr, "ERROR: HOST_PRIV_KEY had non-hexadecimal characters.\n");
                 return ERROR_CODE_FAILURE;
             case 2:
-                fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+                fprintf(stderr, "ERROR: HOST_PRIV_KEY did not have even length.\n");
                 return ERROR_CODE_FAILURE;
             default:
                 break;
         }
 
-        switch (parse_hex(key, arguments.key_hex)) {
+        switch(parse_hex(client_pub_key, arguments.client_pub_key_hex)) {
             case 1:
-                fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
+                fprintf(stderr, "ERROR: CLIENT_PUB_KEY had non-hexadecimal characters.\n");
                 return ERROR_CODE_FAILURE;
             case 2:
-                fprintf(stderr, "ERROR: KEY did not have even length.\n");
+                fprintf(stderr, "ERROR: CLIENT_PUB_KEY did not have even length.\n");
                 return ERROR_CODE_FAILURE;
             default:
                 break;
-        }
-
-        if (uuid_parse(arguments.uuid_hex, userId) < 0) {
-            fprintf(stderr, "ERROR: UUID not in canonical form.\n");
-            return ERROR_CODE_FAILURE;
         }
     }
 
     if (my_rank == 0 && arguments.verbose) {
-        // Convert the uuid to a string for printing
-        uuid_unparse(userId, uuid_str);
-
-        fprintf(stderr, "INFO: Using UUID:                                 %s\n", uuid_str);
-
-        fprintf(stderr, "INFO: Using AES-256 Key:                          ");
-        fprint_hex(stderr, key, KEY_SIZE);
+        fprintf(stderr, "INFO: Using secp256r1 Host Private Key            : ");
+        fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
         fprintf(stderr, "\n");
 
         if(arguments.random) {
-            fprintf(stderr, "INFO: Using AES-256 Corrupted Key (%d mismatches): ",
+            fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ",
                     arguments.mismatches);
-            fprint_hex(stderr, corrupted_key, KEY_SIZE);
+            fprint_hex(stderr, corrupt_priv_key, PRIV_KEY_SIZE);
             fprintf(stderr, "\n");
         }
 
-        fprintf(stderr, "INFO: AES-256 Authentication Cipher:              ");
-        fprint_hex(stderr, auth_cipher, BLOCK_SIZE);
+        fprintf(stderr, "INFO: Using secp256r1 Client Public Key:\n ");
+        fprint_hex(stderr, client_pub_key, PUB_KEY_SIZE);
         fprintf(stderr, "\n");
     }
 
@@ -534,16 +497,16 @@ int main(int argc, char *argv[]) {
             }
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count, mismatch,
-                    KEY_SIZE, arguments.subkey_length);
-            subfound = gmp_validator(corrupted_key, &starting_perm, &ending_perm, key, userId,
-                    auth_cipher, arguments.all, arguments.count ? &validated_keys : NULL,
+                    PRIV_KEY_SIZE, arguments.subkey_length);
+            subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
+                    client_pub_key, arguments.all, arguments.count ? &validated_keys : NULL,
                     arguments.verbose, my_rank, max_count, &global_found);
             if (subfound < 0) {
                 // Cleanup
                 mpz_clear(key_count);
-                aes256_enc_key_scheduler_destroy(key_scheduler);
-                free(corrupted_key);
-                free(key);
+                free(corrupt_priv_key);
+                free(client_pub_key);
+                free(host_priv_key);
 
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
@@ -573,7 +536,7 @@ int main(int argc, char *argv[]) {
     if(arguments.count) {
         if(my_rank == 0) {
             MPI_Reduce(MPI_IN_PLACE, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
-                    MPI_COMM_WORLD);
+                       MPI_COMM_WORLD);
 
             // Divide validated_keys by duration
             key_rate = (double)validated_keys / duration;
@@ -583,20 +546,21 @@ int main(int argc, char *argv[]) {
         }
         else {
             MPI_Reduce(&validated_keys, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
-                    MPI_COMM_WORLD);
+                       MPI_COMM_WORLD);
         }
     }
 
     if(subfound) {
-        fprint_hex(stdout, corrupted_key, KEY_SIZE);
+        fprint_hex(stdout, corrupt_priv_key, PRIV_KEY_SIZE);
         printf("\n");
     }
 
     // Cleanup
     mpz_clear(key_count);
-    aes256_enc_key_scheduler_destroy(key_scheduler);
-    free(corrupted_key);
-    free(key);
+    //aes256_enc_key_scheduler_destroy(key_scheduler);
+    free(corrupt_priv_key);
+    free(client_pub_key);
+    free(host_priv_key);
 
     MPI_Finalize();
 
