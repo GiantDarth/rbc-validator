@@ -257,7 +257,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *key, uuid_t userId,
-        const unsigned char *auth_cipher, const int* signal, int all, mpz_t *validated_keys) {
+        const unsigned char *auth_cipher, const int* signal, int all, long long int *validated_keys) {
     // Declaration
     unsigned char cipher[BLOCK_SIZE];
     int found = 0;
@@ -285,7 +285,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         // While we haven't reached the end of iteration
         while(!uint256_key_iter_end(iter)) {
             if(validated_keys != NULL) {
-                mpz_add_ui(*validated_keys, *validated_keys, 1);
+                ++(*validated_keys);
             }
             uint256_key_iter_get(iter, current_key);
             aes256_enc_key_scheduler_update(key_scheduler, current_key);
@@ -313,7 +313,7 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         // While we haven't reached the end of iteration
         while(!uint256_key_iter_end(iter) && !(*signal)) {
             if(validated_keys != NULL) {
-                mpz_add_ui(*validated_keys, *validated_keys, 1);
+                ++(*validated_keys);
             }
             uint256_key_iter_get(iter, current_key);
             aes256_enc_key_scheduler_update(key_scheduler, current_key);
@@ -367,8 +367,8 @@ int main(int argc, char *argv[]) {
 
     int mismatch, ending_mismatch;
 
-    double start_time, duration;
-    mpz_t validated_keys;
+    double start_time, duration, key_rate;
+    long long int validated_keys = 0;
     int found, subfound, signal, error;
 
     // Memory allocation
@@ -390,8 +390,6 @@ int main(int argc, char *argv[]) {
 
         return ERROR_CODE_FAILURE;
     }
-
-    mpz_init(validated_keys);
 
     memset(&arguments, 0, sizeof(arguments));
     arguments.cipher_hex = NULL;
@@ -451,7 +449,6 @@ int main(int argc, char *argv[]) {
         aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
         if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
             // Cleanup
-            mpz_clear(validated_keys);
             aes256_enc_key_scheduler_destroy(key_scheduler);
             free(corrupted_key);
             free(key);
@@ -522,9 +519,7 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel default(shared)
         {
             uint256_t starting_perm, ending_perm;
-            mpz_t sub_validated_keys;
-
-            mpz_init(sub_validated_keys);
+            long long int sub_validated_keys = 0;
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
                                   (size_t) omp_get_num_threads(), mismatch, KEY_SIZE,
@@ -554,18 +549,15 @@ int main(int argc, char *argv[]) {
 #pragma omp critical
             {
                 if(arguments.count) {
-                    mpz_add(validated_keys, validated_keys, sub_validated_keys);
+                    validated_keys += sub_validated_keys;
                 }
             }
-
-            mpz_clear(sub_validated_keys);
         }
     }
 
     // Check if an error occurred in one of the threads.
     if(error) {
         // Cleanup
-        mpz_clear(validated_keys);
         aes256_enc_key_scheduler_destroy(key_scheduler);
         free(corrupted_key);
         free(key);
@@ -581,19 +573,11 @@ int main(int argc, char *argv[]) {
     }
 
     if(arguments.count) {
-        mpf_t duration_mpf, key_rate;
-        mpf_inits(duration_mpf, key_rate, NULL);
-
-        mpf_set_d(duration_mpf, duration);
-        mpf_set_z(key_rate, validated_keys);
-
         // Divide validated_keys by duration
-        mpf_div(key_rate, key_rate, duration_mpf);
+        key_rate = (double)validated_keys / duration;
 
-        gmp_fprintf(stderr, "INFO: Keys searched: %Zd\n", validated_keys);
-        gmp_fprintf(stderr, "INFO: Keys per second: %.9Fg\n", key_rate);
-
-        mpf_clears(duration_mpf, key_rate, NULL);
+        fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
+        fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
     }
 
     if(found) {
@@ -602,7 +586,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    mpz_clear(validated_keys);
     aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);

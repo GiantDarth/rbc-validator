@@ -261,7 +261,7 @@ void xor1(unsigned char* in1, unsigned char* in2, int len) {
 int gmp_validator(unsigned char *corrupt_priv_key, 
         const uint256_t *starting_perm, const uint256_t *last_perm, 
         const unsigned char *host_priv_key, const unsigned char *client_pub_key,
-        const int* signal, int all, mpz_t *validated_keys) {
+        const int* signal, int all, long long int *validated_keys) {
     // Declarations
     int found = 0;
     const struct uECC_Curve_t * curve = uECC_secp256r1();
@@ -280,7 +280,7 @@ int gmp_validator(unsigned char *corrupt_priv_key,
         // While we haven't reached the end of iteration
         while(!uint256_key_iter_end(iter)) {
             if(validated_keys != NULL) {
-                mpz_add_ui(*validated_keys, *validated_keys, 1);
+                ++(*validated_keys);
             }
             // get next current_priv_key
             uint256_key_iter_get(iter, current_priv_key);
@@ -309,7 +309,7 @@ int gmp_validator(unsigned char *corrupt_priv_key,
         // While we haven't reached the end of iteration
         while(!uint256_key_iter_end(iter) && !(*signal)) {
             if(validated_keys != NULL) {
-                mpz_add_ui(*validated_keys, *validated_keys, 1);
+                ++(*validated_keys);
             }
             // get next current_priv_key
             uint256_key_iter_get(iter, current_priv_key);
@@ -361,8 +361,8 @@ int main(int argc, char *argv[]) {
 
     int mismatch, ending_mismatch;
 
-    double start_time, duration;
-    mpz_t validated_keys;
+    double start_time, duration, key_rate;
+    long long int validated_keys = 0;
     int found, subfound, signal, error;
 
     // Memory allocation
@@ -383,8 +383,6 @@ int main(int argc, char *argv[]) {
         free(host_priv_key);
         return ERROR_CODE_FAILURE;
     }
-
-    mpz_init(validated_keys);
 
     memset(&arguments, 0, sizeof(arguments));
     arguments.host_priv_key_hex = NULL;
@@ -506,9 +504,7 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel default(shared)
         {
             uint256_t starting_perm, ending_perm;
-            mpz_t sub_validated_keys;
-
-            mpz_init(sub_validated_keys);
+            long long int sub_validated_keys = 0;
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
                                   (size_t) omp_get_num_threads(), mismatch, PRIV_KEY_SIZE,
@@ -538,18 +534,15 @@ int main(int argc, char *argv[]) {
 #pragma omp critical
             {
                 if(arguments.count) {
-                    mpz_add(validated_keys, validated_keys, sub_validated_keys);
+                    validated_keys += sub_validated_keys;
                 }
             }
-
-            mpz_clear(sub_validated_keys);
         } // omp parallel
     } // for mismatch
 
     // Check if an error occurred in one of the threads.
     if(error) {
         // Cleanup
-        mpz_clear(validated_keys);
         free(corrupt_priv_key);
         free(client_pub_key);
         free(host_priv_key);
@@ -564,19 +557,11 @@ int main(int argc, char *argv[]) {
     }
 
     if(arguments.count) {
-        mpf_t duration_mpf, key_rate;
-        mpf_inits(duration_mpf, key_rate, NULL);
-
-        mpf_set_d(duration_mpf, duration);
-        mpf_set_z(key_rate, validated_keys);
-
         // Divide validated_keys by duration
-        mpf_div(key_rate, key_rate, duration_mpf);
+        key_rate = (double)validated_keys / duration;
 
-        gmp_fprintf(stderr, "INFO: Keys searched: %Zd\n", validated_keys);
-        gmp_fprintf(stderr, "INFO: Keys per second: %.9Fg\n", key_rate);
-
-        mpf_clears(duration_mpf, key_rate, NULL);
+        fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
+        fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
     }
 
     if(found) {
@@ -586,7 +571,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    mpz_clear(validated_keys);
     free(corrupt_priv_key);
     free(client_pub_key);
     free(host_priv_key);
