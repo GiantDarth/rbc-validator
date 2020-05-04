@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include "util.h"
-#include "../../micro-ecc/uECC.h"
+#include "../lib/micro-ecc/uECC.h"
 
 #define	EXIT_FAILURE	1	/* Failing exit status.  */
 #define	EXIT_SUCCESS	0	/* Successful exit status.  */

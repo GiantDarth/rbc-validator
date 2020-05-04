@@ -12,37 +12,31 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 
 set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
-        src/util.c src/util.h src/aes256-ni.c src/aes256-ni.h)
+        src/util.c src/util.h)
+set(uECC_FILES lib/micro-ecc/uECC.c lib/micro-ecc/uECC.h)
+set(AES_FILES src/aes256-ni.c src/aes256-ni.h)
 
 # note micro-ecc from https://github.com/kmackay/micro-ecc.git 
-add_executable(ecc_validator src/ecc_validator.c ../micro-ecc/uECC.c ../micro-ecc/uECC.h
-        src/iter/uint256_key_iter.h src/iter/uint256_key_iter.c
-        src/uint256_t.h src/uint256_t.c
-        src/util.h src/util.c
+add_executable(ecc_validator src/ecc_validator.c
+        ${SOURCE_FILES} ${uECC_FILES}
         )
-add_executable(ecc_validator_mpi src/ecc_validator_mpi.c ../micro-ecc/uECC.c ../micro-ecc/uECC.h
-        src/iter/uint256_key_iter.h src/iter/uint256_key_iter.c
-        src/uint256_t.h src/uint256_t.c
-        src/util.h src/util.c
+add_executable(ecc_validator_mpi src/ecc_validator_mpi.c
+        ${SOURCE_FILES} ${uECC_FILES}
         )
 
-add_executable(aes_validator src/aes_validator.c ${SOURCE_FILES})
-add_executable(aes_validator_mpi src/aes_validator_mpi.c ${SOURCE_FILES})
+add_executable(aes_validator src/aes_validator.c ${SOURCE_FILES} ${AES_FILES})
+add_executable(aes_validator_mpi src/aes_validator_mpi.c ${SOURCE_FILES} ${AES_FILES})
 
-add_executable(aes256_test src/aes256_test.c src/aes256-ni.c src/aes256-ni.h)
+add_executable(aes256_test src/aes256_test.c ${AES_FILES})
 # note micro-ecc from https://github.com/kmackay/micro-ecc.git 
-add_executable(ecc256_test src/ecc256_test.c ../micro-ecc/uECC.c ../micro-ecc/uECC.h
-        src/iter/uint256_key_iter.h src/iter/uint256_key_iter.c
-        src/uint256_t.h src/uint256_t.c
-        src/util.h src/util.c
-        )
+add_executable(ecc256_test src/ecc256_test.c ${SOURCE_FILES} ${uECC_FILES})
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
-list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packages/openssl/1.1.1)
+list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 # Append expected search paths for Mac OS X via Homebrew
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
-        /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
+        /usr/local/opt/gmp)
 
 set(CMAKE_THREAD_PREFER_PTHREAD ON)
 
@@ -52,7 +46,6 @@ find_package(Threads REQUIRED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(UUID MODULE REQUIRED)
 find_package(Argp MODULE REQUIRED)
-find_package(OpenSSL 1.1 REQUIRED)
 
 include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})

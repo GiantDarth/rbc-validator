@@ -6,18 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-//#include <math.h>
 #include <mpi.h>
 
 #include <gmp.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <argp.h>
-#include <pthread.h>
 
 #include "iter/uint256_key_iter.h"
 #include "util.h"
-#include "../../micro-ecc/uECC.h"
+#include "../lib/micro-ecc/uECC.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -25,12 +21,6 @@
 
 #define PRIV_KEY_SIZE 32
 #define PUB_KEY_SIZE 64
-
-int flags[2] = {0, -1};
-
-struct comm_arguments {
-    MPI_Request request;
-};
 
 const char *argp_program_version = "hamming_validator MPI 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
@@ -236,13 +226,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_perm,
         const uint256_t *last_perm, const unsigned char *host_priv_key,
-        const unsigned char *client_pub_key, int all, mpz_t *validated_keys, int verbose, int my_rank,
-        int nprocs, MPI_Request request) {
+        const unsigned char *client_pub_key, int all, long long int *validated_keys, int verbose,
+        int my_rank, int nprocs, int *global_found) {
     // Declaration
-    int found = 0;
-    const struct uECC_Curve_t * curve = uECC_secp256r1();
+    int status = 0;
+    int probe_flag = 0;
+    long long int iter_count = 0;
+
+    const struct uECC_Curve_t *curve = uECC_secp256r1();
     unsigned char current_pub_key[PUB_KEY_SIZE];   // this is generated from corrupt_priv_key
     uint256_key_iter *iter;
+
+    MPI_Request *requests;
+    MPI_Status *statuses;
 
     // Allocation and initialization
     if((iter = uint256_key_iter_create(host_priv_key, starting_perm, last_perm)) == NULL) {
@@ -251,10 +247,30 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
         return -1;
     }
 
+    if((requests = malloc(sizeof(MPI_Request) * nprocs)) == NULL) {
+        perror("Error");
+
+        uint256_key_iter_destroy(iter);
+
+        return -1;
+    }
+
+    if((statuses = malloc(sizeof(MPI_Status) * nprocs)) == NULL) {
+        perror("Error");
+
+        free(requests);
+
+        uint256_key_iter_destroy(iter);
+
+        return -1;
+    }
+
     // While we haven't reached the end of iteration
-    while(!uint256_key_iter_end(iter)) {
+    while(!uint256_key_iter_end(iter) && (all || !(*global_found))) {
+        ++iter_count;
+
         if(validated_keys != NULL) {
-            mpz_add_ui(*validated_keys, *validated_keys, 1);
+            ++(*validated_keys);
         }
         // get next current_priv_key
         uint256_key_iter_get(iter, corrupt_priv_key);
@@ -263,70 +279,66 @@ int gmp_validator(unsigned char *corrupt_priv_key, const uint256_t *starting_per
         // auth_cipher, set found to true and break
         if (uECC_compute_public_key(corrupt_priv_key, current_pub_key, curve) &&
                 memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-            flags[0] = 1;
-            flags[1] = my_rank;
-            found = 1;
+            *global_found = 1;
+            status = 1;
 
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            // alert all ranks that the key was found, including yourself
-            for (int i = 0; i < nprocs; i++) {
-                MPI_Isend(&flags, 2, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
-                MPI_Wait(&request, MPI_STATUS_IGNORE);
+            if(!all) {
+                // alert all ranks that the key was found, including yourself
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                                  &(requests[i]));
+                    }
+                }
+
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
+                    }
+                }
             }
         }
 
-        if(!all && flags[0]) {
-            printf("rank: %d is breaking early\n", my_rank);
-            break;
+        if (!all && !(*global_found) && iter_count % 128 == 0) {
+            MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+
+            if(probe_flag) {
+                MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                         MPI_STATUS_IGNORE);
+            }
         }
 
         uint256_key_iter_next(iter);
     }
 
     // Cleanup
+    free(statuses);
+    free(requests);
+
     uint256_key_iter_destroy(iter);
 
-    return found;
-}
-
-void *comm_worker(void *arg) {
-    int probe_flag = 0;
-
-    struct comm_arguments *args = (struct comm_arguments*)arg;
-
-    // this while loop avoids the busy wait caused by the mpi_recv
-    // we probe for a message, once found, move on and actually receive the message
-    while (!probe_flag) {
-        MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
-
-        usleep(1000);
-    }
-
-    MPI_Recv(&flags, 2, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    MPI_Wait(&(args->request), MPI_STATUS_IGNORE);
-
-    return 0;
+    return status;
 }
 
 /// MPI implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
-    int my_rank, nprocs, level;
+    int my_rank, nprocs;
 
-    pthread_t comm_thread;
-
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &level);
+    MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    struct arguments arguments;
+    struct arguments arguments = { 0 };
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
 
-    struct comm_arguments comm_args;
+    int global_found = 0;
+    int subfound = 0;
 
     gmp_randstate_t randstate;
 
@@ -335,75 +347,79 @@ int main(int argc, char *argv[]) {
     unsigned char *client_pub_key;
     unsigned char *corrupt_priv_key;
 
-    int mismatch, ending_mismatch;
+    int mismatch = 0;
+    int ending_mismatch = PRIV_KEY_SIZE * 8;
 
-    int subfound = 0;
     uint256_t starting_perm, ending_perm;
     size_t max_count;
-    mpz_t key_count, validated_keys;
-    double start_time, duration;
+    mpz_t key_count;
+    double start_time, duration, key_rate;
+    long long int validated_keys = 0;
 
     // Memory allocation
     if((host_priv_key = malloc(sizeof(*host_priv_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
+
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
+
     if((client_pub_key = malloc(sizeof(*client_pub_key) * PUB_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(host_priv_key);
+
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
+
     if((corrupt_priv_key = malloc(sizeof(*corrupt_priv_key) * PRIV_KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(host_priv_key);
         free(client_pub_key);
+
         MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
     }
 
-    mpz_inits(key_count, validated_keys, NULL);
+    mpz_init(key_count);
 
-    if(my_rank == 0) {
-        memset(&arguments, 0, sizeof(arguments));
-        arguments.host_priv_key_hex = NULL;
-        arguments.client_pub_key_hex = NULL;
-        // Default to -1 for no mismatches provided, aka. go through all mismatches.
-        arguments.mismatches = -1;
-        arguments.subkey_length = PRIV_KEY_SIZE * 8;
+    memset(&arguments, 0, sizeof(arguments));
 
-        // Parse arguments
-        argp_parse(&argp, argc, argv, 0, 0, &arguments);
+    arguments.host_priv_key_hex = NULL;
+    arguments.client_pub_key_hex = NULL;
+    // Default to -1 for no mismatches provided, aka. go through all mismatches.
+    arguments.mismatches = -1;
+    arguments.subkey_length = PRIV_KEY_SIZE * 8;
 
-        // Initialize values
-        // Set the gmp prng algorithm and set a seed based on the current time
-        gmp_randinit_default(randstate);
-        gmp_randseed_ui(randstate, (unsigned long)time(NULL));
+    // Parse arguments
+    argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-        mismatch = 0;
-        ending_mismatch = PUB_KEY_SIZE * 8;
+    // If --fixed option was set, set the validation range to only use the --mismatches value.
+    if (arguments.fixed) {
+        mismatch = arguments.mismatches;
+        ending_mismatch = arguments.mismatches;
+    }
+    // If --mismatches is set and non-negative, set the ending_mismatch to its value.
+    else if(arguments.mismatches >= 0) {
+        ending_mismatch = arguments.mismatches;
+    }
 
-        // If --fixed option was set, set the validation range to only use the --mismatches value.
-        if (arguments.fixed) {
-            mismatch = arguments.mismatches;
-            ending_mismatch = arguments.mismatches;
-        }
-        // If --mismatches is set and non-negative, set the ending_mismatch to its value.
-        else if(arguments.mismatches >= 0) {
-            ending_mismatch = arguments.mismatches;
-        }
+    if(arguments.random || arguments.benchmark) {
+        if(my_rank == 0) {
+            // Initialize values
+            // Set the gmp prng algorithm and set a seed based on the current time
+            gmp_randinit_default(randstate);
+            gmp_randseed_ui(randstate, (unsigned long) time(NULL));
 
-        if(arguments.random || arguments.benchmark) {
-            if(arguments.random) {
-                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored and"
-                                " randomly generated ones will be used in their place.\n");
+            if (arguments.random) {
+                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored"
+                                " and randomly generated ones will be used in their place.\n");
             }
-            else if(arguments.benchmark) {
-                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored and"
-                                " randomly generated ones will be used in their place.\n");
+            else if (arguments.benchmark) {
+                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored"
+                                " and randomly generated ones will be used in their place.\n");
             }
 
             get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
             get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
-                    arguments.subkey_length, randstate, arguments.benchmark, nprocs);
+                                     arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
             if (!uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
                 printf("ERROR host uECC_compute_public_key - abort run");
@@ -414,74 +430,58 @@ int main(int argc, char *argv[]) {
                 return ERROR_CODE_FAILURE;
             }
         }
-        else {
-            switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: HOST_PRIV_KEY had non-hexadecimal characters.\n");
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: HOST_PRIV_KEY did not have even length.\n");
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
-            }
 
-            switch(parse_hex(client_pub_key, arguments.client_pub_key_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: CLIENT_PUB_KEY had non-hexadecimal characters.\n");
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: CLIENT_PUB_KEY did not have even length.\n");
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
-            }
+        // Broadcast all of the relevant variable to every rank
+        MPI_Bcast(host_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(corrupt_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(client_pub_key, PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+    }
+    else {
+        switch(parse_hex(host_priv_key, arguments.host_priv_key_hex)) {
+            case 1:
+                fprintf(stderr, "ERROR: HOST_PRIV_KEY had non-hexadecimal characters.\n");
+                return ERROR_CODE_FAILURE;
+            case 2:
+                fprintf(stderr, "ERROR: HOST_PRIV_KEY did not have even length.\n");
+                return ERROR_CODE_FAILURE;
+            default:
+                break;
+        }
+
+        switch(parse_hex(client_pub_key, arguments.client_pub_key_hex)) {
+            case 1:
+                fprintf(stderr, "ERROR: CLIENT_PUB_KEY had non-hexadecimal characters.\n");
+                return ERROR_CODE_FAILURE;
+            case 2:
+                fprintf(stderr, "ERROR: CLIENT_PUB_KEY did not have even length.\n");
+                return ERROR_CODE_FAILURE;
+            default:
+                break;
         }
     }
 
-    // Broadcast all of the relevant variable to every rank
-    MPI_Bcast(&(arguments.verbose), 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&(arguments.benchmark), 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&(arguments.subkey_length), 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (my_rank == 0 && arguments.verbose) {
+        fprintf(stderr, "INFO: Using secp256r1 Host Private Key            : ");
+        fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
+        fprintf(stderr, "\n");
 
-    MPI_Bcast(host_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(corrupt_priv_key, PRIV_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(client_pub_key, PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-
-    MPI_Bcast(&mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&ending_mismatch, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-    if (my_rank == 0) {
-        if(arguments.verbose) {
-            fprintf(stderr, "INFO: Using secp256r1 Host Private Key            : ");
-            fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
-            fprintf(stderr, "\n");
-
-            if(arguments.random) {
-                fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ", arguments.mismatches);
-                fprint_hex(stderr, corrupt_priv_key, PRIV_KEY_SIZE);
-                fprintf(stderr, "\n");
-            }
-
-            fprintf(stderr, "INFO: Using secp256r1 Client Public Key:\n ");
-            fprint_hex(stderr, client_pub_key, PUB_KEY_SIZE);
+        if(arguments.random) {
+            fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ",
+                    arguments.mismatches);
+            fprint_hex(stderr, corrupt_priv_key, PRIV_KEY_SIZE);
             fprintf(stderr, "\n");
         }
 
-        //memset(corrupt_priv_key, 0, PRIV_KEY_SIZE);
-        // Initialize time for root rank
-        start_time = MPI_Wtime();
+        fprintf(stderr, "INFO: Using secp256r1 Client Public Key:\n ");
+        fprint_hex(stderr, client_pub_key, PUB_KEY_SIZE);
+        fprintf(stderr, "\n");
     }
 
-    comm_args.request = MPI_REQUEST_NULL;
+    // Initialize time for root rank
+    start_time = MPI_Wtime();
 
-    if (pthread_create(&comm_thread, NULL, comm_worker, &comm_args)) {
-        fprintf(stderr, "Error while creating comm thread\n");
-        return ERROR_CODE_FAILURE;
-    }
-
-    for (; mismatch <= ending_mismatch && !(flags[0]); mismatch++) {
-        if(arguments.verbose && my_rank == 0) {
+    for (; mismatch <= ending_mismatch && !global_found; mismatch++) {
+        if(my_rank == 0 && arguments.verbose) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
 
@@ -500,10 +500,10 @@ int main(int argc, char *argv[]) {
                     PRIV_KEY_SIZE, arguments.subkey_length);
             subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
                     client_pub_key, arguments.all, arguments.count ? &validated_keys : NULL,
-                    arguments.verbose, my_rank, max_count, comm_args.request);
+                    arguments.verbose, my_rank, max_count, &global_found);
             if (subfound < 0) {
                 // Cleanup
-                mpz_clears(key_count, validated_keys, NULL);
+                mpz_clear(key_count);
                 free(corrupt_priv_key);
                 free(client_pub_key);
                 free(host_priv_key);
@@ -513,30 +513,40 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    pthread_join(comm_thread, NULL);
+    if(!(arguments.all) && subfound == 0 && !global_found) {
+        fprintf(stderr, "Rank %d Bleh\n", my_rank);
+        MPI_Recv(&global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    duration = MPI_Wtime() - start_time;
+
+    fprintf(stderr, "INFO Rank %d: Clock time: %f s\n", my_rank, duration);
 
     if(my_rank == 0) {
-        duration = MPI_Wtime() - start_time;
+        MPI_Reduce(MPI_IN_PLACE, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Reduce(&duration, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    }
 
-        if(arguments.verbose) {
-            fprintf(stderr, "INFO: Clock time: %f s\n", duration);
-        }
+    if(my_rank == 0 && arguments.verbose) {
+        fprintf(stderr, "INFO: Max Clock time: %f s\n", duration);
+    }
 
-        if(arguments.count) {
-            mpf_t duration_mpf, key_rate;
-
-            mpf_inits(duration_mpf, key_rate, NULL);
-
-            mpf_set_d(duration_mpf, duration);
-            mpf_set_z(key_rate, validated_keys);
+    if(arguments.count) {
+        if(my_rank == 0) {
+            MPI_Reduce(MPI_IN_PLACE, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
+                       MPI_COMM_WORLD);
 
             // Divide validated_keys by duration
-            mpf_div(key_rate, key_rate, duration_mpf);
+            key_rate = (double)validated_keys / duration;
 
-            gmp_fprintf(stderr, "INFO: Keys searched: %Zu\n", validated_keys);
-            gmp_fprintf(stderr, "INFO: Keys per second: %.9Fg\n", key_rate);
-
-            mpf_clears(duration_mpf, key_rate, NULL);
+            fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
+            fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
+        }
+        else {
+            MPI_Reduce(&validated_keys, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
+                       MPI_COMM_WORLD);
         }
     }
 
@@ -546,7 +556,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    mpz_clears(key_count, validated_keys, NULL);
+    mpz_clear(key_count);
     //aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupt_priv_key);
     free(client_pub_key);

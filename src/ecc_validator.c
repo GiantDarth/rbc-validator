@@ -14,7 +14,7 @@
 
 #include "iter/uint256_key_iter.h"
 #include "util.h"
-#include "../../micro-ecc/uECC.h"
+#include "../lib/micro-ecc/uECC.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -481,11 +481,11 @@ int main(int argc, char *argv[]) {
         fprint_hex(stderr, host_priv_key, PRIV_KEY_SIZE);
         fprintf(stderr, "\n");
 
-        //if(arguments.random) {
+        if(arguments.random) {
             fprintf(stderr, "INFO: Using secp256r1 Corrupted Key (%d mismatches): ", arguments.mismatches);
             fprint_hex(stderr, corrupt_priv_key, PRIV_KEY_SIZE);
             fprintf(stderr, "\n");
-        //}
+        }
 
         fprintf(stderr, "INFO: Using secp256r1 Client Public Key:\n ");
         fprint_hex(stderr, client_pub_key, PUB_KEY_SIZE);
@@ -580,12 +580,9 @@ int main(int argc, char *argv[]) {
     }
 
     if(found) {
-        if(arguments.verbose) fprintf(stdout, "found:\n");
         fprint_hex(stdout, corrupt_priv_key, PRIV_KEY_SIZE);
         printf("\n");
         // todo: consider verification?
-    } else {
-        if(arguments.verbose) fprintf(stdout, "not-found <============\n");
     }
 
     // Cleanup

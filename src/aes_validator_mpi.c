@@ -10,9 +10,7 @@
 
 #include <uuid/uuid.h>
 #include <gmp.h>
-#include <unistd.h>
 #include <argp.h>
-#include <pthread.h>
 
 #include "iter/uint256_key_iter.h"
 #include "aes256-ni.h"
@@ -326,8 +324,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
             }
         }
 
-        // this while loop avoids the busy wait caused by the mpi_recv
-        // we probe for a message, once found, move on and actually receive the message
         if (!all && !(*global_found) && iter_count % 128 == 0) {
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
@@ -582,8 +578,8 @@ int main(int argc, char *argv[]) {
             // Divide validated_keys by duration
             key_rate = (double)validated_keys / duration;
 
-            gmp_fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
-            gmp_fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
+            fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
+            fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
         }
         else {
             MPI_Reduce(&validated_keys, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
