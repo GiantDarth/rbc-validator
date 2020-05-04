@@ -24,7 +24,7 @@
 #define PUB_KEY_SIZE 64
 
 const char *argp_program_version = "ecc_validator OpenMP 0.1.0";
-const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
+const char *argp_program_bug_address = "<Duane.Booher@nau.edu, cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
 static char args_doc[] = "HOST_PRIV_KEY CLIENT_PUB_KEY\n-r/--random -m/--mismatches=value";
@@ -346,13 +346,13 @@ int gmp_validator(unsigned char *corrupt_priv_key,
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
-    int numcores = 0;
+    int numcores;
     struct arguments arguments;
     static struct argp argp = {options, parse_opt, args_doc, prog_desc};
 
     gmp_randstate_t randstate;
 
-    const struct uECC_Curve_t * curve = uECC_secp256r1();
+    const struct uECC_Curve_t *curve = uECC_secp256r1();
     // rbc-goal: cp host_priv_key->corrupt_priv_key, and manipulate until ecc(corrupt_priv_key) == client_pub_key is found
     // within desired hamming distance tolerance
     unsigned char *host_priv_key;
@@ -514,7 +514,7 @@ int main(int argc, char *argv[]) {
                                   (size_t) omp_get_num_threads(), mismatch, PRIV_KEY_SIZE,
                                   arguments.subkey_length);
 
-            int subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
+            subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
                     client_pub_key, &signal, arguments.all, arguments.count ? &sub_validated_keys : NULL);
             // If the result is positive, set the "global" found to 1. Will cause the other threads to
             // prematurely stop.

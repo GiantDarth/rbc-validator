@@ -22,32 +22,32 @@
 #define PRIV_KEY_SIZE 32
 #define PUB_KEY_SIZE 64
 
-const char *argp_program_version = "hamming_validator MPI 0.1.0";
-const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
+const char *argp_program_version = "ecc_validator MPI 0.1.0";
+const char *argp_program_bug_address = "<Duane.Booher@nau.edu, cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "UUID KEY CIPHER\n-r/--random -m/--000=value";
-static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable source,"
-                          " progressively corrupt it by a certain number of bits until"
-                          " a matching corrupted key is found. The matching key will be"
-                          " sent to stdout.\n\nThis implementation uses MPI.\v"
+static char args_doc[] = "HOST_PRIV_KEY CLIENT_PUB_KEY\n-r/--random -m/--mismatches=value";
+static char prog_desc[] = "Given an ECC secp256r1 and a HOST_PRIV_KEY (host private key)"
+                          " and a CLIENT_PUB_KEY (client public key) from an unreliable"
+                          " source, progressively corrupt the host private key by a"
+                          " certain number of bits until a matching corrupted key is"
+                          " found. The matching key will be sent to stdout."
 
-                          "If the key is found then the program will have an exit code"
+                          "\n\nThis implementation uses MPI."
+
+                          "\vIf the key is found then the program will have an exit code"
                           " 0. If not found, e.g. when providing --mismatches and"
                           " especially --exact, then the program will have an exit code"
                           " 1. For any general error, such as parsing, out-of-memory,"
-                          " etc., the program will have an exit code 2.\n\n"
+                          " etc., the program will have an exit code 2."
 
-                          "The UUID, passed in canonical form, is the message that both"
-                          " sources encrypt and is previously agreed upon.\n\n"
+                          "\n\nThe original HOST_PRIV_KEY (host private key), passed in as"
+                          " hexadecimal, is corrupted by a certain number of bits. The"
+                          " resulting new private key's public key is compared against"
+                          " the CLIENT_PUB_KEY (client public key) which is also passed"
+                          " in hexadecimal in uncompressed form."
 
-                          "The original KEY, passed in as hexadecimal, is corrupted by"
-                          " a certain number of bits and compared against CIPHER. Only"
-                          " AES-256 keys are currently supported.\n\n"
-
-                          "The CIPHER, passed in as hexadecimal, is assumed to have been"
-                          " generated in ECB mode, meaning given a 128-bit UUID, this"
-                          " should be 128-bits long as well.";
+                          "\n\nOnly ECC secp256r1 keys are currently supported.";
 
 struct arguments {
     int verbose, benchmark, random, fixed, count, all;

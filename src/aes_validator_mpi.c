@@ -23,7 +23,7 @@
 #define KEY_SIZE 32
 #define BLOCK_SIZE 16
 
-const char *argp_program_version = "hamming_validator MPI 0.1.0";
+const char *argp_program_version = "aes_validator MPI 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
@@ -458,10 +458,10 @@ int main(int argc, char *argv[]) {
         }
 
         // Broadcast all of the relevant variable to every rank
-        MPI_Bcast(auth_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(auth_cipher, BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         MPI_Bcast(key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         MPI_Bcast(corrupted_key, KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        MPI_Bcast(userId, sizeof(userId), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     }
     else {
         switch (parse_hex(auth_cipher, arguments.cipher_hex)) {

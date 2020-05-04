@@ -24,7 +24,7 @@
 #define KEY_SIZE 32
 #define BLOCK_SIZE 16
 
-const char *argp_program_version = "hamming_validator OpenMP 0.1.0";
+const char *argp_program_version = "aes_validator OpenMP 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
