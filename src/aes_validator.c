@@ -283,62 +283,31 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
         return -1;
     }
 
-    if(all) {
-        // While we haven't reached the end of iteration
-        while(!uint256_key_iter_end(iter)) {
-            if(validated_keys != NULL) {
-                ++(*validated_keys);
-            }
-            uint256_key_iter_get(iter, current_key);
-            aes256_enc_key_scheduler_update(key_scheduler, current_key);
-
-            // If encryption fails for some reason, break prematurely.
-            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-                found = -1;
-                break;
-            }
-
-            // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-            if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
-                found = 1;
-                // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible
-                // keys
-#pragma omp critical
-                memcpy(corrupted_key, current_key, KEY_SIZE);
-            }
-
-            uint256_key_iter_next(iter);
+    while(!uint256_key_iter_end(iter) && (all || !(*signal))) {
+        if(validated_keys != NULL) {
+            ++(*validated_keys);
         }
-    }
-    else {
-        // While we haven't reached the end of iteration
-        while(!uint256_key_iter_end(iter) && !(*signal)) {
-            if(validated_keys != NULL) {
-                ++(*validated_keys);
-            }
-            uint256_key_iter_get(iter, current_key);
-            aes256_enc_key_scheduler_update(key_scheduler, current_key);
+        uint256_key_iter_get(iter, current_key);
+        aes256_enc_key_scheduler_update(key_scheduler, current_key);
 
-            // If encryption fails for some reason, break prematurely.
-            if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
-                found = -1;
-                break;
-            }
-
-            // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-            if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
-                found = 1;
-                // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible
-                // keys
-#pragma omp critical
-                memcpy(corrupted_key, current_key, KEY_SIZE);
-                break;
-            }
-
-            uint256_key_iter_next(iter);
+        // If encryption fails for some reason, break prematurely.
+        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+            found = -1;
+            break;
         }
+
+        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
+        if(memcmp(cipher, auth_cipher, sizeof(uuid_t)) == 0) {
+            found = 1;
+            // Only have one thread copy the key at a time
+            // This might happen more than once if the # of threads exceeds the number of possible
+            // keys
+#pragma omp critical
+            memcpy(corrupted_key, current_key, KEY_SIZE);
+            break;
+        }
+
+        uint256_key_iter_next(iter);
     }
 
     // Cleanup
