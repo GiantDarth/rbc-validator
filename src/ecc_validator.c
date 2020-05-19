@@ -276,65 +276,34 @@ int gmp_validator(unsigned char *corrupt_priv_key,
         return -1;
     }
 
-    if(all) { // all == don't cut out early if end is found
-        // While we haven't reached the end of iteration
-        while(!uint256_key_iter_end(iter)) {
-            if(validated_keys != NULL) {
-                ++(*validated_keys);
-            }
-            // get next current_priv_key
-            uint256_key_iter_get(iter, current_priv_key);
+    // While we haven't reached the end of iteration
+    while(!uint256_key_iter_end(iter) && (all || !(*signal))) {
+        if(validated_keys != NULL) {
+            ++(*validated_keys);
+        }
+        // get next current_priv_key
+        uint256_key_iter_get(iter, current_priv_key);
 
-            // If fails for some reason, break prematurely.
-            if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
-                printf("ERROR uECC_compute_public_key - abort run");
-                found = -1;
-                break;
-            }
+        // If fails for some reason, break prematurely.
+        if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
+            printf("ERROR uECC_compute_public_key - abort run");
+            found = -1;
+            break;
+        }
 
-            // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-            if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-                found = 1;
-                // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible
-                // keys
+        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
+        if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
+            found = 1;
+            // Only have one thread copy the key at a time
+            // This might happen more than once if the # of threads exceeds the number of possible
+            // keys
 #pragma omp critical
-                memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
-            }
+            memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
+            break;
+        }
 
-            uint256_key_iter_next(iter);
-        } // while(!uint256_key_iter_end(iter))
+        uint256_key_iter_next(iter);
     }
-    else { // all == false : cut out early once found or iter end
-        // While we haven't reached the end of iteration
-        while(!uint256_key_iter_end(iter) && !(*signal)) {
-            if(validated_keys != NULL) {
-                ++(*validated_keys);
-            }
-            // get next current_priv_key
-            uint256_key_iter_get(iter, current_priv_key);
-
-            // If fails for some reason, break prematurely.
-            if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
-                printf("ERROR uECC_compute_public_key - abort run");
-                found = -1;
-                break;
-            }
-
-            // If the new cipher is the same as the passed in auth_cipher, set found to true and break
-            if(memcmp(current_pub_key, client_pub_key, PUB_KEY_SIZE) == 0) {
-                found = 1;
-                // Only have one thread copy the key at a time
-                // This might happen more than once if the # of threads exceeds the number of possible
-                // keys
-#pragma omp critical
-                memcpy(corrupt_priv_key, current_priv_key, PRIV_KEY_SIZE);
-                break;
-            }
-
-            uint256_key_iter_next(iter);
-        } // while(!uint256_key_iter_end(iter) && !(*signal))
-    } // else all
 
     // Cleanup
     uint256_key_iter_destroy(iter);
