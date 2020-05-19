@@ -1,6 +1,8 @@
 language: c
 
-matrix:
+jobs:
+  allow_failures:
+    - os: windows
   include:
     - os: windows
 
