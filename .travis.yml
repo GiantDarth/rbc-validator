@@ -70,6 +70,8 @@ script:
       -DOpenMP_C_LIB_NAMES="omp" \
       -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
       ./CMakeLists.txt
+    elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then \
+      cmake -G "MinGW Makefiles" ./CMakeLists.txt
     else
       cmake ./CMakeLists.txt
     fi
