@@ -3,7 +3,7 @@ language: c
 jobs:
   include:
     - os: windows
-    - filter_secrets: false
+      filter_secrets: false
 
 env:
   - OMP_NUM_THREADS=4
