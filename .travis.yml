@@ -1,10 +1,9 @@
 language: c
 
 jobs:
-  allow_failures:
-    - os: windows
   include:
     - os: windows
+    - filter_secrets: false
 
 env:
   - OMP_NUM_THREADS=4
