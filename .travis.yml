@@ -40,6 +40,7 @@ before_install:
         $msys2 pacman --sync --noconfirm --needed mingw-w64-x86_64-toolchain
         ## Install more MSYS2 packages from https://packages.msys2.org/base here
         $mingw64 pacman -S --noconfirm --needed libargp-devel libutil-linux-devel
+        $mingw64 pacman -S --noconfirm --nedeed mingw-w64-x86_64-cmake
         taskkill //IM gpg-agent.exe //F  # https://travis-ci.community/t/4967
         export PATH=/C/tools/msys64/mingw64/bin:$PATH
         export MAKE=mingw32-make  # so that Autotools can find it
@@ -61,6 +62,8 @@ cache:
     - /C/tools/msys64
 
 script:
+  - which cmake
+  - $mingw64 which cmake
   - $mingw64 cmake --version
   - $mingw64 cmake -G "MinGW Makefiles" ./CMakeLists.txt
   - $mingw64 cmake --build .
