@@ -61,20 +61,7 @@ cache:
 
 script:
   - cmake --version
-  - |
-    # For Mojave (10.14)
-    # Source: https://github.com/henry0312/LightGBM/blob/master/docs/Installation-Guide.rst#apple-clang
-    if [[ "$TRAVIS_OS_NAME" == "osx" && ("$TRAVIS_OSX_IMAGE" == "xcode10.3" || \
-          "$TRAVIS_OSX_IMAGE" == "xcode11.2") ]]; then cmake \
-      -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
-      -DOpenMP_C_LIB_NAMES="omp" \
-      -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
-      ./CMakeLists.txt
-    elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then \
-      cmake -G "MinGW Makefiles" ./CMakeLists.txt
-    else
-      cmake ./CMakeLists.txt
-    fi
+  - cmake -G "MinGW Makefiles" ./CMakeLists.txt
   - cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
