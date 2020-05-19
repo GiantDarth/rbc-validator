@@ -60,9 +60,9 @@ cache:
     - /C/tools/msys64
 
 script:
-  - cmake --version
-  - cmake -G "MinGW Makefiles" ./CMakeLists.txt
-  - cmake --build .
+  - $mingw64 cmake --version
+  - $mingw64 cmake -G "MinGW Makefiles" ./CMakeLists.txt
+  - $mingw64 cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
   - ./aes_validator --help
