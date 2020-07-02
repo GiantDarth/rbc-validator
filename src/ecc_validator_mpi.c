@@ -56,29 +56,29 @@ struct arguments {
 };
 
 static struct argp_option options[] = {
-    {"all", 'a', 0, 0, "Don't cut out early when key is found."},
+    {"all", 'a', 0, 0, "Don't cut out early when key is found.", 0},
     {"mismatches", 'm', "value", 0, "The largest # of bits of corruption to test against,"
                                     " inclusively. Defaults to -1. If negative, then the"
                                     " size of key in bits will be the limit. If in random"
                                     " or benchmark mode, then this will also be used to"
                                     " corrupt the random key by the same # of bits; for"
                                     " this reason, it must be set and non-negative when"
-                                    " in random or benchmark mode."},
+                                    " in random or benchmark mode.", 0},
     {"subkey", 's', "value", 0, "How many of the first bits to corrupt and iterate over."
-                                " Must be between 1 and 256 bits. Defaults to 256."},
-    {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output."},
+                                " Must be between 1 and 256 bits. Defaults to 256.", 0},
+    {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output.", 0},
     {"fixed", 'f', 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
                          " --mismatches. This is only valid when --mismatches is set and"
-                         " non-negative."},
+                         " non-negative.", 0},
     {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
                           " UUID. This must be accompanied by --mismatches, since it is used to"
                           " corrupt the random key by the same # of bits. --random and"
-                          " --benchmark cannot be used together."},
+                          " --benchmark cannot be used together.", 0},
     {"benchmark", 'b', 0, 0, "Instead of using arguments, strategically generate CIPHER, KEY, and"
                              " UUID. Specifically, generates a corrupted key that's always 50% of"
                              " way through a rank's workload, but randomly chooses the rank."
-                             " --random and --benchmark cannot be used together."},
-    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
+                             " --random and --benchmark cannot be used together.", 0},
+    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr.", 0},
     { 0 }
 };
 
@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     struct arguments arguments = { 0 };
-    static struct argp argp = {options, parse_opt, args_doc, prog_desc};
+    static struct argp argp = {options, parse_opt, args_doc, prog_desc, 0, 0, 0};
 
     int global_found = 0;
     int subfound = 0;
@@ -418,7 +418,7 @@ int main(int argc, char *argv[]) {
             }
 
             get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
-            get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
+            get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches,
                                      arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
             if (!uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
@@ -497,7 +497,7 @@ int main(int argc, char *argv[]) {
             }
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count, mismatch,
-                    PRIV_KEY_SIZE, arguments.subkey_length);
+                    arguments.subkey_length);
             subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
                     client_pub_key, arguments.all, arguments.count ? &validated_keys : NULL,
                     arguments.verbose, my_rank, max_count, &global_found);

@@ -116,7 +116,7 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 }
 
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, size_t subkey_length, gmp_randstate_t randstate,
+                              size_t subkey_length, gmp_randstate_t randstate,
                               int benchmark, int numcores) {
     mpz_t perm_mpz;
     uint256_t key_uint, corrupted_key_uint, perm_uint;
@@ -148,7 +148,7 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 }
 
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
-                   int mismatches, size_t key_size, size_t subkey_length) {
+                   int mismatches, size_t subkey_length) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
 
@@ -181,12 +181,12 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
 }
 
 void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
-        size_t pair_count, int mismatches, size_t key_size, size_t subkey_length) {
+        size_t pair_count, int mismatches, size_t subkey_length) {
     mpz_t starting_perm_mpz, ending_perm_mpz;
 
     mpz_inits(starting_perm_mpz, ending_perm_mpz, NULL);
 
-    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches, key_size,
+    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches,
             subkey_length);
 
     uint256_from_mpz(starting_perm, starting_perm_mpz);

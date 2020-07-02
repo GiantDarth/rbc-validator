@@ -161,7 +161,7 @@ int aes256_ecb_encrypt(unsigned char *cipher, aes256_enc_key_scheduler *key_sche
         return 1;
     }
 
-    for(int i = 0; i < block_count; ++i) {
+    for(size_t i = 0; i < block_count; ++i) {
         tmp = _mm_loadu_si128(&((__m128i*)msg)[i]);
         tmp = _mm_xor_si128(tmp, key_scheduler->scheduler[0]);
 
@@ -176,7 +176,7 @@ int aes256_ecb_encrypt(unsigned char *cipher, aes256_enc_key_scheduler *key_sche
     return 0;
 }
 
-int aes256_ecb_decrypt(const unsigned char *msg, aes256_dec_key_scheduler *key_scheduler,
+int aes256_ecb_decrypt(aes256_dec_key_scheduler *key_scheduler,
                        unsigned char *cipher, size_t cipher_len) {
     __m128i tmp;
     size_t block_count = cipher_len / 16;
@@ -186,7 +186,7 @@ int aes256_ecb_decrypt(const unsigned char *msg, aes256_dec_key_scheduler *key_s
         return 1;
     }
 
-    for(int i = 0; i < block_count; ++i) {
+    for(size_t i = 0; i < block_count; ++i) {
         tmp = _mm_loadu_si128(&((__m128i*)cipher)[i]);
         tmp = _mm_xor_si128(tmp, key_scheduler->scheduler[0]);
 

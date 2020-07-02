@@ -30,7 +30,7 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 /// keyspace for one randomly chosen slot.
 /// \param The total # of available slots (usually # of threads or # of ranks).
 void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t key_size, size_t subkey_length, gmp_randstate_t randstate,
+                              size_t subkey_length, gmp_randstate_t randstate,
                               int benchmark, int numcores);
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of
@@ -45,10 +45,10 @@ void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char 
 /// \param subkey_length How big the only the potentially corruption portion is in bits, starting from
 /// the most-significant bit.
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
-                   int mismatches, size_t key_size, size_t subkey_length);
+                   int mismatches, size_t subkey_length);
 
 void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
-                           size_t pair_count, int mismatches, size_t key_size, size_t subkey_length);
+                           size_t pair_count, int mismatches, size_t subkey_length);
 
 /// Print out a raw byte array as hexadecimal.
 /// \param stream An IO stream to output to.

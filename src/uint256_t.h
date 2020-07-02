@@ -7,16 +7,16 @@
 
 #include <stdint.h>
 #include <gmp.h>
-
-#define UINT256_ZERO (uint256_t){0, 0, 0, 0}
-#define UINT256_ONE (uint256_t){1, 0, 0, 0}
-#define UINT256_NEG_ONE (uint256_t){0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff}
-
 #define UINT256_LIMBS_SIZE 4
 
 typedef struct uint256_t {
     uint64_t limbs[UINT256_LIMBS_SIZE];
 } uint256_t;
+
+static const uint256_t UINT256_ZERO = {{0, 0, 0, 0}};
+static const uint256_t UINT256_ONE = {{1, 0, 0, 0}};
+static const uint256_t UINT256_NEG_ONE = {{0xffffffffffffffff, 0xffffffffffffffff,
+                                   0xffffffffffffffff, 0xffffffffffffffff}};
 
 /// Set an unsigned long long to a uint256 struct.
 /// \param rop A pointer to an uint256_t that will be modified.
