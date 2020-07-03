@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "openmp-use-default-none"
 //
 // Created by cp723 on 2/7/2019.
 //
@@ -57,7 +55,7 @@ struct arguments {
 };
 
 static struct argp_option options[] = {
-    {"all", 'a', 0, 0, "Don't cut out early when key is found."},
+    {"all", 'a', 0, 0, "Don't cut out early when key is found.", 0},
     {"mismatches", 'm', "value", 0, "The largest # of bits of corruption to test against,"
                                     " inclusively. Defaults to -1. If negative, then the"
                                     " size of key in bits will be the limit. If in random"
@@ -65,25 +63,25 @@ static struct argp_option options[] = {
                                     " corrupt the random key by the same # of bits; for"
                                     " this reason, it must be set and non-negative when"
                                     " in random or benchmark mode. Cannot be larger than"
-                                    " what --subkey-size is set to."},
+                                    " what --subkey-size is set to.", 0},
     {"subkey", 's', "value", 0, "How many of the first bits to corrupt and iterate over."
-                                " Must be between 1 and 256 bits. Defaults to 256."},
-    {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output."},
+                                " Must be between 1 and 256 bits. Defaults to 256.", 0},
+    {"count", 'c', 0, 0, "Count the number of keys tested and show it as verbose output.", 0},
     {"fixed", 'f', 0, 0, "Only test the given mismatch, instead of progressing from 0 to"
                          " --mismatches. This is only valid when --mismatches is set and"
-                         " non-negative."},
+                         " non-negative.", 0},
     {"random", 'r', 0, 0, "Instead of using arguments, randomly generate CIPHER, KEY, and"
                           " UUID. This must be accompanied by --mismatches, since it is used to"
                           " corrupt the random key by the same # of bits. --random and"
-                          " --benchmark cannot be used together."},
+                          " --benchmark cannot be used together.", 0},
     {"benchmark", 'b', 0, 0, "Instead of using arguments, strategically generate CIPHER, KEY, and"
                              " UUID. Specifically, generates a corrupted key that's always 50% of"
                              " way through a rank's workload, but randomly chooses the thread."
-                             " --random and --benchmark cannot be used together."},
-    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr."},
+                             " --random and --benchmark cannot be used together.", 0},
+    {"verbose", 'v', 0, 0, "Produces verbose output and time taken to stderr.", 0},
     {"threads", 't', "count", 0, "How many worker threads to use. Defaults to 0. If set to 0,"
                                  " then the number of threads used will be detected by the"
-                                 " system." },
+                                 " system.", 0},
     { 0 }
 };
 
@@ -317,7 +315,7 @@ int gmp_validator(unsigned char *corrupt_priv_key,
 int main(int argc, char *argv[]) {
     int numcores;
     struct arguments arguments;
-    static struct argp argp = {options, parse_opt, args_doc, prog_desc};
+    static struct argp argp = {options, parse_opt, args_doc, prog_desc, 0, 0, 0};
 
     gmp_randstate_t randstate;
 
@@ -404,7 +402,7 @@ int main(int argc, char *argv[]) {
         // good host pri key - random
         get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
         // get a corrupt key from a good key
-        get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches, PRIV_KEY_SIZE,
+        get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches,
                 arguments.subkey_length, randstate, arguments.benchmark, numcores);
 
         if (arguments.verbose) {
@@ -470,13 +468,14 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
 
-#pragma omp parallel default(shared)
+#pragma omp parallel default(none) shared(found, error, corrupt_priv_key, host_priv_key, client_pub_key,\
+            signal, mismatch, arguments, validated_keys) private(subfound)
         {
             uint256_t starting_perm, ending_perm;
             long long int sub_validated_keys = 0;
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
-                                  (size_t) omp_get_num_threads(), mismatch, PRIV_KEY_SIZE,
+                                  (size_t) omp_get_num_threads(), mismatch,
                                   arguments.subkey_length);
 
             subfound = gmp_validator(corrupt_priv_key, &starting_perm, &ending_perm, host_priv_key,
@@ -546,5 +545,3 @@ int main(int argc, char *argv[]) {
 
     return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 }
-
-#pragma clang diagnostic pop
