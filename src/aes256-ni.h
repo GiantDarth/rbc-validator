@@ -58,7 +58,7 @@ int aes256_ecb_encrypt(unsigned char *cipher, aes256_enc_key_scheduler *key_sche
 /// \param cipher An AES-256-ECB cipher without padding
 /// \param cipher_len Denotes the size of the cipher (and decrypted message).
 /// \return Returns 0 on success or 1 on error.
-int aes256_ecb_decrypt(const unsigned char *msg, aes256_dec_key_scheduler *key_scheduler,
+int aes256_ecb_decrypt(aes256_dec_key_scheduler *key_scheduler,
         unsigned char *cipher, size_t cipher_len);
 
 #endif // HAMMING_BENCHMARK_AES256_NI_H

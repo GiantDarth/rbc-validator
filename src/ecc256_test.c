@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 
     printf("2-ecc pubkey has been verified\n");
 
-    if (! uECC_sign(priKey, msg, sizeof(msg), signature, curve)) {
+    if (! uECC_sign(priKey, (const uint8_t*)msg, sizeof(msg), signature, curve)) {
         printf("ERROR uECC_sign - abort run");
         return EXIT_FAILURE;
     }
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     print_hex(signature, sizeof(signature));
     printf("\n");
 
-    if (! uECC_verify(pubKey, msg, sizeof(msg), signature, curve)) {
+    if (! uECC_verify(pubKey, (const uint8_t*)msg, sizeof(msg), signature, curve)) {
         printf("ERROR uECC_verify - abort run");
         return EXIT_FAILURE;
     }

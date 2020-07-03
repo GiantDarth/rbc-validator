@@ -105,13 +105,13 @@ unsigned char uint256_add(uint256_t *rop, const uint256_t *op1, const uint256_t 
 
 int uint256_ctz(const uint256_t *op1) {
     // Make sure to check if the limb is non-zero, otherwise define it to be 64.
-    int count = op1->limbs[0] ? (int)__builtin_ctzll(op1->limbs[0]) : sizeof(*(op1->limbs)) * 8;
+    int count = op1->limbs[0] ? __builtin_ctzll(op1->limbs[0]) : (int)(sizeof(*(op1->limbs)) * 8);
     int count_limit = sizeof(*(op1->limbs)) * 8;
 
     // Continue through other limbs until a limb whose value is 0 is met.
     for(int i = 1; count == count_limit && i < UINT256_LIMBS_SIZE; i++) {
         // Make sure to check if the limb is non-zero, otherwise define it to be 64.
-        count += op1->limbs[i] ? (int)__builtin_ctzll(op1->limbs[i]) : sizeof(*(op1->limbs)) * 8;
+        count += op1->limbs[i] ? __builtin_ctzll(op1->limbs[i]) : (int)(sizeof(*(op1->limbs)) * 8);
         count_limit += sizeof(*(op1->limbs)) * 8;
     }
 
@@ -138,7 +138,7 @@ void uint256_import(uint256_t *rop, const unsigned char *buffer) {
     // Start from most-significant limb
     for(int i = 0; i < UINT256_LIMBS_SIZE; ++i) {
         // Start from most-significant byte
-        for(int j = 0; j < sizeof(*(rop->limbs)); ++j) {
+        for(unsigned int j = 0; j < sizeof(*(rop->limbs)); ++j) {
             rop->limbs[i] >>= 8;
             rop->limbs[i] |= (uint64_t)buffer[b++] << ((sizeof(*(rop->limbs)) - 1) * 8);
         }
@@ -151,7 +151,7 @@ void uint256_export(unsigned char *buffer, const uint256_t *rop) {
     // Start from most-significant limb
     for(int i = 0; i < UINT256_LIMBS_SIZE; ++i) {
         // Start from most-significant byte
-        for(int shift = 0; shift < sizeof(*(rop->limbs)) * 8; shift += 8) {
+        for(unsigned int shift = 0; shift < sizeof(*(rop->limbs)) * 8; shift += 8) {
             buffer[b++] = (unsigned char)(rop->limbs[i] >> shift);
         }
     }
