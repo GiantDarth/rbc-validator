@@ -31,8 +31,8 @@ before_install:
         [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
         choco uninstall mingw -y
         choco install cygwin cyg-get -y
-        powershell cyg-get default \
-            gcc-core \
+        powershell cyg-get default
+        powershell cyg-get gcc-core \
             gcc-g++ \
             libargp-devel \
             libgmp-devel \
