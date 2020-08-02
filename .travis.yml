@@ -29,13 +29,14 @@ before_install:
     case $TRAVIS_OS_NAME in
       windows)
         [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
-        choco uninstall mingw -y
+        choco uninstall mingw cmake.install -y
         choco install cygwin cyg-get -y
         powershell cyg-get gcc-core \
             gcc-g++ \
             libargp-devel \
             libgmp-devel \
-            make
+            make \
+            cmake
         export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
         ;;
     esac
