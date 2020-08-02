@@ -36,7 +36,10 @@ before_install:
             gcc-g++ \
             libargp-devel \
             libgmp-devel \
-            make
+            libuuid-devel \
+            make \
+            libgomp1 \
+            gdb
         export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
         ;;
     esac
@@ -52,7 +55,6 @@ script:
   - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "Unix Makefiles" ./CMakeLists.txt |& tee test.txt
 #  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
 #  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
-  - cat test.txt
   - cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
