@@ -52,11 +52,11 @@ cache:
 
 script:
   - which cmake
-  - cmake --version
-  - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "Unix Makefiles" ./CMakeLists.txt |& tee test.txt
+  - /c/tools/cygwin/bin/cmake.exe --version
+  - /c/tools/cygwin/bin/cmake.exe -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "Unix Makefiles" ./CMakeLists.txt |& tee test.txt
 #  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
 #  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
-  - cmake --build .
+  - /c/tools/cygwin/bin/cmake.exe --build .
   - ./aes256_test
   - ./aes_validator --usage
   - ./aes_validator --help
