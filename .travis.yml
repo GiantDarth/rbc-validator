@@ -29,14 +29,14 @@ before_install:
     case $TRAVIS_OS_NAME in
       windows)
         [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
-        choco uninstall mingw cmake.install -y
+        choco uninstall mingw -y
         choco install cygwin cyg-get -y
-        powershell cyg-get gcc-core \
+        powershell cyg-get default \
+            gcc-core \
             gcc-g++ \
             libargp-devel \
             libgmp-devel \
-            make \
-            cmake
+            make
         export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
         ;;
     esac
@@ -48,11 +48,11 @@ cache:
 
 script:
   - which cmake
-  - /c/tools/cygwin/bin/cmake --version
-  - /c/tools/cygwin/bin/cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "MSYS Makefiles" ./CMakeLists.txt
+  - cmake --version
+  - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "MSYS Makefiles" ./CMakeLists.txt
   - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
   - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
-  - /c/tools/cygwin/bin/cmake --build .
+  - cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
   - ./aes_validator --help
