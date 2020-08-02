@@ -49,7 +49,7 @@ cache:
 script:
   - which cmake
   - cmake --version
-  - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "MSYS Makefiles" ./CMakeLists.txt
+  - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "Unix Makefiles" ./CMakeLists.txt
   - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
   - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
   - cmake --build .
