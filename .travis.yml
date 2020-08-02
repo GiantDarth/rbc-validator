@@ -29,8 +29,7 @@ before_install:
     case $TRAVIS_OS_NAME in
       windows)
         [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
-        choco uninstall mingw -y
-        choco uninstall cmake.install -y
+        choco upgrade --no-progress cmake cmake.install -y
         choco install cygwin -y
         choco install cyg-get -y
         powershell cyg-get gcc-core \
