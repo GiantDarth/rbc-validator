@@ -32,7 +32,7 @@ before_install:
         choco uninstall -y mingw
         choco install cygwin -y
         choco install cyg-get -y
-        cyg-get gcc-core \
+        powershell cyg-get gcc-core \
                 gcc-g++ \
                 libargp-devel \
                 libgmp-devel \
