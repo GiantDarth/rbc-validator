@@ -29,15 +29,12 @@ before_install:
     case $TRAVIS_OS_NAME in
       windows)
         [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
-        choco upgrade --no-progress cmake.install -y
-        powershell refreshenv
         choco install cygwin cyg-get -y
         powershell cyg-get gcc-core \
-                gcc-g++ \
-                libargp-devel \
-                libgmp-devel \
-                make \
-                cmake
+            gcc-g++ \
+            libargp-devel \
+            libgmp-devel \
+            make
         export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
         ;;
     esac
@@ -50,7 +47,7 @@ cache:
 script:
   - which cmake
   - cmake --version
-  - cmake -G "MSYS Makefiles" ./CMakeLists.txt
+  - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "MSYS Makefiles" ./CMakeLists.txt
   - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
   - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
   - cmake --build .
