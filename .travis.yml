@@ -3,7 +3,6 @@ language: c
 jobs:
   include:
     - os: windows
-      filter_secrets: false
 
 env:
   - OMP_NUM_THREADS=4
@@ -38,14 +37,16 @@ before_install:
                 libargp-devel `
                 libgmp-devel `
                 make
-        export PATH=$PATH:/c/tools/cygwin/bin:/c/tools/cygwin/usr/bin
+        export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
+        which gcc
+        which make
         ;;
     esac
 
 cache:
   directories:
     - $HOME/AppData/Local/Temp/chocolatey
-    - /C/tools/msys64
+    - /C/tools/cygwin
 
 script:
   - which cmake
