@@ -38,8 +38,6 @@ before_install:
                 libgmp-devel \
                 make
         export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
-        which gcc
-        which make
         ;;
     esac
 
@@ -52,6 +50,8 @@ script:
   - which cmake
   - cmake --version
   - cmake -G "MSYS Makefiles" ./CMakeLists.txt
+  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
+  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
   - cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
