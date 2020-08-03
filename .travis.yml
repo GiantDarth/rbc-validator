@@ -29,7 +29,7 @@ before_install:
     case $TRAVIS_OS_NAME in
       windows)
         [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
-        choco uninstall mingw -y
+        choco uninstall mingw cmake.install -y
         choco install cygwin cyg-get -y
         powershell cyg-get default -upgrade -arch x86_64
         powershell cyg-get gcc-core \
@@ -37,7 +37,7 @@ before_install:
             libargp-devel \
             libgmp-devel \
             libuuid-devel \
-            make \
+            cmake make \
             libgomp1 \
             gdb \
             -upgrade -arch x86_64
