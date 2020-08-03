@@ -1,8 +1,19 @@
 language: c
 
-jobs:
+matrix:
   include:
-    - os: windows
+    - os: linux
+      dist: xenial
+      compiler: gcc
+    - os: linux
+      dist: xenial
+      compiler: clang
+    - os: osx
+      osx_image: xcode10.3
+      compiler: clang
+    - os: osx
+      osx_image: xcode11.3
+      compiler: clang
 
 env:
   - OMP_NUM_THREADS=4
@@ -24,39 +35,20 @@ addons:
       - argp-standalone
     update: true
 
-before_install:
-  - |-
-    case $TRAVIS_OS_NAME in
-      windows)
-        [[ ! -f C:/tools/msys64/msys2_shell.cmd ]] && rm -rf C:/tools/msys64
-        choco uninstall mingw -y
-        choco upgrade cmake -y
-        choco install cygwin cyg-get -y
-        powershell cyg-get default -upgrade -arch x86_64
-        powershell cyg-get gcc-core \
-            gcc-g++ \
-            libargp-devel \
-            libgmp-devel \
-            libuuid-devel \
-            make \
-            libgomp1 \
-            gdb \
-            -upgrade -arch x86_64
-        export PATH=$PATH:/C/tools/cygwin/bin:/C/tools/cygwin/usr/bin
-        ;;
-    esac
-
-cache:
-  directories:
-    - $HOME/AppData/Local/Temp/chocolatey
-    - /C/tools/cygwin
-
 script:
-  - which cmake
   - cmake --version
-  - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "Unix Makefiles" ./CMakeLists.txt |& tee test.txt
-#  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeOutput.log
-#  - cat C:/Users/travis/build/GiantDarth/hamming_validator/CMakeFiles/CMakeError.log
+  - |
+    # For Mojave (10.14)
+    # Source: https://github.com/henry0312/LightGBM/blob/master/docs/Installation-Guide.rst#apple-clang
+    if [[ "$TRAVIS_OS_NAME" == "osx" && ("$TRAVIS_OSX_IMAGE" == "xcode10.3" || \
+          "$TRAVIS_OSX_IMAGE" == "xcode11.2") ]]; then cmake \
+      -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
+      -DOpenMP_C_LIB_NAMES="omp" \
+      -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
+      ./CMakeLists.txt
+    else
+      cmake ./CMakeLists.txt
+    fi
   - cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
@@ -67,21 +59,17 @@ script:
         ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
         73962ffac2a737632b4e3dc0ce424dac) == \
       "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
-  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then ./aes_validator_mpi --usage; fi
-  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then ./aes_validator_mpi --help; fi
+  - ./aes_validator_mpi --usage
+  - ./aes_validator_mpi --help
   - |
-    if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then \
-      mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-        ./aes_validator_mpi -rv -m3 \
-    fi
+    mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+      ./aes_validator_mpi -rv -m3
   - |
-    if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then \
-      [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-        ./aes_validator_mpi -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
-          ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
-          73962ffac2a737632b4e3dc0ce424dac) == \
-        "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]] \
-    fi
+    [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+      ./aes_validator_mpi -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
+        ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
+        73962ffac2a737632b4e3dc0ce424dac) == \
+      "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
   - ./ecc256_test
   - ./ecc_validator --usage
   - ./ecc_validator --help
@@ -90,20 +78,16 @@ script:
     [[ $(./ecc_validator -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
         d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
       "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
-  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then ./ecc_validator_mpi --usage; fi
-  - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then ./ecc_validator_mpi --help; fi
+  - ./ecc_validator_mpi --usage
+  - ./ecc_validator_mpi --help
   - |
-    if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then \
-      mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-        ./ecc_validator_mpi -rv -m2 \
-    fi
+    mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+      ./ecc_validator_mpi -rv -m2
   - |
-    if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then \
-      [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-       ./ecc_validator_mpi -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
-          d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
-         "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]] \
-    fi
+    [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+     ./ecc_validator_mpi -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+       "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
 
 notifications:
   webhooks:
