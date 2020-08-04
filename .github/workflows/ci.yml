@@ -193,15 +193,17 @@ jobs:
             make `
             libgomp1 `
             gdb `
-            cmake `
+            gdb `
             -upgrade -arch x86_64
+          echo "::add-path::C:/tools/cygwin/bin"
+          echo "::add-path::C:/tools/cygwin/usr/bin"
       - uses: actions/checkout@v2
       - name: CMake Configure
-        shell: C:\tools\cygwin\bin\bash.exe --noprofile --norc -eo pipefail {0}
+        shell: bash
         run: |
-          /usr/bin/which cmake
+          which cmake
           cmake --version
-          CC=/usr/bin/gcc cmake -G "Unix Makefiles" ./CMakeLists.txt
+          cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
         shell: C:\tools\cygwin\bin\bash.exe --noprofile --norc -eo pipefail {0}
         run: cmake --build .
