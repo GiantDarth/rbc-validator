@@ -199,7 +199,7 @@ jobs:
       - name: CMake Configure
         shell: C:\tools\cygwin\bin\bash.exe --noprofile --norc -eo pipefail {0}
         run: |
-          which cmake
+          /usr/bin/which cmake
           cmake --version
           CC=/usr/bin/gcc cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
