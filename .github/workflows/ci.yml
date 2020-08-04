@@ -202,7 +202,7 @@ jobs:
           cmake --version
           CC=/usr/bin/gcc cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
-        shell: C:\tools\cygwin\bin\bash.exe --login -c "{0}"
+        shell: C:\tools\cygwin\bin\bash.exe --login {0}
         run: cmake --build .
       - name: Test AES
         shell: bash
