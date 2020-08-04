@@ -186,6 +186,7 @@ jobs:
         run: |
           where bash
           choco install --no-progress cygwin cyg-get -y
+          cyg-get default -upgrade -arch x86_64
           cyg-get gcc-core `
             gcc-g++ `
             libargp-devel `
@@ -197,7 +198,8 @@ jobs:
             -upgrade -arch x86_64
       - name: Set PATH
         run: |
-          echo '::set-env name=PATH::C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin'
+          echo "::add-path::C:/tools/cygwin/bin"
+          echo "::add-path::C:/tools/cygwin/usr/bin"
       - uses: actions/checkout@v2
       - name: CMake Configure
         shell: bash
