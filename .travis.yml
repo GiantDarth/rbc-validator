@@ -51,7 +51,9 @@ cache:
     - /C/tools/cygwin
 
 script:
-  - powershell /c/tools/cygwin/cygwin.bat
+  - exit
+  - powershell
+  - /c/tools/cygwin/cygwin.bat
   - which cmake
   - cmake --version
   - cmake -DCMAKE_MAKE_PROGRAM=/c/tools/cygwin/bin/make.exe -G "Unix Makefiles" ./CMakeLists.txt |& tee test.txt
