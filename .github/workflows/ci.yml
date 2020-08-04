@@ -6,7 +6,7 @@ jobs:
   ubuntu:
     name: Ubuntu (Latest)
     # This job runs on Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Install Dependencies
         run: |
@@ -17,6 +17,7 @@ jobs:
             openmpi-bin \
             libgmp-dev \
             uuid-dev
+      - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
           which cmake
