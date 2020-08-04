@@ -193,16 +193,17 @@ jobs:
             make `
             libgomp1 `
             gdb `
+            cmake `
             -upgrade -arch x86_64
       - uses: actions/checkout@v2
       - name: CMake Configure
-        shell: C:\tools\cygwin\bin\bash.exe --login {0}
+        shell: C:\tools\cygwin\bin\bash.exe --noprofile --norc -eo pipefail {0}
         run: |
           which cmake
           cmake --version
           CC=/usr/bin/gcc cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
-        shell: C:\tools\cygwin\bin\bash.exe --login {0}
+        shell: C:\tools\cygwin\bin\bash.exe --noprofile --norc -eo pipefail {0}
         run: cmake --build .
       - name: Test AES
         shell: bash
