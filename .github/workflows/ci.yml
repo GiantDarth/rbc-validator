@@ -185,14 +185,14 @@ jobs:
       - name: Install Dependencies
         run: |
           choco install cygwin cyg-get -y
-          cyg-get gcc-core \
-            gcc-g++ \
-            libargp-devel \
-            libgmp-devel \
-            libuuid-devel \
-            make \
-            libgomp1 \
-            gdb \
+          cyg-get gcc-core `
+            gcc-g++ `
+            libargp-devel `
+            libgmp-devel `
+            libuuid-devel `
+            make `
+            libgomp1 `
+            gdb `
             -upgrade -arch x86_64
       - uses: actions/checkout@v2
       - name: CMake Configure
