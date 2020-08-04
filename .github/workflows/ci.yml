@@ -196,12 +196,12 @@ jobs:
             -upgrade -arch x86_64
       - uses: actions/checkout@v2
       - name: CMake Configure
+        shell: cmd
         run: |
-          pwd
           where cmake
           cmake --version
           C:\tools\cygwin\Cygwin.bat
-          pwd
+          cd /cygdrive/d/a/hamming_validator/hamming_validator
           cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
         shell: bash
