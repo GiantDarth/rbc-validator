@@ -4,18 +4,17 @@ on: [push, pull_request]
 
 jobs:
   ubuntu:
-    name: Ubuntu (Latest)
+    name: Ubuntu (GCC)
     # This job runs on Linux
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - name: Update Ubuntu
         run: |
           sudo apt-get update
-          sudo apt-get upgrade --no-install-recommends -y --force-yes
+#          sudo apt-get upgrade --no-install-recommends -y
       - name: Install Dependencies
         run: |
           sudo apt-get install -y \
-            build-essential \
             libomp-dev \
             libopenmpi-dev \
             openmpi-bin \
