@@ -225,7 +225,7 @@ jobs:
               73962ffac2a737632b4e3dc0ce424dac) == \
             "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
       - name: Test ECC
-        bash: bash
+        shell: bash
         run: |
           ./ecc256_test
           ./ecc_validator --usage
