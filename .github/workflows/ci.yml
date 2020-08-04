@@ -197,9 +197,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
+          pwd
           where cmake
           cmake --version
-          $env:CC = C:\tools\cygwin\bin\gcc.exe; cmake -G "Unix Makefiles" ./CMakeLists.txt
+          C:\tools\cygwin\Cygwin.bat
+          pwd
+          cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
         shell: bash
         run: cmake --build .
