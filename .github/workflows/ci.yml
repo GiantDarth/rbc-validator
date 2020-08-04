@@ -195,6 +195,7 @@ jobs:
             make `
             libgomp1 `
             gdb `
+            cmake `
             -upgrade -arch x86_64
       - name: Set PATH
         run: |
