@@ -184,7 +184,8 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          choco install cygwin cyg-get -y
+          where bash
+          choco install --no-progress cygwin cyg-get -y
           cyg-get gcc-core `
             gcc-g++ `
             libargp-devel `
@@ -193,10 +194,10 @@ jobs:
             make `
             libgomp1 `
             gdb `
-            gdb `
             -upgrade -arch x86_64
-          echo "::add-path::C:/tools/cygwin/bin"
-          echo "::add-path::C:/tools/cygwin/usr/bin"
+      - name: Set PATH
+        run: |
+          echo '::set-env name=PATH::C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin'
       - uses: actions/checkout@v2
       - name: CMake Configure
         shell: bash
