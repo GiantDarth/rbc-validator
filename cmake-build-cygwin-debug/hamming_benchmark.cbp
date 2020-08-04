@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="hamming_benchmark"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;CMake Files\cmake\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install/strip">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 install/strip"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install/local">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 install/local"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="install">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 install"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="list_install_components">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 list_install_components"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="aes256_test">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/aes256_test.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 aes256_test"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="aes256_test/fast">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/aes256_test.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 aes256_test/fast"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="ecc256_test">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/ecc256_test.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 ecc256_test"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="ecc256_test/fast">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/ecc256_test.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 ecc256_test/fast"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="ecc_validator">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/ecc_validator.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 ecc_validator"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="ecc_validator/fast">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/ecc_validator.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 ecc_validator/fast"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="aes_validator">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/aes_validator.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 aes_validator"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="aes_validator/fast">
+				<Option output="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/aes_validator.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/include/uuid"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/include"/>
+					<Add directory="/usr/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-pc-cygwin/9.3.0/../../../../lib/../include/w32api"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 aes_validator/fast"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make.exe -j24 -f &quot;/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake-build-cygwin-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/lib/micro-ecc/uECC.c">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/lib/micro-ecc/uECC.h">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/aes256-ni.c">
+			<Option target="aes256_test"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/aes256-ni.h">
+			<Option target="aes256_test"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/aes256_test.c">
+			<Option target="aes256_test"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/aes_validator.c">
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/ecc256_test.c">
+			<Option target="ecc256_test"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/ecc_validator.c">
+			<Option target="ecc_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/iter/uint256_key_iter.c">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/iter/uint256_key_iter.h">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/uint256_t.c">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/uint256_t.h">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/util.c">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/src/util.h">
+			<Option target="ecc256_test"/>
+			<Option target="ecc_validator"/>
+			<Option target="aes_validator"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake/FindArgp.cmake">
+			<Option virtualFolder="CMake Files\cmake\"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake/FindGMP.cmake">
+			<Option virtualFolder="CMake Files\cmake\"/>
+		</Unit>
+		<Unit filename="/cygdrive/c/Users/chaos/projects/school/hamming_benchmark/cmake/FindUUID.cmake">
+			<Option virtualFolder="CMake Files\cmake\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
