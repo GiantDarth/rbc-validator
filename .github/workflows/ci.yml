@@ -196,15 +196,13 @@ jobs:
             -upgrade -arch x86_64
       - uses: actions/checkout@v2
       - name: CMake Configure
-        shell: cmd
+        shell: C:\tools\cygwin\bin\bash.exe --login -c "{0}"
         run: |
-          where cmake
+          which cmake
           cmake --version
-          C:\tools\cygwin\Cygwin.bat
-          cd /cygdrive/d/a/hamming_validator/hamming_validator
-          cmake -G "Unix Makefiles" ./CMakeLists.txt
+          CC=/usr/bin/gcc cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
-        shell: bash
+        shell: C:\tools\cygwin\bin\bash.exe --login -c "{0}"
         run: cmake --build .
       - name: Test AES
         shell: bash
