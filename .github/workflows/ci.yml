@@ -65,59 +65,59 @@ jobs:
              "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
   ubuntu-clang:
     name: Ubuntu (Clang)
-      # This job runs on Linux
-      runs-on: ubuntu-20.04
-      steps:
-        - name: Install Dependencies
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y \
-              libomp-dev \
-              libopenmpi-dev \
-              openmpi-bin \
-              libgmp-dev \
-              uuid-dev
-        - uses: actions/checkout@v2
-        - name: CMake Configure
-          run: |
-            which cmake
-            cmake --version
-            cmake ./CMakeLists.txt
-        - name: Build
-          run: cmake --build .
-        - name: Test AES
-          run: |
-            ./aes256_test
-            ./aes_validator --usage
-            ./aes_validator --help
-            ./aes_validator -rv -m3
-            [[ $(./aes_validator -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
-                ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
-                73962ffac2a737632b4e3dc0ce424dac) == \
-              "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
-            ./aes_validator_mpi --usage
-            ./aes_validator_mpi --help
-            mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-              ./aes_validator_mpi -rv -m3
-            [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-              ./aes_validator_mpi -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
-                ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
-                73962ffac2a737632b4e3dc0ce424dac) == \
-              "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
-        - name: Test ECC
-          run: |
-            ./ecc256_test
-            ./ecc_validator --usage
-            ./ecc_validator --help
-            ./ecc_validator -rv -m2
-            [[ $(./ecc_validator -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
-                d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
-              "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
-            ./ecc_validator_mpi --usage
-            ./ecc_validator_mpi --help
-            mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-              ./ecc_validator_mpi -rv -m2
-            [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
-             ./ecc_validator_mpi -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
-                d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
-               "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
+    # This job runs on Linux
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libomp-dev \
+            libopenmpi-dev \
+            openmpi-bin \
+            libgmp-dev \
+            uuid-dev
+      - uses: actions/checkout@v2
+      - name: CMake Configure
+        run: |
+          which cmake
+          cmake --version
+          cmake ./CMakeLists.txt
+      - name: Build
+        run: cmake --build .
+      - name: Test AES
+        run: |
+          ./aes256_test
+          ./aes_validator --usage
+          ./aes_validator --help
+          ./aes_validator -rv -m3
+          [[ $(./aes_validator -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
+              ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
+              73962ffac2a737632b4e3dc0ce424dac) == \
+            "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
+          ./aes_validator_mpi --usage
+          ./aes_validator_mpi --help
+          mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+            ./aes_validator_mpi -rv -m3
+          [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+            ./aes_validator_mpi -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
+              ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
+              73962ffac2a737632b4e3dc0ce424dac) == \
+            "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
+      - name: Test ECC
+        run: |
+          ./ecc256_test
+          ./ecc_validator --usage
+          ./ecc_validator --help
+          ./ecc_validator -rv -m2
+          [[ $(./ecc_validator -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+              d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+            "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
+          ./ecc_validator_mpi --usage
+          ./ecc_validator_mpi --help
+          mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+            ./ecc_validator_mpi -rv -m2
+          [[ $(mpirun --oversubscribe --mca btl_base_warn_component_unused 0 -np 4 \
+           ./ecc_validator_mpi -v -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+              d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+             "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
