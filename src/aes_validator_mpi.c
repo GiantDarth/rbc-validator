@@ -13,7 +13,7 @@
 #include <argp.h>
 
 #include "iter/uint256_key_iter.h"
-#include "aes256-ni.h"
+#include "crypto/aes256-ni.h"
 #include "util.h"
 
 #define ERROR_CODE_FOUND 0

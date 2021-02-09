@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <memory.h>
 
-#include "aes256-ni.h"
+#include "crypto/aes256-ni.h"
 
 void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
