@@ -17,6 +17,8 @@
 /// \return Returns 0 on success or 1 on error.
 int aes256_ecb_encrypt(unsigned char *cipher, const unsigned char *key, const unsigned char *msg,
                        size_t msg_len);
+
+/// TODO: Decryption is currently broken!
 /// Decrypts some cipher using AES-256-ECB without padding
 /// \param msg The decrypted message, the same length as cipher_len.
 /// \param key A pointer to at least 32 bytes of key data. Passing in a NULL pointer is undefined
