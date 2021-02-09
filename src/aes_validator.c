@@ -264,19 +264,10 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
 
     unsigned char current_key[KEY_SIZE];
     uint256_key_iter *iter;
-    aes256_enc_key_scheduler *key_scheduler;
-
-    // Memory allocation
-    if((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
-        perror("ERROR");
-
-        return -1;
-    }
 
     // Allocation and initialization
     if((iter = uint256_key_iter_create(key, starting_perm, last_perm)) == NULL) {
         perror("ERROR");
-        aes256_enc_key_scheduler_destroy(key_scheduler);
 
         return -1;
     }
@@ -286,10 +277,9 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
             ++(*validated_keys);
         }
         uint256_key_iter_get(iter, current_key);
-        aes256_enc_key_scheduler_update(key_scheduler, current_key);
 
         // If encryption fails for some reason, break prematurely.
-        if(aes256_ecb_encrypt(cipher, key_scheduler, userId, sizeof(uuid_t))) {
+        if(aes256_ecb_encrypt(cipher, current_key, userId, sizeof(uuid_t))) {
             found = -1;
             break;
         }
@@ -309,7 +299,6 @@ int gmp_validator(unsigned char *corrupted_key, const uint256_t *starting_perm,
     }
 
     // Cleanup
-    aes256_enc_key_scheduler_destroy(key_scheduler);
     uint256_key_iter_destroy(iter);
 
     return found;
@@ -332,8 +321,6 @@ int main(int argc, char *argv[]) {
     unsigned char *corrupted_key;
     unsigned char auth_cipher[BLOCK_SIZE];
 
-    aes256_enc_key_scheduler *key_scheduler;
-
     int mismatch, ending_mismatch;
 
     double start_time, duration, key_rate;
@@ -349,14 +336,6 @@ int main(int argc, char *argv[]) {
     if ((corrupted_key = malloc(sizeof(*corrupted_key) * KEY_SIZE)) == NULL) {
         perror("ERROR");
         free(key);
-        return ERROR_CODE_FAILURE;
-    }
-
-    if ((key_scheduler = aes256_enc_key_scheduler_create()) == NULL) {
-        perror("ERROR");
-        free(corrupted_key);
-        free(key);
-
         return ERROR_CODE_FAILURE;
     }
 
@@ -415,10 +394,8 @@ int main(int argc, char *argv[]) {
         get_random_corrupted_key(corrupted_key, key, arguments.mismatches,
                 arguments.subkey_length, randstate, arguments.benchmark, numcores);
 
-        aes256_enc_key_scheduler_update(key_scheduler, corrupted_key);
-        if (aes256_ecb_encrypt(auth_cipher, key_scheduler, userId, sizeof(uuid_t))) {
+        if (aes256_ecb_encrypt(auth_cipher, corrupted_key, userId, sizeof(uuid_t))) {
             // Cleanup
-            aes256_enc_key_scheduler_destroy(key_scheduler);
             free(corrupted_key);
             free(key);
 
@@ -527,7 +504,6 @@ int main(int argc, char *argv[]) {
     // Check if an error occurred in one of the threads.
     if(error) {
         // Cleanup
-        aes256_enc_key_scheduler_destroy(key_scheduler);
         free(corrupted_key);
         free(key);
 
@@ -555,7 +531,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    aes256_enc_key_scheduler_destroy(key_scheduler);
     free(corrupted_key);
     free(key);
 

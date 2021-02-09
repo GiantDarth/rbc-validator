@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <memory.h>
+
 #include "aes256-ni.h"
 
 void print_hex(const unsigned char *array, size_t count) {
@@ -27,14 +28,40 @@ int main() {
     };
 
     unsigned char cipher[16];
+    char decrypted_msg[sizeof(msg)];
 
-    aes256_enc_key_scheduler *key_scheduler = aes256_enc_key_scheduler_create();
-    aes256_enc_key_scheduler_update(key_scheduler, key);
+    aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
 
-    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, strlen(msg));
+    printf("Encryption: Test ");
+    if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
+        printf("Passed\n");
+    }
+    else {
+        printf("Failed\n");
+    }
 
     print_hex(cipher, sizeof(cipher));
     printf("\n");
 
-    return memcmp(cipher, expected_cipher, sizeof(cipher)) ? EXIT_FAILURE : EXIT_SUCCESS;
+    print_hex(expected_cipher, sizeof(expected_cipher));
+    printf("\n\n");
+
+    aes256_ecb_decrypt((unsigned char*)decrypted_msg, key, expected_cipher, sizeof(expected_cipher));
+    decrypted_msg[strlen(msg)] = '\0';
+
+    printf("Decryption: Test ");
+    if(!strcmp(msg, decrypted_msg)) {
+        printf("Passed\n");
+    }
+    else {
+        printf("Failed\n");
+    }
+
+    print_hex(msg, strlen(msg));
+    printf("\n");
+
+    print_hex(decrypted_msg, strlen(msg));
+    printf("\n");
+
+    return EXIT_SUCCESS;
 }
