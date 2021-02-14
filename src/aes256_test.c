@@ -3,6 +3,7 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <memory.h>
 
 #include "crypto/aes256-ni_enc.h"
@@ -28,6 +29,7 @@ int main() {
     };
 
     unsigned char cipher[16];
+    int status = EXIT_SUCCESS;
 
     aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
 
@@ -37,6 +39,7 @@ int main() {
     }
     else {
         printf("Failed\n");
+        status = EXIT_FAILURE;
     }
 
     print_hex(cipher, sizeof(cipher));
@@ -45,5 +48,5 @@ int main() {
     print_hex(expected_cipher, sizeof(expected_cipher));
     printf("\n");
 
-    return EXIT_SUCCESS;
+    return status;
 }

@@ -1,11 +1,9 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <memory.h>
 #include "util.h"
 #include "../lib/micro-ecc/uECC.h"
-
-#define	EXIT_FAILURE	1	/* Failing exit status.  */
-#define	EXIT_SUCCESS	0	/* Successful exit status.  */
 
 void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
