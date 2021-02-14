@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <memory.h>
 
-#include "crypto/aes256-ni.h"
+#include "crypto/aes256-ni_enc.h"
 
 void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
@@ -28,7 +28,6 @@ int main() {
     };
 
     unsigned char cipher[16];
-    char decrypted_msg[sizeof(msg)];
 
     aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
 
@@ -44,23 +43,6 @@ int main() {
     printf("\n");
 
     print_hex(expected_cipher, sizeof(expected_cipher));
-    printf("\n\n");
-
-    aes256_ecb_decrypt((unsigned char*)decrypted_msg, key, expected_cipher, sizeof(expected_cipher));
-    decrypted_msg[strlen(msg)] = '\0';
-
-    printf("Decryption: Test ");
-    if(!strcmp(msg, decrypted_msg)) {
-        printf("Passed\n");
-    }
-    else {
-        printf("Failed\n");
-    }
-
-    print_hex(msg, strlen(msg));
-    printf("\n");
-
-    print_hex(decrypted_msg, strlen(msg));
     printf("\n");
 
     return EXIT_SUCCESS;

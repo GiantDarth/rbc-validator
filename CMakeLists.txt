@@ -15,7 +15,7 @@ set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src
         src/util.c src/util.h)
 # note micro-ecc from https://github.com/kmackay/micro-ecc.git
 set(uECC_FILES lib/micro-ecc/uECC.c lib/micro-ecc/uECC.h)
-set(AES_FILES src/crypto/aes256-ni.c src/crypto/aes256-ni.h)
+set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
 add_executable(ecc256_test src/ecc256_test.c ${SOURCE_FILES} ${uECC_FILES})

@@ -6,7 +6,7 @@
 // https://www.intel.com/content/dam/doc/white-paper/advanced-encryption-standard-new-instructions-set-paper.pdf
 
 // AES-NI and SSE intrinsincs
-#include "aes256-ni.h"
+#include "aes256-ni_enc.h"
 
 #include <wmmintrin.h>
 
@@ -47,11 +47,11 @@ static inline void KEY_256_ASSIST_2(__m128i *tmp1, __m128i *tmp3) {
     *tmp3 = _mm_xor_si128(*tmp3, tmp2);
 }
 
-void aes256_key_expansion(__m128i *key_schedule, const unsigned char *key) {
+void aes256_enc_key_expansion(__m128i *key_schedule, const unsigned char *key) {
     __m128i tmp1, tmp2, tmp3;
 
-    tmp1 = _mm_loadu_si128((const __m128i*) key);
-    tmp3 = _mm_loadu_si128((const __m128i*) (key + 16));
+    tmp1 = _mm_loadu_si128((const __m128i*)key);
+    tmp3 = _mm_loadu_si128((const __m128i*)(key + 16));
 
     key_schedule[0] = tmp1;
     key_schedule[1] = tmp3;
@@ -114,7 +114,7 @@ int aes256_ecb_encrypt(unsigned char *cipher, const unsigned char *key, const un
         return 1;
     }
 
-    aes256_key_expansion(scheduler, key);
+    aes256_enc_key_expansion(scheduler, key);
 
     for(size_t i = 0; i < block_count; ++i) {
         tmp = _mm_loadu_si128(&((__m128i*)msg)[i]);
@@ -126,34 +126,6 @@ int aes256_ecb_encrypt(unsigned char *cipher, const unsigned char *key, const un
 
         tmp = _mm_aesenclast_si128(tmp, scheduler[NUM_OF_ROUNDS]);
         _mm_storeu_si128(&((__m128i*)cipher)[i], tmp);
-    }
-
-    return 0;
-}
-
-int aes256_ecb_decrypt(unsigned char *msg, const unsigned char *key, const unsigned char *cipher,
-                        size_t cipher_len) {
-    __m128i tmp;
-    size_t block_count = cipher_len / 16;
-
-    __m128i scheduler[sizeof(__m128i) * (NUM_OF_ROUNDS + 1)];
-
-    if(cipher_len % 16) {
-        return 1;
-    }
-
-    aes256_key_expansion(scheduler, key);
-
-    for(size_t i = 0; i < block_count; ++i) {
-        tmp = _mm_loadu_si128(&((__m128i*)cipher)[i]);
-        tmp = _mm_xor_si128(tmp, scheduler[0]);
-
-        for(int j = 1; j < NUM_OF_ROUNDS; ++j) {
-            tmp = _mm_aesdec_si128(tmp, scheduler[j]);
-        }
-
-        tmp = _mm_aesdeclast_si128(tmp, scheduler[NUM_OF_ROUNDS]);
-        _mm_storeu_si128(&((__m128i*)msg)[i], tmp);
     }
 
     return 0;
