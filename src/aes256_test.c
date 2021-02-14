@@ -3,8 +3,10 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <memory.h>
-#include "aes256-ni.h"
+
+#include "crypto/aes256-ni_enc.h"
 
 void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
@@ -27,14 +29,24 @@ int main() {
     };
 
     unsigned char cipher[16];
+    int status = EXIT_SUCCESS;
 
-    aes256_enc_key_scheduler *key_scheduler = aes256_enc_key_scheduler_create();
-    aes256_enc_key_scheduler_update(key_scheduler, key);
+    aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
 
-    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, strlen(msg));
+    printf("Encryption: Test ");
+    if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
+        printf("Passed\n");
+    }
+    else {
+        printf("Failed\n");
+        status = EXIT_FAILURE;
+    }
 
     print_hex(cipher, sizeof(cipher));
     printf("\n");
 
-    return memcmp(cipher, expected_cipher, sizeof(cipher)) ? EXIT_FAILURE : EXIT_SUCCESS;
+    print_hex(expected_cipher, sizeof(expected_cipher));
+    printf("\n");
+
+    return status;
 }
