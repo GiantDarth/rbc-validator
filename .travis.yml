@@ -2,11 +2,11 @@ language: c
 
 jobs:
   include:
-    - name: Ubuntu (GCC)
+    - name: Ubuntu 20.04 (GCC)
       os: linux
       dist: focal
       compiler: gcc
-    - name: Ubuntu (Clang)
+    - name: Ubuntu 20.04 (Clang)
       os: linux
       dist: focal
       compiler: clang
