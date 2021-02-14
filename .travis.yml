@@ -10,7 +10,7 @@ jobs:
       os: linux
       dist: focal
       compiler: clang
-    - name: macOS 10.15.7 (Catalina, Xcode 12.0.7)
+    - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
       os: osx
       osx_image: xcode12
       compiler: clang
