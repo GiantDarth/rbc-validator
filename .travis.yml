@@ -2,16 +2,20 @@ language: c
 
 jobs:
   include:
-    - os: linux
+    - name: Ubuntu (GCC)
+      os: linux
       dist: focal
       compiler: gcc
-    - os: linux
+    - name: Ubuntu (Clang)
+      os: linux
       dist: focal
       compiler: clang
-    - os: osx
+    - name: macOS 10.15.7 (Xcode 12.0.7)
+      os: osx
       osx_image: xcode12
       compiler: clang
-    - os: osx
+    - name: macOS 11.1 (Xcode 12.3)
+      os: osx
       osx_image: xcode12.3
       compiler: clang
 
