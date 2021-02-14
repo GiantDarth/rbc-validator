@@ -1,12 +1,15 @@
 language: c
 
-matrix:
+jobs:
   include:
     - os: linux
       dist: focal
       compiler: gcc
     - os: linux
       dist: focal
+      compiler: clang
+    - os: osx
+      osx_image: xcode12
       compiler: clang
     - os: osx
       osx_image: xcode12.3
