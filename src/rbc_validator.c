@@ -272,8 +272,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     arguments->seed_hex = arg;
                     break;
                 case 1:
-                    if(strlen(arg) != AES_BLOCK_SIZE * 2) {
-                        argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
+                    if(arguments->mode == MODE_AES) {
+                        if(strlen(arg) != AES_BLOCK_SIZE * 2) {
+                            argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
+                        }
+                    }
+                    else if(arguments->mode == MODE_ECC) {
+                        if(strlen(arg) != ECC_PUB_KEY_SIZE * 2) {
+                            argp_error(state, "The CLIENT_PUB_KEY (client public key) must be"
+                                              " 64 bytes long for ECC Secp256r1.\n");
+                        }
                     }
                     arguments->client_crypto_hex = arg;
                     break;
