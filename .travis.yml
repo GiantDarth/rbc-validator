@@ -1,18 +1,22 @@
 language: c
 
-matrix:
+jobs:
   include:
-    - os: linux
-      dist: xenial
+    - name: Ubuntu 20.04 (GCC)
+      os: linux
+      dist: focal
       compiler: gcc
-    - os: linux
-      dist: xenial
+    - name: Ubuntu 20.04 (Clang)
+      os: linux
+      dist: focal
       compiler: clang
-    - os: osx
-      osx_image: xcode10.3
+    - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
+      os: osx
+      osx_image: xcode12
       compiler: clang
-    - os: osx
-      osx_image: xcode11.3
+    - name: macOS 11.1 (Big Sur, Xcode 12.3)
+      os: osx
+      osx_image: xcode12.3
       compiler: clang
 
 env:
@@ -35,20 +39,12 @@ addons:
       - argp-standalone
     update: true
 
+before_script:
+  - if [[ $TRAVIS_OS_NAME == "linux" && $CC == "clang" ]]; then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
+
 script:
   - cmake --version
-  - |
-    # For Mojave (10.14)
-    # Source: https://github.com/henry0312/LightGBM/blob/master/docs/Installation-Guide.rst#apple-clang
-    if [[ "$TRAVIS_OS_NAME" == "osx" && ("$TRAVIS_OSX_IMAGE" == "xcode10.3" || \
-          "$TRAVIS_OSX_IMAGE" == "xcode11.2") ]]; then cmake \
-      -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
-      -DOpenMP_C_LIB_NAMES="omp" \
-      -DOpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib \
-      ./CMakeLists.txt
-    else
-      cmake ./CMakeLists.txt
-    fi
+  - cmake ./CMakeLists.txt
   - cmake --build .
   - ./aes256_test
   - ./aes_validator --usage
