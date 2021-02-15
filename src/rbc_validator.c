@@ -310,6 +310,23 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 argp_error(state, "--mode is required!\n");
             }
 
+            if(!(arguments->random) && !(arguments->benchmark)) {
+                // We don't need to check seed_hex since the first argument will always be set to it
+                // and NO_ARGS is checked above
+                if(arguments->client_crypto_hex == NULL) {
+                    argp_usage(state);
+                }
+
+                if(arguments->mode == MODE_AES && arguments->uuid_hex == NULL) {
+                    argp_usage(state);
+                }
+            }
+
+            if(arguments->random && arguments->benchmark) {
+                argp_error(state, "--random and --benchmark cannot be both set"
+                                  " simultaneously.\n");
+            }
+
             if(arguments->mismatches < 0) {
                 if(arguments->random) {
                     argp_error(state,"--mismatches must be set and non-negative when using"
@@ -323,11 +340,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     argp_error(state, "--mismatches must be set and non-negative when using"
                                       " --fixed.\n");
                 }
-            }
-
-            if(arguments->random && arguments->benchmark) {
-                argp_error(state, "--random and --benchmark cannot be both set"
-                                  " simultaneously.\n");
             }
 
             if(arguments->mismatches > arguments->subkey_length) {
