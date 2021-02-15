@@ -115,7 +115,7 @@ void get_random_seed(unsigned char *key, size_t key_size, gmp_randstate_t randst
     mpz_clear(key_mpz);
 }
 
-void get_random_corrupted_seed(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
+void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned char *seed, int mismatches,
                                size_t subkey_length, gmp_randstate_t randstate,
                                int benchmark, int numcores) {
     mpz_t perm_mpz;
@@ -134,15 +134,15 @@ void get_random_corrupted_seed(unsigned char *corrupted_key, const unsigned char
     // Left shift permutation by (key_size * 8) - subkey_length bits to make it most significant bit
     // aligned.
 
-    uint256_import(&key_uint, key);
+    uint256_import(&key_uint, seed);
     uint256_from_mpz(&perm_uint, perm_mpz);
 
-    // Perform an XOR operation between the permutation and the key.
-    // If a bit is set in permutation, then flip the bit in the key.
+    // Perform an XOR operation between the permutation and the seed.
+    // If a bit is set in permutation, then flip the bit in the seed.
     // Otherwise, leave it as is.
     uint256_xor(&corrupted_key_uint, &key_uint, &perm_uint);
 
-    uint256_export(corrupted_key, &corrupted_key_uint);
+    uint256_export(corrupted_seed, &corrupted_key_uint);
 
     mpz_clear(perm_mpz);
 }
