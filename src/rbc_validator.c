@@ -989,7 +989,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef USE_MPI
-    if(!(arguments.all) && subfound == 0 && !found) {
+    if((mismatch <= ending_mismatch) && !(arguments.all) && subfound == 0 && !found) {
         fprintf(stderr, "Rank %d Bleh\n", my_rank);
         MPI_Recv(&found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
