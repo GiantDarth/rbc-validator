@@ -397,9 +397,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
                   const unsigned char *client_cipher, uuid_t userId,
                   const uint256_t *starting_perm, const uint256_t *last_perm,
-                  const int* signal, int all, long long int *validated_keys
+                  int all, long long int *validated_keys,
 #ifdef USE_MPI
-                  , int verbose, int my_rank, int nprocs, int *global_found
+                  int *signal, int verbose, int my_rank, int nprocs
+#else
+                  const int* signal
 #endif
                   ) {
     // Declaration
@@ -461,7 +463,7 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
             status = 1;
 
 #ifdef USE_MPI
-            *global_found = 1;
+            *signal = 1;
 
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
@@ -473,7 +475,7 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
                 // alert all ranks that the key was found, including yourself
                 for (int i = 0; i < nprocs; i++) {
                     if(i != my_rank) {
-                        MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                        MPI_Isend(signal, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
                                   &(requests[i]));
                     }
                 }
@@ -495,11 +497,11 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
         }
 
 #ifdef USE_MPI
-        if (!all && !(*global_found) && iter_count % 128 == 0) {
+        if (!all && !(*signal) && iter_count % 128 == 0) {
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
-                MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                MPI_Recv(signal, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
                         MPI_STATUS_IGNORE);
             }
         }
@@ -534,9 +536,11 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
 int ecc_validator(unsigned char *client_priv_key,
                   const unsigned char *host_seed, const unsigned char *client_pub_key,
                   const uint256_t *starting_perm, const uint256_t *last_perm,
-                  const int* signal, int all, long long int *validated_keys
+                  int all, long long int *validated_keys,
 #ifdef USE_MPI
-                  , int verbose, int my_rank, int nprocs, int *global_found
+                  int *signal, int verbose, int my_rank, int nprocs
+#else
+                  const int* signal
 #endif
                   ) {
     // Declarations
@@ -602,7 +606,7 @@ int ecc_validator(unsigned char *client_priv_key,
             status = 1;
 
 #ifdef USE_MPI
-            *global_found = 1;
+            *signal = 1;
 
             if(verbose) {
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
@@ -614,7 +618,7 @@ int ecc_validator(unsigned char *client_priv_key,
                 // alert all ranks that the key was found, including yourself
                 for (int i = 0; i < nprocs; i++) {
                     if(i != my_rank) {
-                        MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                        MPI_Isend(signal, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
                                   &(requests[i]));
                     }
                 }
@@ -636,11 +640,11 @@ int ecc_validator(unsigned char *client_priv_key,
         }
 
 #ifdef USE_MPI
-        if (!all && !(*global_found) && iter_count % 128 == 0) {
+        if (!all && !(*signal) && iter_count % 128 == 0) {
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
-                MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                MPI_Recv(signal, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
                         MPI_STATUS_IGNORE);
             }
         }
@@ -692,7 +696,7 @@ int main(int argc, char *argv[]) {
 
     double start_time, duration, key_rate;
     long long int validated_keys = 0;
-    int mode, found, subfound, signal, error;
+    int mode, found, subfound;
 
     uint256_t starting_perm, ending_perm;
     long long int sub_validated_keys;
@@ -890,11 +894,8 @@ int main(int argc, char *argv[]) {
     // mode needs to be copied for OpenMP shared access
     mode = arguments.mode;
     found = 0;
-    signal = 0;
-    error = 0;
 
 #ifdef USE_MPI
-    // Initialize time for root rank
     start_time = MPI_Wtime();
 #else
     start_time = omp_get_wtime();
@@ -921,19 +922,19 @@ int main(int argc, char *argv[]) {
                 max_count = mpz_get_ui(key_count);
             }
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) my_rank, max_count,
+            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count,
                                   mismatch, arguments.subkey_length);
 
             if (mode == MODE_AES) {
                 subfound = aes_validator(client_seed, host_seed, client_cipher, userId,
-                                         &starting_perm, &ending_perm, &signal, arguments.all,
-                                         arguments.count ? &sub_validated_keys : NULL,
-                                         arguments.verbose, my_rank, max_count, &found);
+                                         &starting_perm, &ending_perm, arguments.all,
+                                         arguments.count ? &sub_validated_keys : NULL, &found,
+                                         arguments.verbose, my_rank, max_count);
             } else if (mode == MODE_ECC) {
                 subfound = ecc_validator(client_seed, host_seed, client_ecc_pub_key,
-                                         &starting_perm, &ending_perm, &signal, arguments.all,
-                                         arguments.count ? &sub_validated_keys : NULL,
-                                         arguments.verbose, my_rank, max_count, &found);
+                                         &starting_perm, &ending_perm, arguments.all,
+                                         arguments.count ? &sub_validated_keys : NULL, &found,
+                                         arguments.verbose, my_rank, max_count);
             }
 
             if (subfound < 0) {
@@ -944,47 +945,45 @@ int main(int argc, char *argv[]) {
             }
         }
 #else
-#pragma omp parallel default(none) shared(mode, found, error, host_seed, client_seed,\
-            client_cipher, userId, client_ecc_pub_key, signal, mismatch, arguments, validated_keys)\
+#pragma omp parallel default(none) shared(mode, found, host_seed, client_seed, client_cipher,\
+            userId, client_ecc_pub_key, mismatch, arguments, validated_keys)\
             private(subfound, starting_perm, ending_perm, sub_validated_keys)
         {
             sub_validated_keys = 0;
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)omp_get_thread_num(),
-                                  (size_t)omp_get_num_threads(), mismatch,
+            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
+                                  (size_t) omp_get_num_threads(), mismatch,
                                   arguments.subkey_length);
 
             if (mode == MODE_AES) {
                 subfound = aes_validator(client_seed, host_seed, client_cipher, userId,
-                                         &starting_perm, &ending_perm, &signal, arguments.all,
-                                         arguments.count ? &sub_validated_keys : NULL);
+                                         &starting_perm, &ending_perm, arguments.all,
+                                         arguments.count ? &sub_validated_keys : NULL,
+                                         &found);
             } else if (mode == MODE_ECC) {
                 subfound = ecc_validator(client_seed, host_seed, client_ecc_pub_key,
-                                         &starting_perm, &ending_perm, &signal, arguments.all,
-                                         arguments.count ? &sub_validated_keys : NULL);
+                                         &starting_perm, &ending_perm, arguments.all,
+                                         arguments.count ? &sub_validated_keys : NULL,
+                                         &found);
             }
 
-            // If the result is positive, set the "global" found to 1. Will cause the other threads
-            // to prematurely stop.
-            if (subfound > 0) {
-#pragma omp critical
-                {
-                    found = 1;
-                    signal = 1;
-                }
-            }
-                // If the result is negative, set a flag that an error has occurred, and stop the other
-                // threads. Will cause the other threads to prematurely stop.
-            else if (subfound < 0) {
-                // Set the error flag, then set the signal to stop the other threads
-#pragma omp critical
-                {
-                    error = 1;
-                    signal = 1;
-                }
-            }
+
 #pragma omp critical
             {
+                // If the result is positive set the "global" found to 1. Will cause the other
+                // threads to prematurely stop.
+                if (subfound > 0) {
+                    // If it isn't already found nor is there an error found,
+                    if (!found) {
+                        found = 1;
+                    }
+                }
+                    // If the result is negative, set a flag that an error has occurred, and stop the other
+                    // threads. Will cause the other threads to prematurely stop.
+                else if (subfound < 0) {
+                    found = -1;
+                }
+
                 if (arguments.count) {
                     validated_keys += sub_validated_keys;
                 }
@@ -1053,7 +1052,7 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
 #else
     // Check if an error occurred in one of the threads.
-    if(error) {
+    if(found < 0) {
         return ERROR_CODE_FAILURE;
     }
 
@@ -1072,7 +1071,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
     }
 
-    if(found) {
+    if(found > 0) {
         if(arguments.mode == MODE_AES || arguments.mode == MODE_ECC) {
             fprint_hex(stdout, client_seed, SEED_SIZE);
         }
