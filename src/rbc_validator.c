@@ -747,48 +747,60 @@ int main(int argc, char *argv[]) {
     numcores = omp_get_num_threads();
 #endif
 
-    if ((arguments.random || arguments.benchmark)
+    if ((arguments.random || arguments.benchmark)) {
 #ifdef USE_MPI
-        && my_rank == 0
+        if(my_rank == 0) {
 #endif
-    ) {
-        // Initialize values
-        // Set the gmp prng algorithm and set a seed based on the current time
-        gmp_randinit_default(randstate);
-        gmp_randseed_ui(randstate, (unsigned long)time(NULL));
+            // Initialize values
+            // Set the gmp prng algorithm and set a seed based on the current time
+            gmp_randinit_default(randstate);
+            gmp_randseed_ui(randstate, (unsigned long) time(NULL));
 
-        if(arguments.random) {
-            fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored"
-                            " and randomly generated ones will be used in their place.\n");
-        }
-        else if(arguments.benchmark) {
-            fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored"
-                            " and randomly generated ones will be used in their place.\n");
-        }
+            if (arguments.random) {
+                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored"
+                                " and randomly generated ones will be used in their place.\n");
+            } else if (arguments.benchmark) {
+                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored"
+                                " and randomly generated ones will be used in their place.\n");
+            }
 
-        get_random_seed(host_seed, SEED_SIZE, randstate);
-        get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
-                                  arguments.subkey_length, randstate, arguments.benchmark,
+            get_random_seed(host_seed, SEED_SIZE, randstate);
+            get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
+                                      arguments.subkey_length, randstate, arguments.benchmark,
 #ifdef USE_MPI
-                                  nprocs);
+                                      nprocs);
 #else
-                                  numcores);
+                                      numcores);
 #endif
+
+            if (arguments.mode == MODE_AES) {
+                uuid_generate(userId);
+
+                if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
+                    fprintf(stderr, "ERROR: host aes256_ecb_encrypt - abort run");
+                    return ERROR_CODE_FAILURE;
+                }
+            } else if (arguments.mode == MODE_ECC) {
+                if (!uECC_compute_public_key(host_seed, client_ecc_pub_key, curve)) {
+                    fprintf(stderr, "ERROR: host uECC_compute_public_key - abort run");
+                    return ERROR_CODE_FAILURE;
+                }
+            }
+#ifdef USE_MPI
+        }
+
+        // Broadcast all of the relevant variable to every rank
+        MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
         if(arguments.mode == MODE_AES) {
-            uuid_generate(userId);
-
-            if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
-                fprintf(stderr, "ERROR: host aes256_ecb_encrypt - abort run");
-                return ERROR_CODE_FAILURE;
-            }
+            MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+            MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         }
-        else if(arguments.mode == MODE_ECC) {
-            if (!uECC_compute_public_key(host_seed, client_ecc_pub_key, curve)) {
-                fprintf(stderr, "ERROR: host uECC_compute_public_key - abort run");
-                return ERROR_CODE_FAILURE;
-            }
+        else {
+            MPI_Bcast(client_ecc_pub_key, ECC_PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         }
+#endif
     }
     else {
         switch(parse_hex(host_seed, arguments.seed_hex)) {
@@ -833,22 +845,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
-#ifdef USE_MPI
-    if (arguments.random || arguments.benchmark) {
-        // Broadcast all of the relevant variable to every rank
-        MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-
-        if(arguments.mode == MODE_AES) {
-            MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-            MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        }
-        else {
-            MPI_Bcast(client_ecc_pub_key, ECC_PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        }
-    }
-#endif
 
     if (arguments.verbose
 #ifdef USE_MPI
