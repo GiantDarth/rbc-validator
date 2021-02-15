@@ -446,12 +446,12 @@ int ecc_validator(unsigned char *client_priv_key,
         if(validated_keys != NULL) {
             ++(*validated_keys);
         }
-        // get next current_priv_key
+        // Get next current_priv_key
         uint256_key_iter_get(iter, current_priv_key);
 
-        // If fails for some reason, break prematurely.
-        if (! uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
-            printf("ERROR uECC_compute_public_key - abort run");
+        // If it fails for some reason, break prematurely.
+        if (!uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
+            fprintf(stderr, "ERROR: uECC_compute_public_key - abort run");
             found = -1;
             break;
         }
@@ -552,38 +552,27 @@ int main(int argc, char *argv[]) {
                             " and randomly generated ones will be used in their place.\n");
         }
 
-        uuid_generate(userId);
-
         get_random_seed(host_seed, SEED_SIZE, randstate);
         get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
                                   arguments.subkey_length, randstate, arguments.benchmark,
                                   numcores);
 
         if(arguments.mode == MODE_AES) {
+            uuid_generate(userId);
+
             if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
+                fprintf(stderr, "ERROR: host aes256_ecb_encrypt - abort run");
                 return ERROR_CODE_FAILURE;
             }
         }
         else if(arguments.mode == MODE_ECC) {
-            if (! uECC_compute_public_key(host_seed, client_ecc_pub_key, curve)) {
-                printf("ERROR host uECC_compute_public_key - abort run");
-                //found = -1;
+            if (!uECC_compute_public_key(host_seed, client_ecc_pub_key, curve)) {
+                fprintf(stderr, "ERROR: host uECC_compute_public_key - abort run");
                 return ERROR_CODE_FAILURE;
             }
         }
     }
     else {
-        switch(parse_hex(client_cipher, arguments.client_crypto_hex)) {
-            case 1:
-                fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
-                return ERROR_CODE_FAILURE;
-            case 2:
-                fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
-                return ERROR_CODE_FAILURE;
-            default:
-                break;
-        }
-
         switch(parse_hex(host_seed, arguments.seed_hex)) {
             case 1:
                 fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
@@ -595,16 +584,39 @@ int main(int argc, char *argv[]) {
                 break;
         }
 
-        if (uuid_parse(arguments.uuid_hex, userId) < 0) {
-            fprintf(stderr, "ERROR: UUID not in canonical form.\n");
-            return ERROR_CODE_FAILURE;
+        if(arguments.mode == MODE_AES) {
+            switch(parse_hex(client_cipher, arguments.client_crypto_hex)) {
+                case 1:
+                    fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
+                    return ERROR_CODE_FAILURE;
+                case 2:
+                    fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+                    return ERROR_CODE_FAILURE;
+                default:
+                    break;
+            }
+
+            if (uuid_parse(arguments.uuid_hex, userId) < 0) {
+                fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+                return ERROR_CODE_FAILURE;
+            }
+        }
+        else if(arguments.mode == MODE_ECC) {
+            switch(parse_hex(client_ecc_pub_key, arguments.client_crypto_hex)) {
+                case 1:
+                    fprintf(stderr, "ERROR: CLIENT_PUB_KEY had non-hexadecimal"
+                                    " characters.\n");
+                    return ERROR_CODE_FAILURE;
+                case 2:
+                    fprintf(stderr, "ERROR: CLIENT_PUB_KEY did not have even length.\n");
+                    return ERROR_CODE_FAILURE;
+                default:
+                    break;
+            }
         }
     }
 
     if (arguments.verbose) {
-        // Convert the uuid to a string for printing
-        uuid_unparse(userId, uuid_str);
-
         fprintf(stderr, "INFO: Using HOST_SEED:                  ");
         fprint_hex(stderr, host_seed, SEED_SIZE);
         fprintf(stderr, "\n");
@@ -625,11 +637,14 @@ int main(int argc, char *argv[]) {
             fprint_hex(stderr, client_cipher, AES_BLOCK_SIZE);
             fprintf(stderr, "\n");
 
+            // Convert the uuid to a string for printing
+            uuid_unparse(userId, uuid_str);
+
             fprintf(stderr, "INFO: Using UUID:             %s\n", uuid_str);
         }
         else if(arguments.mode == MODE_ECC) {
             fprintf(stderr, "INFO: Using ECC Secp256r1 Host Private Key: ");
-            fprint_hex(stderr, host_seed, ECC_PRIV_KEY_SIZE);
+            fprint_hex(stderr, host_seed, SEED_SIZE);
             fprintf(stderr, "\n");
 
             fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key:\n ");
@@ -721,7 +736,9 @@ int main(int argc, char *argv[]) {
     }
 
     if(found) {
-        fprint_hex(stdout, client_seed, SEED_SIZE);
+        if(arguments.mode == MODE_AES || arguments.mode == MODE_ECC) {
+            fprint_hex(stdout, client_seed, SEED_SIZE);
+        }
         printf("\n");
     }
 
