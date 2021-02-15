@@ -32,7 +32,7 @@
 #define MODE_ECC 2
 
 const char *argp_program_version = "rbc_validator OpenMP 0.1.0";
-const char *argp_program_bug_address = "<cp723@nau.edu, Chris.Coffey@nau.edu, Duane.Booher@nau.edu>";
+const char *argp_program_bug_address = "<cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
 static char args_doc[] = "--mode=aes HOST_SEED CLIENT_CIPHER UUID\n"
