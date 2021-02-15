@@ -321,6 +321,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     argp_usage(state);
                 }
             }
+            // No argument should be set if in random or benchmark mode
+            else if(arguments->seed_hex != NULL) {
+                argp_usage(state);
+            }
 
             if(arguments->random && arguments->benchmark) {
                 argp_error(state, "--random and --benchmark cannot be both set"
