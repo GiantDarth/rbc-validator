@@ -785,20 +785,6 @@ int main(int argc, char *argv[]) {
                 return ERROR_CODE_FAILURE;
             }
         }
-
-#ifdef USE_MPI
-        // Broadcast all of the relevant variable to every rank
-        MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-
-        if(arguments.mode == MODE_AES) {
-            MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-            MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        }
-        else {
-            MPI_Bcast(client_ecc_pub_key, ECC_PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        }
-#endif
     }
     else {
         switch(parse_hex(host_seed, arguments.seed_hex)) {
@@ -843,6 +829,22 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+
+#ifdef USE_MPI
+    if (arguments.random || arguments.benchmark) {
+        // Broadcast all of the relevant variable to every rank
+        MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+        if(arguments.mode == MODE_AES) {
+            MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+            MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        }
+        else {
+            MPI_Bcast(client_ecc_pub_key, ECC_PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        }
+    }
+#endif
 
     if (arguments.verbose
 #ifdef USE_MPI
