@@ -51,9 +51,9 @@ script:
   - ./rbc_validator --help
   - ./rbc_validator --mode=aes -rv -m3
   - |
-    [[ $(./rbc_validator --mode=aes -v -m3 78df66c7-4723-434f-b5b9-ae61e02cd97c \
+    [[ $(./rbc_validator --mode=aes -v -m3 73962ffac2a737632b4e3dc0ce424dac \
         ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
-        73962ffac2a737632b4e3dc0ce424dac) == \
+        78df66c7-4723-434f-b5b9-ae61e02cd97c) == \
       "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
   - ./aes_validator_mpi --usage
   - ./aes_validator_mpi --help
