@@ -747,7 +747,7 @@ int main(int argc, char *argv[]) {
     numcores = omp_get_num_threads();
 #endif
 
-    if ((arguments.random || arguments.benchmark)) {
+    if (arguments.random || arguments.benchmark) {
 #ifdef USE_MPI
         if(my_rank == 0) {
 #endif
@@ -781,7 +781,7 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             } else if (arguments.mode == MODE_ECC) {
-                if (!uECC_compute_public_key(host_seed, client_ecc_pub_key, curve)) {
+                if (!uECC_compute_public_key(client_seed, client_ecc_pub_key, curve)) {
                     fprintf(stderr, "ERROR: host uECC_compute_public_key - abort run");
                     return ERROR_CODE_FAILURE;
                 }
