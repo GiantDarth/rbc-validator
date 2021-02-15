@@ -8,8 +8,13 @@
 #include <time.h>
 
 #include <uuid/uuid.h>
-#include <omp.h>
 #include <argp.h>
+
+#if defined(USE_MPI)
+#include <mpi.h>
+#else
+#include <omp.h>
+#endif
 
 #include "iter/uint256_key_iter.h"
 #include "util.h"
@@ -31,7 +36,11 @@
 #define MODE_AES 1
 #define MODE_ECC 2
 
+#ifdef USE_MPI
+const char *argp_program_version = "aes_validator MPI 0.1.0";
+#else
 const char *argp_program_version = "rbc_validator OpenMP 0.1.0";
+#endif
 const char *argp_program_bug_address = "<cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
@@ -46,7 +55,11 @@ static char prog_desc[] = "Given an HOST_SEED and either:\n"
                           " number of bits until a matching client seed is found. The matching"
                           " HOST_* will be sent to stdout, depending on the cryptographic function."
 
+#ifdef USE_MPI
+                          "\n\nThis implementation uses MPI."
+#else
                           "\n\nThis implementation uses OpenMP."
+#endif
 
                           "\vIf the client seed is found then the program will have an exit code"
                           " 0. If not found, e.g. when providing --mismatches and"
@@ -80,7 +93,10 @@ static char prog_desc[] = "Given an HOST_SEED and either:\n"
 struct arguments {
     int mode, verbose, benchmark, random, fixed, count, all;
     char *seed_hex, *client_crypto_hex, *uuid_hex;
-    int mismatches, subkey_length, threads;
+    int mismatches, subkey_length;
+#ifndef USE_MPI
+    int threads;
+#endif
 };
 
 static struct argp_option options[] = {
@@ -153,6 +169,7 @@ static struct argp_option options[] = {
         0,
         "Produces verbose output and time taken to stderr.",
         0},
+#ifndef USE_MPI
     {
         "threads",
         't',
@@ -161,6 +178,7 @@ static struct argp_option options[] = {
         "How many worker threads to use. Defaults to 0. If set to 0, then the number of"
         " threads used will be detected by the system.",
      0},
+#endif
     { 0 }
 };
 
@@ -243,6 +261,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             arguments->subkey_length = (int)value;
 
             break;
+#ifndef USE_MPI
         case 't':
             errno = 0;
             value = strtol(arg, &endptr, 10);
@@ -263,6 +282,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             arguments->threads = (int)value;
 
             break;
+#endif
         case ARGP_KEY_ARG:
             switch(state->arg_num) {
                 case 0:
@@ -377,13 +397,24 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
                   const unsigned char *client_cipher, uuid_t userId,
                   const uint256_t *starting_perm, const uint256_t *last_perm,
-                  const int* signal, int all, long long int *validated_keys) {
+                  const int* signal, int all, long long int *validated_keys
+#ifdef USE_MPI
+                  , int verbose, int my_rank, int nprocs, int *global_found
+#endif
+                  ) {
     // Declaration
-    int found = 0;
+    int status = 0;
     unsigned char current_key[AES256_KEY_SIZE];
     unsigned char current_cipher[AES_BLOCK_SIZE];
-
     uint256_key_iter *iter;
+
+#ifdef USE_MPI
+    int probe_flag = 0;
+    long long int iter_count = 0;
+
+    MPI_Request *requests;
+    MPI_Status *statuses;
+#endif
 
     // Allocation and initialization
     if((iter = uint256_key_iter_create(host_seed, starting_perm, last_perm)) == NULL) {
@@ -391,6 +422,26 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
 
         return -1;
     }
+
+#ifdef USE_MPI
+    if((requests = malloc(sizeof(MPI_Request) * nprocs)) == NULL) {
+        perror("Error");
+
+        uint256_key_iter_destroy(iter);
+
+        return -1;
+    }
+
+    if((statuses = malloc(sizeof(MPI_Status) * nprocs)) == NULL) {
+        perror("Error");
+
+        free(requests);
+
+        uint256_key_iter_destroy(iter);
+
+        return -1;
+    }
+#endif
 
     while(!uint256_key_iter_end(iter) && (all || !(*signal))) {
         if(validated_keys != NULL) {
@@ -400,29 +451,71 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
 
         // If encryption fails for some reason, break prematurely.
         if(aes256_ecb_encrypt(current_cipher, current_key, userId, sizeof(uuid_t))) {
-            found = -1;
+            status = -1;
             break;
         }
 
-        // If the new current_cipher is the same as the passed in client_cipher, set found to true
+        // If the new current_cipher is the same as the passed in client_cipher, set status to true
         // and break
         if(memcmp(current_cipher, client_cipher, sizeof(uuid_t)) == 0) {
-            found = 1;
+            status = 1;
+
+#ifdef USE_MPI
+            *global_found = 1;
+
+            if(verbose) {
+                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
+            }
+
+            memcpy(client_key, current_key, AES256_KEY_SIZE);
+
+            if(!all) {
+                // alert all ranks that the key was found, including yourself
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                                  &(requests[i]));
+                    }
+                }
+
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
+                    }
+                }
+            }
+#else
             // Only have one thread copy the host_seed at a time
             // This might happen more than once if the # of threads exceeds the number of possible
             // keys
 #pragma omp critical
             memcpy(client_key, current_key, AES256_KEY_SIZE);
             break;
+#endif
         }
+
+#ifdef USE_MPI
+        if (!all && !(*global_found) && iter_count % 128 == 0) {
+            MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+
+            if(probe_flag) {
+                MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                        MPI_STATUS_IGNORE);
+            }
+        }
+#endif
 
         uint256_key_iter_next(iter);
     }
 
     // Cleanup
+#ifdef USE_MPI
+    free(statuses);
+    free(requests);
+#endif
     uint256_key_iter_destroy(iter);
 
-    return found;
+    return status;
 }
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
@@ -441,21 +534,53 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
 int ecc_validator(unsigned char *client_priv_key,
                   const unsigned char *host_seed, const unsigned char *client_pub_key,
                   const uint256_t *starting_perm, const uint256_t *last_perm,
-                  const int* signal, int all, long long int *validated_keys) {
+                  const int* signal, int all, long long int *validated_keys
+#ifdef USE_MPI
+                  , int verbose, int my_rank, int nprocs, int *global_found
+#endif
+                  ) {
     // Declarations
-    int found = 0;
+    int status = 0;
     const struct uECC_Curve_t *curve = uECC_secp256r1();
-    // This one changes, until found
+    // This one changes, until status
     unsigned char current_priv_key[ECC_PRIV_KEY_SIZE];
     // This is generated from current_priv_key
     unsigned char current_pub_key[ECC_PUB_KEY_SIZE];
     uint256_key_iter *iter;
+
+#ifdef USE_MPI
+    int probe_flag = 0;
+    long long int iter_count = 0;
+
+    MPI_Request *requests;
+    MPI_Status *statuses;
+#endif
 
     // Allocation and initialization
     if((iter = uint256_key_iter_create(host_seed, starting_perm, last_perm)) == NULL) {
         perror("ERROR");
         return -1;
     }
+
+#ifdef USE_MPI
+    if((requests = malloc(sizeof(MPI_Request) * nprocs)) == NULL) {
+        perror("Error");
+
+        uint256_key_iter_destroy(iter);
+
+        return -1;
+    }
+
+    if((statuses = malloc(sizeof(MPI_Status) * nprocs)) == NULL) {
+        perror("Error");
+
+        free(requests);
+
+        uint256_key_iter_destroy(iter);
+
+        return -1;
+    }
+#endif
 
     // While we haven't reached the end of iteration
     while(!uint256_key_iter_end(iter) && (all || !(*signal))) {
@@ -468,35 +593,85 @@ int ecc_validator(unsigned char *client_priv_key,
         // If it fails for some reason, break prematurely.
         if (!uECC_compute_public_key(current_priv_key, current_pub_key, curve)) {
             fprintf(stderr, "ERROR: uECC_compute_public_key - abort run");
-            found = -1;
+            status = -1;
             break;
         }
 
-        // If the new cipher is the same as the passed in auth_cipher, set found to true and break
+        // If the new cipher is the same as the passed in auth_cipher, set status to true and break
         if(memcmp(current_pub_key, client_pub_key, ECC_PUB_KEY_SIZE) == 0) {
-            found = 1;
+            status = 1;
+
+#ifdef USE_MPI
+            *global_found = 1;
+
+            if(verbose) {
+                fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
+            }
+
+            memcpy(client_priv_key, current_priv_key, ECC_PRIV_KEY_SIZE);
+
+            if(!all) {
+                // alert all ranks that the key was found, including yourself
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Isend(global_found, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
+                                  &(requests[i]));
+                    }
+                }
+
+                for (int i = 0; i < nprocs; i++) {
+                    if(i != my_rank) {
+                        MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
+                    }
+                }
+            }
+#else
             // Only have one thread copy the key at a time
             // This might happen more than once if the # of threads exceeds the number of possible
             // keys
 #pragma omp critical
             memcpy(client_priv_key, current_priv_key, ECC_PRIV_KEY_SIZE);
             break;
+#endif
         }
+
+#ifdef USE_MPI
+        if (!all && !(*global_found) && iter_count % 128 == 0) {
+            MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
+
+            if(probe_flag) {
+                MPI_Recv(global_found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
+                        MPI_STATUS_IGNORE);
+            }
+        }
+#endif
 
         uint256_key_iter_next(iter);
     }
 
     // Cleanup
+#ifdef USE_MPI
+    free(statuses);
+    free(requests);
+#endif
     uint256_key_iter_destroy(iter);
 
-    return found;
+    return status;
 }
 
 /// OpenMP implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
+#ifdef USE_MPI
+    int my_rank, nprocs;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#else
     int numcores;
+#endif
     struct arguments arguments;
     static struct argp argp = {options, parse_opt, args_doc, prog_desc, 0, 0, 0};
 
@@ -519,6 +694,19 @@ int main(int argc, char *argv[]) {
     long long int validated_keys = 0;
     int mode, found, subfound, signal, error;
 
+    uint256_t starting_perm, ending_perm;
+    long long int sub_validated_keys;
+
+#ifdef USE_MPI
+    mpz_t key_count;
+    size_t max_count;
+#endif
+
+    // Memory allocation
+#ifdef USE_MPI
+    mpz_init(key_count);
+#endif
+
     memset(&arguments, 0, sizeof(arguments));
     arguments.seed_hex = NULL;
     arguments.client_crypto_hex = NULL;
@@ -529,11 +717,6 @@ int main(int argc, char *argv[]) {
 
     // Parse arguments
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
-
-    // Initialize values
-    // Set the gmp prng algorithm and set a seed based on the current time
-    gmp_randinit_default(randstate);
-    gmp_randseed_ui(randstate, (unsigned long)time(NULL));
 
     mismatch = 0;
     ending_mismatch = arguments.subkey_length;
@@ -548,6 +731,7 @@ int main(int argc, char *argv[]) {
         ending_mismatch = arguments.mismatches;
     }
 
+#ifndef USE_MPI
     if (arguments.threads > 0) {
         omp_set_num_threads(arguments.threads);
     }
@@ -557,8 +741,18 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel default(none) shared(numcores)
 #pragma omp single
     numcores = omp_get_num_threads();
+#endif
 
-    if (arguments.random || arguments.benchmark) {
+    if ((arguments.random || arguments.benchmark)
+#ifdef USE_MPI
+        && my_rank == 0
+#endif
+    ) {
+        // Initialize values
+        // Set the gmp prng algorithm and set a seed based on the current time
+        gmp_randinit_default(randstate);
+        gmp_randseed_ui(randstate, (unsigned long)time(NULL));
+
         if(arguments.random) {
             fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored"
                             " and randomly generated ones will be used in their place.\n");
@@ -571,7 +765,11 @@ int main(int argc, char *argv[]) {
         get_random_seed(host_seed, SEED_SIZE, randstate);
         get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
                                   arguments.subkey_length, randstate, arguments.benchmark,
+#ifdef USE_MPI
+                                  nprocs);
+#else
                                   numcores);
+#endif
 
         if(arguments.mode == MODE_AES) {
             uuid_generate(userId);
@@ -587,6 +785,20 @@ int main(int argc, char *argv[]) {
                 return ERROR_CODE_FAILURE;
             }
         }
+
+#ifdef USE_MPI
+        // Broadcast all of the relevant variable to every rank
+        MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+        if(arguments.mode == MODE_AES) {
+            MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+            MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        }
+        else {
+            MPI_Bcast(client_ecc_pub_key, ECC_PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        }
+#endif
     }
     else {
         switch(parse_hex(host_seed, arguments.seed_hex)) {
@@ -632,7 +844,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (arguments.verbose) {
+    if (arguments.verbose
+#ifdef USE_MPI
+        && my_rank == 0
+#endif
+    ) {
         fprintf(stderr, "INFO: Using HOST_SEED:                  ");
         fprint_hex(stderr, host_seed, SEED_SIZE);
         fprintf(stderr, "\n");
@@ -675,29 +891,72 @@ int main(int argc, char *argv[]) {
     signal = 0;
     error = 0;
 
+#ifdef USE_MPI
+    // Initialize time for root rank
+    start_time = MPI_Wtime();
+#else
     start_time = omp_get_wtime();
+#endif
 
     for (; mismatch <= ending_mismatch && !found; mismatch++) {
-        if(arguments.verbose) {
+        if(arguments.verbose
+#ifdef USE_MPI
+            && my_rank == 0
+#endif
+        ) {
             fprintf(stderr, "INFO: Checking a hamming distance of %d...\n", mismatch);
         }
 
+#ifdef USE_MPI
+        mpz_bin_uiui(key_count, arguments.subkey_length, mismatch);
+
+        // Only have this rank run if it's within range of possible keys
+        if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0) {
+            max_count = nprocs;
+            // Set the count of pairs to the range of possible keys if there are more ranks
+            // than possible keys
+            if(mpz_cmp_ui(key_count, nprocs) < 0) {
+                max_count = mpz_get_ui(key_count);
+            }
+
+            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) my_rank, max_count,
+                                  mismatch, arguments.subkey_length);
+
+            if (mode == MODE_AES) {
+                subfound = aes_validator(client_seed, host_seed, client_cipher, userId,
+                                         &starting_perm, &ending_perm, &signal, arguments.all,
+                                         arguments.count ? &sub_validated_keys : NULL,
+                                         arguments.verbose, my_rank, max_count, &found);
+            } else if (mode == MODE_ECC) {
+                subfound = ecc_validator(client_seed, host_seed, client_ecc_pub_key,
+                                         &starting_perm, &ending_perm, &signal, arguments.all,
+                                         arguments.count ? &sub_validated_keys : NULL,
+                                         arguments.verbose, my_rank, max_count, &found);
+            }
+
+            if (subfound < 0) {
+                // Cleanup
+                mpz_clear(key_count);
+
+                MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
+            }
+        }
+#else
 #pragma omp parallel default(none) shared(mode, found, error, host_seed, client_seed,\
             client_cipher, userId, client_ecc_pub_key, signal, mismatch, arguments, validated_keys)\
-            private(subfound)
+            private(subfound, starting_perm, ending_perm, sub_validated_keys)
         {
-            uint256_t starting_perm, ending_perm;
-            long long int sub_validated_keys;
+            sub_validated_keys = 0;
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
-                                  (size_t) omp_get_num_threads(), mismatch, arguments.subkey_length);
+            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)omp_get_thread_num(),
+                                  (size_t)omp_get_num_threads(), mismatch,
+                                  arguments.subkey_length);
 
-            if(mode == MODE_AES) {
+            if (mode == MODE_AES) {
                 subfound = aes_validator(client_seed, host_seed, client_cipher, userId,
                                          &starting_perm, &ending_perm, &signal, arguments.all,
                                          arguments.count ? &sub_validated_keys : NULL);
-            }
-            else if(mode == MODE_ECC) {
+            } else if (mode == MODE_ECC) {
                 subfound = ecc_validator(client_seed, host_seed, client_ecc_pub_key,
                                          &starting_perm, &ending_perm, &signal, arguments.all,
                                          arguments.count ? &sub_validated_keys : NULL);
@@ -712,8 +971,8 @@ int main(int argc, char *argv[]) {
                     signal = 1;
                 }
             }
-            // If the result is negative, set a flag that an error has occurred, and stop the other
-            // threads. Will cause the other threads to prematurely stop.
+                // If the result is negative, set a flag that an error has occurred, and stop the other
+                // threads. Will cause the other threads to prematurely stop.
             else if (subfound < 0) {
                 // Set the error flag, then set the signal to stop the other threads
 #pragma omp critical
@@ -724,16 +983,76 @@ int main(int argc, char *argv[]) {
             }
 #pragma omp critical
             {
-                if(arguments.count) {
+                if (arguments.count) {
                     validated_keys += sub_validated_keys;
                 }
             }
         }
+#endif
     }
 
+#ifdef USE_MPI
+    if(!(arguments.all) && subfound == 0 && !found) {
+        fprintf(stderr, "Rank %d Bleh\n", my_rank);
+        MPI_Recv(&found, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    duration = MPI_Wtime() - start_time;
+
+    fprintf(stderr, "INFO Rank %d: Clock time: %f s\n", my_rank, duration);
+
+    if(my_rank == 0) {
+        MPI_Reduce(MPI_IN_PLACE, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Reduce(&duration, &duration, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    }
+
+    if(my_rank == 0 && arguments.verbose) {
+        fprintf(stderr, "INFO: Max Clock time: %f s\n", duration);
+    }
+
+    if(arguments.count) {
+        if(my_rank == 0) {
+            MPI_Reduce(MPI_IN_PLACE, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
+                       MPI_COMM_WORLD);
+
+            // Divide validated_keys by duration
+            key_rate = (double)validated_keys / duration;
+
+            fprintf(stderr, "INFO: Keys searched: %lld\n", validated_keys);
+            fprintf(stderr, "INFO: Keys per second: %.9g\n", key_rate);
+        }
+        else {
+            MPI_Reduce(&validated_keys, &validated_keys, 1, MPI_LONG_LONG_INT, MPI_SUM, 0,
+                       MPI_COMM_WORLD);
+        }
+    }
+
+    if(subfound) {
+        if(arguments.mode == MODE_AES || arguments.mode == MODE_ECC) {
+            fprint_hex(stdout, client_seed, SEED_SIZE);
+        }
+        printf("\n");
+    }
+
+    // Cleanup
+    mpz_clear(key_count);
+
+    MPI_Finalize();
+
+//    if(my_rank == 0) {
+//        return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
+//    }
+//    else {
+//        return ERROR_CODE_FOUND;
+//    }
+
+    return EXIT_SUCCESS;
+#else
     // Check if an error occurred in one of the threads.
     if(error) {
-        return EXIT_FAILURE;
+        return ERROR_CODE_FAILURE;
     }
 
     duration = omp_get_wtime() - start_time;
@@ -759,4 +1078,5 @@ int main(int argc, char *argv[]) {
     }
 
     return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
+#endif
 }
