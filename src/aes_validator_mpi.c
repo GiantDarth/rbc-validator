@@ -54,7 +54,7 @@ static char prog_desc[] = "Given an AES-256 KEY and a CIPHER from an unreliable 
 
 struct arguments {
     int verbose, benchmark, random, fixed, count, all;
-    char *cipher_hex, *key_hex, *uuid_hex;
+    char *client_crypto_hex, *seed_hex, *uuid_hex;
     int mismatches, subkey_length;
 };
 
@@ -168,13 +168,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         argp_error(state, "Only AES-256 keys supported. KEY not"
                                           " equivalent to 256-bits long.\n");
                     }
-                    arguments->key_hex = arg;
+                    arguments->seed_hex = arg;
                     break;
                 case 2:
                     if(strlen(arg) != BLOCK_SIZE * 2) {
                         argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
                     }
-                    arguments->cipher_hex = arg;
+                    arguments->client_crypto_hex = arg;
                     break;
                 default:
                     argp_usage(state);
@@ -419,9 +419,9 @@ int main(int argc, char *argv[]) {
 
             uuid_generate(userId);
 
-            get_random_key(key, KEY_SIZE, randstate);
-            get_random_corrupted_key(corrupted_key, key, arguments.mismatches,
-                                     arguments.subkey_length, randstate, arguments.benchmark, nprocs);
+            get_random_seed(key, KEY_SIZE, randstate);
+            get_random_corrupted_seed(corrupted_key, key, arguments.mismatches,
+                                      arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
             if (aes256_ecb_encrypt(auth_cipher, corrupted_key, userId, sizeof(uuid_t))) {
                 // Cleanup
@@ -440,7 +440,7 @@ int main(int argc, char *argv[]) {
         MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     }
     else {
-        switch (parse_hex(auth_cipher, arguments.cipher_hex)) {
+        switch (parse_hex(auth_cipher, arguments.client_crypto_hex)) {
             case 1:
                 fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
                 return ERROR_CODE_FAILURE;
@@ -451,7 +451,7 @@ int main(int argc, char *argv[]) {
                 break;
         }
 
-        switch (parse_hex(key, arguments.key_hex)) {
+        switch (parse_hex(key, arguments.seed_hex)) {
             case 1:
                 fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
                 return ERROR_CODE_FAILURE;

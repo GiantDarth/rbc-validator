@@ -12,7 +12,6 @@
 
 // How many rounds do for AES-256 encryption/decryption
 #define NUM_OF_ROUNDS 14
-#define BLOCK_SIZE 16
 
 static inline void KEY_256_ASSIST_1(__m128i *tmp1, __m128i *tmp2) {
     __m128i tmp4;
@@ -106,11 +105,11 @@ void aes256_enc_key_expansion(__m128i *key_schedule, const unsigned char *key) {
 int aes256_ecb_encrypt(unsigned char *cipher, const unsigned char *key, const unsigned char *msg,
                         size_t msg_len) {
     __m128i tmp;
-    size_t block_count = msg_len / BLOCK_SIZE;
+    size_t block_count = msg_len / AES_BLOCK_SIZE;
 
     __m128i scheduler[sizeof(__m128i) * (NUM_OF_ROUNDS + 1)];
 
-    if(msg_len % BLOCK_SIZE) {
+    if(msg_len % AES_BLOCK_SIZE) {
         return 1;
     }
 

@@ -20,8 +20,7 @@ set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
 add_executable(ecc256_test src/ecc256_test.c ${SOURCE_FILES} ${uECC_FILES})
 
-add_executable(aes_validator src/aes_validator.c ${SOURCE_FILES} ${AES_FILES})
-add_executable(ecc_validator src/ecc_validator.c ${SOURCE_FILES} ${uECC_FILES})
+add_executable(rbc_validator src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${uECC_FILES})
 
 if(NOT CYGWIN)
     add_executable(aes_validator_mpi src/aes_validator_mpi.c ${SOURCE_FILES} ${AES_FILES})
@@ -49,16 +48,14 @@ include_directories(${ARGP_INCLUDE_DIR})
 
 target_link_libraries(ecc256_test ${GMP_LIBRARIES})
 
-target_link_libraries(aes_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
-target_link_libraries(ecc_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
+target_link_libraries(rbc_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 
 if(NOT CYGWIN)
     target_link_libraries(aes_validator_mpi MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
     target_link_libraries(ecc_validator_mpi MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 endif(NOT CYGWIN)
 
-install(TARGETS aes_validator RUNTIME DESTINATION bin)
-install(TARGETS ecc_validator RUNTIME DESTINATION bin)
+install(TARGETS rbc_validator RUNTIME DESTINATION bin)
 
 if(NOT CYGWIN)
     install(TARGETS aes_validator_mpi RUNTIME DESTINATION bin)

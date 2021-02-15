@@ -417,9 +417,9 @@ int main(int argc, char *argv[]) {
                                 " and randomly generated ones will be used in their place.\n");
             }
 
-            get_random_key(host_priv_key, PRIV_KEY_SIZE, randstate);
-            get_random_corrupted_key(corrupt_priv_key, host_priv_key, arguments.mismatches,
-                                     arguments.subkey_length, randstate, arguments.benchmark, nprocs);
+            get_random_seed(host_priv_key, PRIV_KEY_SIZE, randstate);
+            get_random_corrupted_seed(corrupt_priv_key, host_priv_key, arguments.mismatches,
+                                      arguments.subkey_length, randstate, arguments.benchmark, nprocs);
 
             if (!uECC_compute_public_key(corrupt_priv_key, client_pub_key, curve)) {
                 printf("ERROR host uECC_compute_public_key - abort run");

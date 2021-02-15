@@ -14,7 +14,7 @@
 /// \param key A pre-allocated array that is key_size bytes long.
 /// \param key_size The # of bytes to write to @param key.
 /// \param randstate A GMP randomstate object that's pre-initialized and seeded.
-void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randstate);
+void get_random_seed(unsigned char *key, size_t key_size, gmp_randstate_t randstate);
 /// Generate a randomly corrupted key based on a pre-existing key using GMP's pseudo-random number
 /// generator functionality.
 /// \param corrupted_key A pre-allocated array that is key_size bytes long. The final output of the
@@ -29,9 +29,9 @@ void get_random_key(unsigned char *key, size_t key_size, gmp_randstate_t randsta
 /// \param benchmark If benchmark is non-zero, then generate a corrupted key 50% up the way of the
 /// keyspace for one randomly chosen slot.
 /// \param The total # of available slots (usually # of threads or # of ranks).
-void get_random_corrupted_key(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
-                              size_t subkey_length, gmp_randstate_t randstate,
-                              int benchmark, int numcores);
+void get_random_corrupted_seed(unsigned char *corrupted_key, const unsigned char *key, int mismatches,
+                               size_t subkey_length, gmp_randstate_t randstate,
+                               int benchmark, int numcores);
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of
 /// them. Meant to be used to feed into a gmp_key_iter.
