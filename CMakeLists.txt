@@ -33,6 +33,7 @@ list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
         /usr/local/opt/gmp)
 
+find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
 if(NOT CYGWIN)
     find_package(MPI REQUIRED)
@@ -45,13 +46,15 @@ include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
-target_link_libraries(ecc256_test ${GMP_LIBRARIES})
-target_link_libraries(rbc_validator OpenMP::OpenMP_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
-
 if(NOT CYGWIN)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI)
+endif(NOT CYGWIN)
 
-    target_link_libraries(rbc_validator_mpi MPI::MPI_C ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
+target_link_libraries(ecc256_test ${GMP_LIBRARIES})
+target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
+
+if(NOT CYGWIN)
+    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 endif(NOT CYGWIN)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)
