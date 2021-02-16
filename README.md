@@ -63,10 +63,10 @@ Currently, both AES256 and ECC-Secp256r1 are separated as separated commands, wi
 between OpenMP and OpenMPI implementations. The _OpenMP_ implementations are designed for **desktop**
 use, whereas the _OpenMPI_ ones target HPC platforms.
 
-1. `aes_validator` (AES, OpenMP)
-2. `aes_validator_mpi` (AES, MPI)
-3. `ecc_validator` (ECC, OpenMP)
-4. `ecc_validator_mpi` (ECC, MPI)
+1. `rbc_validator --mode=aes` (AES, OpenMP)
+2. `rbc_validator_mpi --mode=aes` (AES, MPI)
+3. `rbc_validator --mode=ecc` (ECC, OpenMP)
+4. `rbc_validator_mpi --mode=ecc` (ECC, MPI)
 
 Some auxiliary commands also exist for testing the AES-256 and ECC-Secp256r1 implementations against
 target keys and their associated ciphers:
@@ -122,6 +122,7 @@ All the main commands have (mostly) the same arguments:
 invalid argument is is used.
 * `-?, --help`: The main source of information on how to use each command, the arguments list,
 their use, default values, and their ranges.
+* `--mode=[aes,ecc]`: The only required option; necessary to decide which cryptographic function to use.
 * `-m, --mismatches=value`: Give the maximum range of hamming distance / errors to test up to
 and including. If not given, then the maximum range is the size of the key in bits.
 * `-a, --all`: Ignore any early exit method and have each core / rank carry on through its

@@ -7,6 +7,9 @@
 
 #include <stddef.h>
 
+#define AES_BLOCK_SIZE 16
+#define AES256_KEY_SIZE 32
+
 /// Encrypts some message data using AES-256-ECB without padding
 /// \param cipher The output encryption
 /// \param key A pointer to at least 32 bytes of key data. Passing in a NULL pointer is undefined
