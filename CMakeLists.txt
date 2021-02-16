@@ -28,10 +28,10 @@ endif(NOT CYGWIN)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
-list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1)
+list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packages/openssl/1.1.1)
 # Append expected search paths for Mac OS X via Homebrew
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
-        /usr/local/opt/gmp)
+        /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
