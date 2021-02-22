@@ -8,12 +8,13 @@
 #include <openssl/obj_mac.h>
 #include <openssl/ec.h>
 
-#define ECC_CURVE NID_X9_62_prime256v1
+#define EC_CURVE NID_X9_62_prime256v1
 
-#define ECC_PRIV_KEY_SIZE 32
-#define ECC_PUB_KEY_SIZE 64
+#define EC_PRIV_KEY_SIZE 32
+#define EC_PUB_COMP_KEY_SIZE 33
+#define EC_PUB_UNCOMP_KEY_SIZE 65
 
-int set_ec_point(EC_POINT *p, BN_CTX *bn_ctx, const unsigned char *uncomp_pub_key,
-                 const EC_GROUP *group);
+int fprintf_ec_point(FILE *stream, const EC_GROUP *group, const EC_POINT *point,
+                     point_conversion_form_t form, BN_CTX *ctx);
 
 #endif //HAMMING_BENCHMARK_EC_H

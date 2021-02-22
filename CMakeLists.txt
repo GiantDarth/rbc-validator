@@ -10,11 +10,20 @@ project(hamming_benchmark C)
 set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
+# Equivalent to OpenSSL 1.1.1
+set(OPENSSL_API_COMPAT 10101)
 
 set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
         src/util.c src/util.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+# Append expected search paths for Monsoon
+list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packages/openssl/1.1.1)
+# Append expected search paths for Mac OS X via Homebrew
+list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
+        /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
 
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
 add_executable(ecc256_test src/ecc256_test.c ${EC_FILES})
@@ -24,13 +33,6 @@ add_executable(rbc_validator src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${
 if(NOT CYGWIN)
     add_executable(rbc_validator_mpi src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${EC_FILES})
 endif(NOT CYGWIN)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-# Append expected search paths for Monsoon
-list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packages/openssl/1.1.1)
-# Append expected search paths for Mac OS X via Homebrew
-list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
-        /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -45,15 +47,23 @@ include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
+target_compile_definitions(ecc256_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+        OPENSSL_NO_DEPRECATED)
+target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+        OPENSSL_NO_DEPRECATED)
+
 if(NOT CYGWIN)
-    target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI)
+    target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI  PENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+            OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
-target_link_libraries(ecc256_test OpenSSL::SSL )
-target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
+target_link_libraries(ecc256_test OpenSSL::SSL)
+target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
+        ${ARGP_LIBRARIES})
 
 if(NOT CYGWIN)
-    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
+    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
+            ${ARGP_LIBRARIES})
 endif(NOT CYGWIN)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)
@@ -61,4 +71,3 @@ install(TARGETS rbc_validator RUNTIME DESTINATION bin)
 if(NOT CYGWIN)
     install(TARGETS rbc_validator_mpi RUNTIME DESTINATION bin)
 endif(NOT CYGWIN)
-

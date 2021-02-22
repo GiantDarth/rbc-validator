@@ -295,12 +295,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                             argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
                         }
                     }
-                    else if(arguments->mode == MODE_ECC) {
-                        if(strlen(arg) != ECC_PUB_KEY_SIZE * 2) {
-                            argp_error(state, "The CLIENT_PUB_KEY (client public key) must be"
-                                              " 64 bytes long for ECC Secp256r1.\n");
-                        }
-                    }
                     arguments->client_crypto_hex = arg;
                     break;
                 case 2:
@@ -523,7 +517,7 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
 /// \param client_priv_key An allocated corrupted key to fill if the corrupted key was found. Must
 /// be at least 32 bytes big.
 /// \param host_seed The original host seed (32 bytes).
-/// \param client_pub_key The client ECC Secp256r1 public key (64 bytes).
+/// \param EC_POINT * The client ECC Secp256r1 public key (see Sec. 2.3.3 of the SECG SEC 1).
 /// \param starting_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
@@ -532,9 +526,9 @@ int aes_validator(unsigned char *client_key, const unsigned char *host_seed,
 /// is skipped.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int ecc_validator(unsigned char *client_priv_key,
-                  const unsigned char *host_seed, const unsigned char *client_pub_key,
+                  const unsigned char *host_seed, const EC_POINT *client_point,
                   const uint256_t *starting_perm, const uint256_t *last_perm,
-                  int all, long long int *validated_keys,
+                  const EC_GROUP *group, int all, long long int *validated_keys,
 #ifdef USE_MPI
                   int *signal, int verbose, int my_rank, int nprocs
 #else
@@ -544,14 +538,11 @@ int ecc_validator(unsigned char *client_priv_key,
     // Declarations
     int status = 0;
     int cmp_status;
-    EC_GROUP *group;
-    EC_POINT *curr_point, *client_point;
+    EC_POINT *curr_point;
     BN_CTX *ctx;
     BIGNUM *scalar;
     // This one changes, until status
-    unsigned char current_priv_key[ECC_PRIV_KEY_SIZE];
-    // This is generated from current_priv_key
-    unsigned char current_pub_key[ECC_PUB_KEY_SIZE];
+    unsigned char current_priv_key[EC_PRIV_KEY_SIZE];
     uint256_key_iter *iter;
 
 #ifdef USE_MPI
@@ -568,31 +559,10 @@ int ecc_validator(unsigned char *client_priv_key,
         return -1;
     }
 
-    if((group = EC_GROUP_new_by_curve_name(ECC_CURVE)) == NULL) {
-        fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        uint256_key_iter_destroy(iter);
-
-        return -1;
-    }
-
     if((curr_point = EC_POINT_new(group)) == NULL) {
         fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        EC_GROUP_free(group);
-        uint256_key_iter_destroy(iter);
-
-        return -1;
-    }
-
-    if((client_point = EC_POINT_new(group)) == NULL) {
-        fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        EC_POINT_free(curr_point);
-        EC_GROUP_free(group);
         uint256_key_iter_destroy(iter);
 
         return -1;
@@ -603,8 +573,6 @@ int ecc_validator(unsigned char *client_priv_key,
                 ERR_error_string(ERR_get_error(), NULL));
 
         EC_POINT_free(curr_point);
-        EC_POINT_free(client_point);
-        EC_GROUP_free(group);
         uint256_key_iter_destroy(iter);
 
         return -1;
@@ -619,19 +587,6 @@ int ecc_validator(unsigned char *client_priv_key,
         BN_CTX_end(ctx);
         BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
-        EC_POINT_free(client_point);
-        EC_GROUP_free(group);
-        uint256_key_iter_destroy(iter);
-
-        return -1;
-    }
-
-    if(set_ec_point(client_point, ctx, client_pub_key, group)) {
-        BN_CTX_end(ctx);
-        BN_CTX_free(ctx);
-        EC_POINT_free(curr_point);
-        EC_POINT_free(client_point);
-        EC_GROUP_free(group);
         uint256_key_iter_destroy(iter);
 
         return -1;
@@ -644,8 +599,6 @@ int ecc_validator(unsigned char *client_priv_key,
         BN_CTX_end(ctx);
         BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
-        EC_POINT_free(client_point);
-        EC_GROUP_free(group);
         uint256_key_iter_destroy(iter);
 
         return -1;
@@ -659,8 +612,6 @@ int ecc_validator(unsigned char *client_priv_key,
         BN_CTX_end(ctx);
         BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
-        EC_POINT_free(client_point);
-        EC_GROUP_free(group);
         uint256_key_iter_destroy(iter);
 
         return -1;
@@ -701,7 +652,7 @@ int ecc_validator(unsigned char *client_priv_key,
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            memcpy(client_priv_key, current_priv_key, ECC_PRIV_KEY_SIZE);
+            memcpy(client_priv_key, current_priv_key, EC_PRIV_KEY_SIZE);
 
             if(!all) {
                 // alert all ranks that the key was found, including yourself
@@ -723,9 +674,7 @@ int ecc_validator(unsigned char *client_priv_key,
             // This might happen more than once if the # of threads exceeds the number of possible
             // keys
 #pragma omp critical
-            {
-                memcpy(client_priv_key, current_priv_key, ECC_PRIV_KEY_SIZE);
-            }
+            memcpy(client_priv_key, current_priv_key, EC_PRIV_KEY_SIZE);
             break;
 #endif
         }
@@ -752,9 +701,7 @@ int ecc_validator(unsigned char *client_priv_key,
 
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
-    EC_POINT_free(client_point);
     EC_POINT_free(curr_point);
-    EC_GROUP_free(group);
     uint256_key_iter_destroy(iter);
 
     return status;
@@ -774,9 +721,8 @@ int main(int argc, char *argv[]) {
     int numcores;
 #endif
     struct arguments arguments;
-    static struct argp argp = {options, parse_opt, args_doc, prog_desc, 0, 0, 0};
-
-    gmp_randstate_t randstate;
+    static struct argp argp = {options, parse_opt, args_doc, prog_desc, 0, 0,
+            0};
 
     uuid_t userId;
     char uuid_str[37];
@@ -785,7 +731,8 @@ int main(int argc, char *argv[]) {
     unsigned char client_seed[SEED_SIZE];
 
     unsigned char client_cipher[AES_BLOCK_SIZE];
-    unsigned char client_ecc_pub_key[ECC_PUB_KEY_SIZE];
+    EC_GROUP *ec_group;
+    EC_POINT *client_ec_point;
 
     int mismatch, ending_mismatch;
 
@@ -800,9 +747,6 @@ int main(int argc, char *argv[]) {
     mpz_t key_count;
     size_t max_count;
 #endif
-
-    // Memory allocation
-
 
 #ifdef USE_MPI
     mpz_init(key_count);
@@ -844,11 +788,31 @@ int main(int argc, char *argv[]) {
     numcores = omp_get_num_threads();
 #endif
 
+    if(arguments.mode == MODE_ECC) {
+        if((ec_group = EC_GROUP_new_by_curve_name(EC_CURVE)) == NULL) {
+            fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
+                    ERR_error_string(ERR_get_error(), NULL));
+
+
+            return ERROR_CODE_FAILURE;
+        }
+
+        if((client_ec_point = EC_POINT_new(ec_group)) == NULL) {
+            fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
+                    ERR_error_string(ERR_get_error(), NULL));
+
+            EC_GROUP_free(ec_group);
+
+            return ERROR_CODE_FAILURE;
+        }
+    }
+
     if (arguments.random || arguments.benchmark) {
 #ifdef USE_MPI
         if(my_rank == 0) {
 #endif
-            // Initialize values
+            gmp_randstate_t randstate;
+
             // Set the gmp prng algorithm and set a seed based on the current time
             gmp_randinit_default(randstate);
             gmp_randseed_ui(randstate, (unsigned long) time(NULL));
@@ -877,43 +841,37 @@ int main(int argc, char *argv[]) {
                 uuid_generate(userId);
 
                 if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
-                    fprintf(stderr, "ERROR: host aes256_ecb_encrypt - abort run");
+                    fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
+
                     return ERROR_CODE_FAILURE;
                 }
             } else if (arguments.mode == MODE_ECC) {
-                EC_GROUP *group;
-                EC_POINT *point;
-                BN_CTX *ctx;
                 BIGNUM *scalar;
 
-                unsigned char *octet;
-
-                // TODO: Error checking
-                group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
-                point = EC_POINT_new(group);
-                ctx = BN_CTX_new();
-
-                BN_CTX_start(ctx);
-                scalar = BN_CTX_get(ctx);
-
-                set_ec_point(point, ctx, client_ecc_pub_key, group);
-                BN_bin2bn(client_seed, SEED_SIZE, scalar);
-
-                if(!EC_POINT_mul(group, point, scalar, NULL, NULL, ctx)) {
-                    fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
+                if((scalar = BN_secure_new()) == NULL) {
+                    fprintf(stderr, "ERROR: BN_CTX_new failed.\nOpenSSL Error: %s\n",
                             ERR_error_string(ERR_get_error(), NULL));
+
+                    EC_POINT_free(client_ec_point);
+                    EC_GROUP_free(ec_group);
+
                     return ERROR_CODE_FAILURE;
                 }
 
-                EC_POINT_point2buf(group, point, POINT_CONVERSION_UNCOMPRESSED, &octet, ctx);
+                BN_bin2bn(client_seed, SEED_SIZE, scalar);
 
-                memcpy(client_ecc_pub_key, octet + 1, ECC_PUB_KEY_SIZE);
+                if(!EC_POINT_mul(ec_group, client_ec_point, scalar, NULL, NULL, NULL)) {
+                    fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
 
-                OPENSSL_free(octet);
-                BN_CTX_end(ctx);
-                BN_CTX_free(ctx);
-                EC_POINT_free(point);
-                EC_GROUP_free(group);
+                    BN_clear_free(scalar);
+                    EC_POINT_free(client_ec_point);
+                    EC_GROUP_free(ec_group);
+
+                    return ERROR_CODE_FAILURE;
+                }
+
+                BN_clear_free(scalar);
             }
 #ifdef USE_MPI
         }
@@ -925,9 +883,28 @@ int main(int argc, char *argv[]) {
         if(arguments.mode == MODE_AES) {
             MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
             MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        }
-        else {
-            MPI_Bcast(client_ecc_pub_key, ECC_PUB_KEY_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        } else if(arguments.mode == MODE_ECC) {
+            unsigned char client_public_key[100];
+            int len;
+
+            if (my_rank == 0) {
+                if ((len = EC_POINT_point2oct(ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
+                                              client_public_key, sizeof(client_public_key),
+                                              NULL)) == 0) {
+                    fprintf(stderr, "ERROR: EC_POINT_point2oct failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
+
+                    EC_POINT_free(client_ec_point);
+                    EC_GROUP_free(ec_group);
+
+                    return ERROR_CODE_FAILURE;
+                }
+            }
+
+            MPI_Bcast(&len, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(client_public_key, len, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+
+            EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
 #endif
     }
@@ -935,9 +912,21 @@ int main(int argc, char *argv[]) {
         switch(parse_hex(host_seed, arguments.seed_hex)) {
             case 1:
                 fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
+
+                if(arguments.mode == MODE_ECC) {
+                    EC_POINT_free(client_ec_point);
+                    EC_GROUP_free(ec_group);
+                }
+
                 return ERROR_CODE_FAILURE;
             case 2:
                 fprintf(stderr, "ERROR: KEY did not have even length.\n");
+
+                if(arguments.mode == MODE_ECC) {
+                    EC_POINT_free(client_ec_point);
+                    EC_GROUP_free(ec_group);
+                }
+
                 return ERROR_CODE_FAILURE;
             default:
                 break;
@@ -947,9 +936,11 @@ int main(int argc, char *argv[]) {
             switch(parse_hex(client_cipher, arguments.client_crypto_hex)) {
                 case 1:
                     fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
+
                     return ERROR_CODE_FAILURE;
                 case 2:
                     fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+
                     return ERROR_CODE_FAILURE;
                 default:
                     break;
@@ -957,20 +948,20 @@ int main(int argc, char *argv[]) {
 
             if (uuid_parse(arguments.uuid_hex, userId) < 0) {
                 fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+
                 return ERROR_CODE_FAILURE;
             }
         }
         else if(arguments.mode == MODE_ECC) {
-            switch(parse_hex(client_ecc_pub_key, arguments.client_crypto_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: CLIENT_PUB_KEY had non-hexadecimal"
-                                    " characters.\n");
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: CLIENT_PUB_KEY did not have even length.\n");
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
+            if(EC_POINT_hex2point(ec_group, arguments.client_crypto_hex, client_ec_point, NULL) == NULL) {
+                fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
+                        ERR_error_string(ERR_get_error(), NULL));
+
+                EC_POINT_free(client_ec_point);
+                EC_GROUP_free(ec_group);
+
+
+                return ERROR_CODE_FAILURE;
             }
         }
     }
@@ -1011,7 +1002,8 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
 
             fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key:\n ");
-            fprint_hex(stderr, client_ecc_pub_key, ECC_PUB_KEY_SIZE);
+            fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
+                             NULL);
             fprintf(stderr, "\n");
         }
     }
@@ -1056,8 +1048,8 @@ int main(int argc, char *argv[]) {
                                          arguments.count ? &sub_validated_keys : NULL, &found,
                                          arguments.verbose, my_rank, max_count);
             } else if (mode == MODE_ECC) {
-                subfound = ecc_validator(client_seed, host_seed, client_ecc_pub_key,
-                                         &starting_perm, &ending_perm, arguments.all,
+                subfound = ecc_validator(client_seed, host_seed, client_ec_point,
+                                         &starting_perm, &ending_perm, ec_group, arguments.all,
                                          arguments.count ? &sub_validated_keys : NULL, &found,
                                          arguments.verbose, my_rank, max_count);
             }
@@ -1066,12 +1058,15 @@ int main(int argc, char *argv[]) {
                 // Cleanup
                 mpz_clear(key_count);
 
+                EC_POINT_free(client_ec_point);
+                EC_GROUP_free(ec_group);
+
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
         }
 #else
 #pragma omp parallel default(none) shared(mode, found, host_seed, client_seed, client_cipher,\
-            userId, client_ecc_pub_key, mismatch, arguments, validated_keys)\
+            userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
             private(subfound, starting_perm, ending_perm, sub_validated_keys)
         {
             sub_validated_keys = 0;
@@ -1086,8 +1081,8 @@ int main(int argc, char *argv[]) {
                                          arguments.count ? &sub_validated_keys : NULL,
                                          &found);
             } else if (mode == MODE_ECC) {
-                subfound = ecc_validator(client_seed, host_seed, client_ecc_pub_key,
-                                         &starting_perm, &ending_perm, arguments.all,
+                subfound = ecc_validator(client_seed, host_seed, client_ec_point,
+                                         &starting_perm, &ending_perm, ec_group, arguments.all,
                                          arguments.count ? &sub_validated_keys : NULL,
                                          &found);
             }
@@ -1115,6 +1110,11 @@ int main(int argc, char *argv[]) {
             }
         }
 #endif
+    }
+
+    if(arguments.mode == MODE_ECC) {
+        EC_POINT_free(client_ec_point);
+        EC_GROUP_free(ec_group);
     }
 
 #ifdef USE_MPI

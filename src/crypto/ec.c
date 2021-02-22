@@ -4,41 +4,42 @@
 
 #include "ec.h"
 
-int set_ec_point(EC_POINT *p, BN_CTX *bn_ctx, const unsigned char *uncomp_pub_key,
-                 const EC_GROUP *group) {
-    BIGNUM *x, *y;
+#include <ctype.h>
 
-    BN_CTX_start(bn_ctx);
+#include <openssl/err.h>
 
-    x = BN_CTX_get(bn_ctx);
-    y = BN_CTX_get(bn_ctx);
+void tolower_str(char *str);
 
-    // Check the last BN_CTX_get result for any errors
-    if(y == NULL) {
-        BN_CTX_end(bn_ctx);
+void tolower_str(char *str) {
+    if(str == NULL) {
+        return;
+    }
+
+    for(int i = 0; str[i] != '\0'; i++){
+        // Cast to unsigned char or else there is undefined behavior
+        str[i] = (char)tolower((unsigned char)(str[i]));
+    }
+}
+
+int fprintf_ec_point(FILE *stream, const EC_GROUP *group, const EC_POINT *point,
+                     point_conversion_form_t form, BN_CTX *ctx) {
+    char *hex;
+
+    if(group == NULL || point == NULL) {
+        return 1;
+    }
+
+    if((hex = EC_POINT_point2hex(group, point, form, ctx)) == NULL) {
+        fprintf(stderr, "ERROR: EC_POINT_point2hex failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
 
         return 1;
     }
 
-    if(BN_bin2bn(uncomp_pub_key, ECC_PUB_KEY_SIZE / 2, x) == NULL) {
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    if(BN_bin2bn(uncomp_pub_key + ECC_PUB_KEY_SIZE / 2, ECC_PUB_KEY_SIZE / 2, y) == NULL) {
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    if(!EC_POINT_set_affine_coordinates(group, p, x, y, NULL)) {
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    BN_CTX_end(bn_ctx);
+    // Lowercase the hex since OpenSSL uses uppercase
+    tolower_str(hex);
+    fprintf(stream, "%s", hex);
+    OPENSSL_free(hex);
 
     return 0;
 }
