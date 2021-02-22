@@ -29,7 +29,9 @@
 
 #define SEED_SIZE 32
 
-#if (defined(__clang__) && __clang_major__ >= 10) || (!defined(__clang) && __GNUC__ >= 9)
+// If using OpenMP, and using Clang 10+ or GCC 9+, support omp_pause_resource_all
+#if !defined(USE_MPI) && ((defined(__clang__) && __clang_major__ >= 10) || (!defined(__clang) && \
+    eq__GNUC__ >= 9))
 #define OMP_DESTROY_SUPPORT
 #endif
 
