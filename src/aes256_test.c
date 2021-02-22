@@ -29,13 +29,14 @@ int main() {
     };
 
     unsigned char cipher[16];
-    int status = EXIT_SUCCESS;
+    int status;
 
     aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
 
     printf("Encryption: Test ");
     if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
         printf("Passed\n");
+        status = EXIT_SUCCESS;
     }
     else {
         printf("Failed\n");
