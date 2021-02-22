@@ -47,6 +47,9 @@ addons:
       - openssl@1.1
     update: true
 
+before_install:
+  - eval "${MATRIX_EVAL}"
+
 before_script:
   - if [[ $TRAVIS_OS_NAME == "linux" && $CC == "clang" ]]; then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
 
