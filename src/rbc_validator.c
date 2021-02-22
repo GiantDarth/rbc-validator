@@ -960,7 +960,6 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-
                 return ERROR_CODE_FAILURE;
             }
         }
@@ -971,13 +970,19 @@ int main(int argc, char *argv[]) {
         && my_rank == 0
 #endif
     ) {
-        fprintf(stderr, "INFO: Using HOST_SEED:                  ");
+        fprintf(stderr, "INFO: Using HOST_SEED: ");
+        if(arguments.mode == MODE_ECC) {
+            fprintf(stderr, "                       ");
+        }
         fprint_hex(stderr, host_seed, SEED_SIZE);
         fprintf(stderr, "\n");
 
-        if(arguments.random) {
+        if(arguments.random || arguments.benchmark) {
             fprintf(stderr, "INFO: Using CLIENT_SEED (%d mismatches): ",
                     arguments.mismatches);
+            if(arguments.mode == MODE_ECC) {
+                fprintf(stderr, "      ");
+            }
             fprint_hex(stderr, client_seed, SEED_SIZE);
             fprintf(stderr, "\n");
         }
@@ -997,13 +1002,30 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "INFO: Using UUID:             %s\n", uuid_str);
         }
         else if(arguments.mode == MODE_ECC) {
-            fprintf(stderr, "INFO: Using ECC Secp256r1 Host Private Key: ");
-            fprint_hex(stderr, host_seed, SEED_SIZE);
-            fprintf(stderr, "\n");
+            if(arguments.random || arguments.benchmark) {
+                fprintf(stderr, "INFO: Using ECC Secp256r1 Host Public Key:    ");
+                if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
+                                 NULL)) {
+                    fprintf(stderr, "ERROR: fprintf_ec_point failed.\n");
 
-            fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key: ");
-            fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
-                             NULL);
+                    EC_POINT_free(client_ec_point);
+                    EC_GROUP_free(ec_group);
+
+                    return ERROR_CODE_FAILURE;
+                }
+                fprintf(stderr, "\n");
+            }
+
+            fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key:  ");
+            if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
+                             NULL)) {
+                fprintf(stderr, "ERROR: fprintf_ec_point failed.\n");
+
+                EC_POINT_free(client_ec_point);
+                EC_GROUP_free(ec_group);
+
+                return ERROR_CODE_FAILURE;
+            }
             fprintf(stderr, "\n");
         }
     }
