@@ -44,37 +44,9 @@ addons:
 cache:
   directories:
     - $HOME/Library/Caches/Homebrew
-    - /usr/local/Homebrew
-
-# See: https://gist.github.com/gfreezy/52cb2afe807d59b821c82a50cd183f4b
-before_install:
-  - |
-    if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
-      TAPS="$(brew --repository)/Library/Taps"
-      if [ -e "$TAPS/caskroom/homebrew-cask" -a -e "$TAPS/homebrew/homebrew-cask" ]; then
-        rm -rf "$TAPS/caskroom/homebrew-cask"
-      fi
-      find "$TAPS" -type d -name .git -exec \
-        bash -xec '
-          cd $(dirname '\''{}'\'') || echo "status: $?"
-          git clean -fxd || echo "status: $?"
-          sleep 1 || echo "status: $?"
-          git status || echo "status: $?"' \; || echo "status: $?"
-      brew cleanup
-    fi
 
 before_cache:
-  - |
-    # Cleanup dirs to be cached
-    set -e; set -x
-    if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
-      # When Taps is cached, this dir causes "Error: file exists" on `brew update`
-      if [ -e "$(brew --repository)/Library/Taps/homebrew/homebrew-cask/homebrew-cask" ]; then
-        rm -rf "$(brew --repository)/Library/Taps/homebrew/homebrew-cask/homebrew-cask"
-      fi
-      brew cleanup
-    fi
-    set +x; set +e
+  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then brew cleanup; fi
 
 before_script:
   - if [[ $TRAVIS_OS_NAME == "linux" && $CC == "clang" ]]; then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
