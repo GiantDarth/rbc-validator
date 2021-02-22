@@ -740,16 +740,11 @@ int main(int argc, char *argv[]) {
     long long int validated_keys = 0;
     int mode, found, subfound;
 
-    uint256_t starting_perm, ending_perm;
     long long int sub_validated_keys;
 
 #ifdef USE_MPI
     mpz_t key_count;
     size_t max_count;
-#endif
-
-#ifdef USE_MPI
-    mpz_init(key_count);
 #endif
 
     memset(&arguments, 0, sizeof(arguments));
@@ -1028,6 +1023,8 @@ int main(int argc, char *argv[]) {
     found = 0;
 
 #ifdef USE_MPI
+    mpz_init(key_count);
+
     start_time = MPI_Wtime();
 #else
     start_time = omp_get_wtime();
@@ -1047,6 +1044,8 @@ int main(int argc, char *argv[]) {
 
         // Only have this rank run if it's within range of possible keys
         if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0) {
+            uint256_t starting_perm, ending_perm;
+
             max_count = nprocs;
             // Set the count of pairs to the range of possible keys if there are more ranks
             // than possible keys
@@ -1082,8 +1081,9 @@ int main(int argc, char *argv[]) {
 #else
 #pragma omp parallel default(none) shared(mode, found, host_seed, client_seed, client_cipher,\
             userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
-            private(subfound, starting_perm, ending_perm, sub_validated_keys)
+            private(subfound, sub_validated_keys)
         {
+            uint256_t starting_perm, ending_perm;
             sub_validated_keys = 0;
 
             uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
