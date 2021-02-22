@@ -40,6 +40,13 @@ addons:
       - argp-standalone
       - openssl@1.1
 
+cache:
+  directories:
+    - $HOME/Library/Caches/Homebrew
+
+before_cache:
+  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then brew cleanup; fi
+
 before_script:
   - if [[ $TRAVIS_OS_NAME == "linux" && $CC == "clang" ]]; then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
 
