@@ -748,10 +748,6 @@ int main(int argc, char *argv[]) {
     size_t max_count;
 #endif
 
-#ifdef USE_MPI
-    mpz_init(key_count);
-#endif
-
     memset(&arguments, 0, sizeof(arguments));
     arguments.seed_hex = NULL;
     arguments.client_crypto_hex = NULL;
@@ -1035,6 +1031,8 @@ int main(int argc, char *argv[]) {
     found = 0;
 
 #ifdef USE_MPI
+    mpz_init(key_count);
+
     start_time = MPI_Wtime();
 #else
     start_time = omp_get_wtime();
