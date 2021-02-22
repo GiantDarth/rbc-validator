@@ -15,6 +15,8 @@ jobs:
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-focal-10
+          packages:
+            - clang-10
     - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
       os: osx
       osx_image: xcode12
