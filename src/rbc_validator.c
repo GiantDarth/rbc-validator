@@ -1001,7 +1001,7 @@ int main(int argc, char *argv[]) {
             fprint_hex(stderr, host_seed, SEED_SIZE);
             fprintf(stderr, "\n");
 
-            fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key:\n ");
+            fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key: ");
             fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
                              NULL);
             fprintf(stderr, "\n");
