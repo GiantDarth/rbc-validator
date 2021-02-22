@@ -23,6 +23,7 @@ jobs:
             - libssl-dev
       env:
         - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
+        - OMP_NUM_THREADS=4
     - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
       os: osx
       osx_image: xcode12
