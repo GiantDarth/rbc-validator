@@ -12,6 +12,9 @@ jobs:
       compiler: clang
       addons:
         apt:
+          sources:
+            - ubuntu-toolchains-r-test
+            - llvm-toolchain-focal
           packages:
             - clang
       env:
