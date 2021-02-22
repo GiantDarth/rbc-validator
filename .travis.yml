@@ -12,10 +12,6 @@ jobs:
       compiler: clang
       addons:
         apt:
-          sources:
-            - sourceline: 'ppa:ubuntu-toolchain-r/test'
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
             - clang
       env:
@@ -53,9 +49,10 @@ addons:
 
 before_script:
   - eval "${MATRIX_EVAL}"
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then clang --version; fi
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local; fi
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local/clang; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then /usr/local/bin/clang --version; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then /usr/bin/clang --version; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/lib; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local/clang/lib; fi
   - |
     if [[ $TRAVIS_OS_NAME == "linux" && $TRAVIS_COMPILER == "clang" ]];
     then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
