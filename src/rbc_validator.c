@@ -7,8 +7,6 @@
 #include <string.h>
 #include <time.h>
 
-#include <openssl/obj_mac.h>
-#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <uuid/uuid.h>
 #include <argp.h>
@@ -23,16 +21,13 @@
 #include "util.h"
 
 #include "crypto/aes256-ni_enc.h"
-#include "../lib/micro-ecc/uECC.h"
+#include "crypto/ec.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
 #define ERROR_CODE_FAILURE 2
 
 #define SEED_SIZE 32
-
-#define ECC_PRIV_KEY_SIZE 32
-#define ECC_PUB_KEY_SIZE 64
 
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
 #define MODE_NULL 0
@@ -383,57 +378,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
-int set_ec_point(EC_POINT *p, BN_CTX *bn_ctx, const unsigned char *uncom_pub_key,
-                 const EC_GROUP *group) {
-    BIGNUM *x, *y;
-
-    BN_CTX_start(bn_ctx);
-
-    x = BN_CTX_get(bn_ctx);
-    y = BN_CTX_get(bn_ctx);
-
-    // Check the last BN_CTX_get result for any errors
-    if(y == NULL) {
-        fprintf(stderr, "ERROR: BN_CTX_get failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    if(BN_bin2bn(uncom_pub_key, 32, x) == NULL) {
-        fprintf(stderr, "ERROR: BN_bin2bn failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    if(BN_bin2bn(uncom_pub_key + 32, 32, y) == NULL) {
-        fprintf(stderr, "ERROR: BN_bin2bn failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    if(!EC_POINT_set_affine_coordinates(group, p, x, y, NULL)) {
-        fprintf(stderr, "ERROR: EC_POINT_set_affine_coordinates failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(bn_ctx);
-
-        return 1;
-    }
-
-    BN_CTX_end(bn_ctx);
-
-    return 0 ;
-}
-
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.
 /// \param client_key An allocated corrupted host_seed to fill if the corrupted host_seed was found.
@@ -602,7 +546,7 @@ int ecc_validator(unsigned char *client_priv_key,
     int cmp_status;
     EC_GROUP *group;
     EC_POINT *curr_point, *client_point;
-    BN_CTX *bn_ctx;
+    BN_CTX *ctx;
     BIGNUM *scalar;
     // This one changes, until status
     unsigned char current_priv_key[ECC_PRIV_KEY_SIZE];
@@ -624,7 +568,7 @@ int ecc_validator(unsigned char *client_priv_key,
         return -1;
     }
 
-    if((group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1)) == NULL) {
+    if((group = EC_GROUP_new_by_curve_name(ECC_CURVE)) == NULL) {
         fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
@@ -654,7 +598,7 @@ int ecc_validator(unsigned char *client_priv_key,
         return -1;
     }
 
-    if((bn_ctx = BN_CTX_new()) == NULL) {
+    if((ctx = BN_CTX_new()) == NULL) {
         fprintf(stderr, "ERROR: BN_CTX_new failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
@@ -666,14 +610,14 @@ int ecc_validator(unsigned char *client_priv_key,
         return -1;
     }
 
-    BN_CTX_start(bn_ctx);
+    BN_CTX_start(ctx);
 
-    if((scalar = BN_CTX_get(bn_ctx)) == NULL) {
+    if((scalar = BN_CTX_get(ctx)) == NULL) {
         fprintf(stderr, "ERROR: BN_CTX_get failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        BN_CTX_end(bn_ctx);
-        BN_CTX_free(bn_ctx);
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
         EC_POINT_free(client_point);
         EC_GROUP_free(group);
@@ -682,23 +626,9 @@ int ecc_validator(unsigned char *client_priv_key,
         return -1;
     }
 
-    if(!EC_GROUP_precompute_mult(group, bn_ctx)) {
-        fprintf(stderr, "ERROR: EC_GROUP_precompute_mult failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(bn_ctx);
-        BN_CTX_free(bn_ctx);
-        EC_POINT_free(curr_point);
-        EC_POINT_free(client_point);
-        EC_GROUP_free(group);
-        uint256_key_iter_destroy(iter);
-
-        return -1;
-    }
-
-    if(set_ec_point(client_point, bn_ctx, client_pub_key, group)) {
-        BN_CTX_end(bn_ctx);
-        BN_CTX_free(bn_ctx);
+    if(set_ec_point(client_point, ctx, client_pub_key, group)) {
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
         EC_POINT_free(client_point);
         EC_GROUP_free(group);
@@ -711,8 +641,8 @@ int ecc_validator(unsigned char *client_priv_key,
     if((requests = malloc(sizeof(MPI_Request) * nprocs)) == NULL) {
         perror("Error");
 
-        BN_CTX_end(bn_ctx);
-        BN_CTX_free(bn_ctx);
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
         EC_POINT_free(client_point);
         EC_GROUP_free(group);
@@ -726,8 +656,8 @@ int ecc_validator(unsigned char *client_priv_key,
 
         free(requests);
 
-        BN_CTX_end(bn_ctx);
-        BN_CTX_free(bn_ctx);
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
         EC_POINT_free(curr_point);
         EC_POINT_free(client_point);
         EC_GROUP_free(group);
@@ -747,14 +677,14 @@ int ecc_validator(unsigned char *client_priv_key,
 
         BN_bin2bn(current_priv_key, SEED_SIZE, scalar);
 
-        if(!EC_POINT_mul(group, curr_point, scalar, NULL, NULL, bn_ctx)) {
+        if(!EC_POINT_mul(group, curr_point, scalar, NULL, NULL, ctx)) {
             fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
             status = -1;
             break;
         }
 
-        if((cmp_status = EC_POINT_cmp(group, curr_point, client_point, bn_ctx)) < 0) {
+        if((cmp_status = EC_POINT_cmp(group, curr_point, client_point, ctx)) < 0) {
             fprintf(stderr, "ERROR: EC_POINT_cmp failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
             status = -1;
@@ -818,8 +748,8 @@ int ecc_validator(unsigned char *client_priv_key,
     free(requests);
 #endif
 
-    BN_CTX_end(bn_ctx);
-    BN_CTX_free(bn_ctx);
+    BN_CTX_end(ctx);
+    BN_CTX_free(ctx);
     EC_POINT_free(client_point);
     EC_POINT_free(curr_point);
     EC_GROUP_free(group);
@@ -855,8 +785,6 @@ int main(int argc, char *argv[]) {
     unsigned char client_cipher[AES_BLOCK_SIZE];
     unsigned char client_ecc_pub_key[ECC_PUB_KEY_SIZE];
 
-    const struct uECC_Curve_t *curve = uECC_secp256r1();
-
     int mismatch, ending_mismatch;
 
     double start_time, duration, key_rate;
@@ -872,6 +800,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Memory allocation
+
+
 #ifdef USE_MPI
     mpz_init(key_count);
 #endif
@@ -946,10 +876,39 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             } else if (arguments.mode == MODE_ECC) {
-                if (!uECC_compute_public_key(client_seed, client_ecc_pub_key, curve)) {
-                    fprintf(stderr, "ERROR: host uECC_compute_public_key - abort run");
+                EC_GROUP *group;
+                EC_POINT *point;
+                BN_CTX *ctx;
+                BIGNUM *scalar;
+
+                unsigned char *octet;
+
+                // TODO: Error checking
+                group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
+                point = EC_POINT_new(group);
+                ctx = BN_CTX_new();
+
+                BN_CTX_start(ctx);
+                scalar = BN_CTX_get(ctx);
+
+                set_ec_point(point, ctx, client_ecc_pub_key, group);
+                BN_bin2bn(client_seed, SEED_SIZE, scalar);
+
+                if(!EC_POINT_mul(group, point, scalar, NULL, NULL, ctx)) {
+                    fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
                     return ERROR_CODE_FAILURE;
                 }
+
+                EC_POINT_point2buf(group, point, POINT_CONVERSION_UNCOMPRESSED, &octet, ctx);
+
+                memcpy(client_ecc_pub_key, octet + 1, ECC_PUB_KEY_SIZE);
+
+                OPENSSL_free(octet);
+                BN_CTX_end(ctx);
+                BN_CTX_free(ctx);
+                EC_POINT_free(point);
+                EC_GROUP_free(group);
             }
 #ifdef USE_MPI
         }

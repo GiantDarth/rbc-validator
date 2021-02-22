@@ -13,17 +13,16 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 
 set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
         src/util.c src/util.h)
-# note micro-ecc from https://github.com/kmackay/micro-ecc.git
-set(uECC_FILES lib/micro-ecc/uECC.c lib/micro-ecc/uECC.h)
+set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
-add_executable(ecc256_test src/ecc256_test.c ${SOURCE_FILES} ${uECC_FILES})
+add_executable(ecc256_test src/ecc256_test.c ${EC_FILES})
 
-add_executable(rbc_validator src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${uECC_FILES})
+add_executable(rbc_validator src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${EC_FILES})
 
 if(NOT CYGWIN)
-    add_executable(rbc_validator_mpi src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${uECC_FILES})
+    add_executable(rbc_validator_mpi src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${EC_FILES})
 endif(NOT CYGWIN)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -50,7 +49,7 @@ if(NOT CYGWIN)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI)
 endif(NOT CYGWIN)
 
-target_link_libraries(ecc256_test ${GMP_LIBRARIES})
+target_link_libraries(ecc256_test OpenSSL::SSL )
 target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES} ${ARGP_LIBRARIES})
 
 if(NOT CYGWIN)

@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
-#include "util.h"
-#include "../lib/micro-ecc/uECC.h"
+
+#include <openssl/err.h>
+
+#include "crypto/ec.h"
 
 void print_hex(const unsigned char *array, size_t count) {
     for(size_t i = 0; i < count; i++) {
@@ -11,74 +13,139 @@ void print_hex(const unsigned char *array, size_t count) {
     }
 }
 
-int main(int argc, char **argv) {
-    unsigned char priKey[] = { // 32 bytes long
+int main() {
+    unsigned char private_key[ECC_PRIV_KEY_SIZE] = {
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
             0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
             0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
             0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
     };
 
-    if (argc > 1) {
-        if (strlen(argv[1]) != 32*2) {
-            fprintf(stderr, "ERROR: PRIV_KEY incorrect length %ld\n", strlen(argv[1]));
-            return EXIT_FAILURE;
+    unsigned char expected_public_key_buffer[ECC_PUB_KEY_SIZE] = {
+            0x7a, 0x59, 0x31, 0x80, 0x86, 0x0c, 0x40, 0x37,
+            0xc8, 0x3c, 0x12, 0x74, 0x98, 0x45, 0xc8, 0xee,
+            0x14, 0x24, 0xdd, 0x29, 0x7f, 0xad, 0xcb, 0x89,
+            0x5e, 0x35, 0x82, 0x55, 0xd2, 0xc7, 0xd2, 0xb2,
+            0xa8, 0xca, 0x25, 0x58, 0x0f, 0x26, 0x26, 0xfe,
+            0x57, 0x90, 0x62, 0xff, 0x1b, 0x99, 0xff, 0x91,
+            0xc2, 0x4a, 0x0d, 0xa0, 0x6f, 0xb3, 0x2b, 0x5b,
+            0xe2, 0x01, 0x48, 0xc9, 0x24, 0x9f, 0x56, 0x50
+    };
+
+    char *hex;
+
+    EC_GROUP *group;
+    EC_POINT *point, *expected_point;
+    BN_CTX *ctx;
+    BIGNUM *scalar;
+
+    int status, cmp_status;
+
+    if((group = EC_GROUP_new_by_curve_name(ECC_CURVE)) == NULL) {
+        fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+
+        return EXIT_FAILURE;
+    }
+
+    if((point = EC_POINT_new(group)) == NULL) {
+        fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+
+        EC_GROUP_free(group);
+
+        return EXIT_FAILURE;
+    }
+
+    if((expected_point = EC_POINT_new(group)) == NULL) {
+        fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+
+        EC_POINT_free(point);
+        EC_GROUP_free(group);
+
+        return EXIT_FAILURE;
+    }
+
+    if((ctx = BN_CTX_new()) == NULL) {
+        fprintf(stderr, "ERROR: BN_CTX_new failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+
+        EC_POINT_free(expected_point);
+        EC_POINT_free(point);
+        EC_GROUP_free(group);
+
+        return EXIT_FAILURE;
+    }
+
+    BN_CTX_start(ctx);
+
+    if((scalar = BN_CTX_get(ctx)) == NULL) {
+        fprintf(stderr, "ERROR: BN_CTX_get failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
+        EC_POINT_free(expected_point);
+        EC_POINT_free(point);
+        EC_GROUP_free(group);
+
+        return EXIT_FAILURE;
+    }
+
+    BN_bin2bn(private_key, ECC_PRIV_KEY_SIZE, scalar);
+
+    if(!EC_POINT_mul(group, point, scalar, NULL, NULL, ctx)) {
+        fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
+                ERR_error_string(ERR_get_error(), NULL));
+
+        status = EXIT_FAILURE;
+    }
+    else {
+        set_ec_point(point, ctx, public_key, group);
+        set_ec_point(expected_point, ctx, )
+
+        if((cmp_status = EC_POINT_cmp(group, point, client_point, ctx)) < 0) {
+            fprintf(stderr, "ERROR: EC_POINT_cmp failed.\nOpenSSL Error: %s\n",
+                    ERR_error_string(ERR_get_error(), NULL));
+
+            status = EXIT_FAILURE;
+            goto cleanup;
         }
-        switch(parse_hex(priKey, argv[1])) {
-            case 1:
-                fprintf(stderr, "ERROR: PRIV_KEY had non-hexadecimal characters.\n");
-                return EXIT_FAILURE;
-            case 2:
-                fprintf(stderr, "ERROR: PRIV_KEY did not have even length.\n");
-                return EXIT_FAILURE;
-            default:
-                break;
+
+        printf("Public Key Generation: Test ");
+        if(!cmp_status) {
+            printf("Passed\n");
+            status =  EXIT_SUCCESS;
+        }
+        else {
+            printf("Failed\n");
+            status = EXIT_FAILURE;
         }
 
-    }
-    unsigned char pubKey[64];
-    unsigned char signature[64];
-    // A message that's exactly 16 bytes long.
-    const char msg[] = "Hello world x2!\n";
-    const struct uECC_Curve_t * curve = uECC_secp256r1();
+        if((hex = EC_POINT_point2hex(group, point, POINT_CONVERSION_UNCOMPRESSED, ctx) == NULL) {
+            }
 
-    printf("0-ecc prikey:\n");
-    print_hex(priKey, sizeof(priKey));
-    printf("\n");
+            printf("%s\n", hex);
+            OPENSSL_free(hex);
 
-    // generate a ecc pub/pri key pare
-    if (! uECC_compute_public_key(priKey, pubKey, curve)) {
-        printf("ERROR uECC_compute_public_key - abort run");
-        return EXIT_FAILURE;
-    }
+            if((hex = EC_POINT_point2hex(group, expected_point, POINT_CONVERSION_UNCOMPRESSED,
+                                     ctx))
+            printf("%s\n", hex);
+            OPENSSL_free(hex);
+        }
 
-    printf("1-ecc pubkey:\n");
-    print_hex(pubKey, sizeof(pubKey));
-    printf("\n");
 
-    // verify that ecc pubkey is valid for this curve
-    if (! uECC_valid_public_key(pubKey, curve)) {
-        printf("ERROR uECC_valid_public_key - abort run");
-        return EXIT_FAILURE;
+
     }
 
-    printf("2-ecc pubkey has been verified\n");
 
-    if (! uECC_sign(priKey, (const uint8_t*)msg, sizeof(msg), signature, curve)) {
-        printf("ERROR uECC_sign - abort run");
-        return EXIT_FAILURE;
-    }
+cleanup:
+    BN_CTX_end(ctx);
+    BN_CTX_free(ctx);
+    EC_POINT_free(expected_point);
+    EC_POINT_free(point);
+    EC_GROUP_free(group);
 
-    printf("3-ecdsa signature:\n");
-    print_hex(signature, sizeof(signature));
-    printf("\n");
-
-    if (! uECC_verify(pubKey, (const uint8_t*)msg, sizeof(msg), signature, curve)) {
-        printf("ERROR uECC_verify - abort run");
-        return EXIT_FAILURE;
-    }
-
-    printf("4-ecdsa message + signature has been verified\n");
-
-    return EXIT_SUCCESS;
+    return status;
 }
