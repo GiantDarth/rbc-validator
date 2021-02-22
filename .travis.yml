@@ -32,6 +32,7 @@ addons:
       - uuid-dev
       - libssl-dev
   homebrew:
+    update: true
     packages:
       - libomp
       - open-mpi
