@@ -49,7 +49,7 @@ script:
   - cmake ./CMakeLists.txt
   - cmake --build .
   - ./aes256_test
-  - ./ecc256_test
+  - ./ecc_test
   - ./rbc_validator --usage
   - ./rbc_validator_mpi --usage
   - ./rbc_validator --help

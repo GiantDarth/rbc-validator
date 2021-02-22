@@ -26,7 +26,7 @@ list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr
         /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
 
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
-add_executable(ecc256_test src/ecc256_test.c ${EC_FILES})
+add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 
 add_executable(rbc_validator src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${EC_FILES})
 
@@ -47,7 +47,7 @@ include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
-target_compile_definitions(ecc256_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
@@ -57,7 +57,7 @@ if(NOT CYGWIN)
             OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
-target_link_libraries(ecc256_test OpenSSL::SSL)
+target_link_libraries(ecc_test OpenSSL::SSL)
 target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
         ${ARGP_LIBRARIES})
 
