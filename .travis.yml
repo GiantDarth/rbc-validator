@@ -47,17 +47,13 @@ addons:
       - openssl@1.1
     update: true
 
-before_script:
+before_install:
   - eval "${MATRIX_EVAL}"
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/lib; fi
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local/clang/lib; fi
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local/clang/bin; fi
-#  - if [[ $TRAVIS_COMPILER == "clang" ]]; then /usr/local/bin/clang --version; fi
-  - if [[ $TRAVIS_COMPILER == "clang" ]]; then /usr/bin/clang --version; fi
 
+before_script:
   - |
     if [[ $TRAVIS_OS_NAME == "linux" && $TRAVIS_COMPILER == "clang" ]];
-    then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
+    then export LD_LIBRARY_PATH=/usr/lib/llvm-10/lib:$LD_LIBRARY_PATH; fi
 
 script:
   - cmake --version
