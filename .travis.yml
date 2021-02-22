@@ -24,6 +24,8 @@ jobs:
       env:
         - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
         - OMP_NUM_THREADS=4
+      before_script:
+        - LD_LIBRARY_PATH=/usr/lib/llvm-10/lib:$LD_LIBRARY_PATH;
     - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
       os: osx
       osx_image: xcode12
@@ -57,11 +59,6 @@ addons:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-
-before_script:
-  - |
-    if [[ $TRAVIS_OS_NAME == "linux" && $TRAVIS_COMPILER == "clang" ]];
-    then export LD_LIBRARY_PATH=/usr/lib/llvm-10/lib:$LD_LIBRARY_PATH; fi
 
 script:
   - cmake --version
