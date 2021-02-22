@@ -970,10 +970,7 @@ int main(int argc, char *argv[]) {
         && my_rank == 0
 #endif
     ) {
-        fprintf(stderr, "INFO: Using HOST_SEED: ");
-        if(arguments.mode == MODE_ECC) {
-            fprintf(stderr, "                       ");
-        }
+        fprintf(stderr, "INFO: Using HOST_SEED:                  ");
         fprint_hex(stderr, host_seed, SEED_SIZE);
         fprintf(stderr, "\n");
 
@@ -988,18 +985,14 @@ int main(int argc, char *argv[]) {
         }
 
         if(arguments.mode == MODE_AES) {
-            fprintf(stderr, "INFO: Using AES-256 Host Key: ");
-            fprint_hex(stderr, host_seed, SEED_SIZE);
-            fprintf(stderr, "\n");
-
-            fprintf(stderr, "INFO: AES-256 CLIENT_CIPHER:  ");
+            fprintf(stderr, "INFO: AES-256 CLIENT_CIPHER:            ");
             fprint_hex(stderr, client_cipher, AES_BLOCK_SIZE);
             fprintf(stderr, "\n");
 
             // Convert the uuid to a string for printing
             uuid_unparse(userId, uuid_str);
 
-            fprintf(stderr, "INFO: Using UUID:             %s\n", uuid_str);
+            fprintf(stderr, "INFO: Using UUID:                       %s\n", uuid_str);
         }
         else if(arguments.mode == MODE_ECC) {
             if(arguments.random || arguments.benchmark) {
