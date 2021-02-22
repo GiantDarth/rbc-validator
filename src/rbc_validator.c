@@ -793,7 +793,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
             if(omp_pause_resource_all(omp_pause_hard)) {
                 fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
             }
@@ -808,7 +808,7 @@ int main(int argc, char *argv[]) {
 
             EC_GROUP_free(ec_group);
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
             if(omp_pause_resource_all(omp_pause_hard)) {
                 fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
             }
@@ -854,8 +854,8 @@ int main(int argc, char *argv[]) {
                 if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
                     fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
 
-#ifndef USE_MPI
-                    if(omp_pause_resource_all(omp_pause_hard)) {
+#if defined(USE_MPI) && __GNUC__ >= 9
+s                    if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
 #endif
@@ -872,7 +872,7 @@ int main(int argc, char *argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                     if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
@@ -891,7 +891,7 @@ int main(int argc, char *argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                     if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
@@ -947,7 +947,7 @@ int main(int argc, char *argv[]) {
                     EC_GROUP_free(ec_group);
                 }
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                 if(omp_pause_resource_all(omp_pause_hard)) {
                     fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                 }
@@ -962,7 +962,7 @@ int main(int argc, char *argv[]) {
                     EC_GROUP_free(ec_group);
                 }
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                 if(omp_pause_resource_all(omp_pause_hard)) {
                     fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                 }
@@ -978,7 +978,7 @@ int main(int argc, char *argv[]) {
                 case 1:
                     fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                     if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
@@ -988,7 +988,7 @@ int main(int argc, char *argv[]) {
                 case 2:
                     fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                     if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
@@ -1002,7 +1002,7 @@ int main(int argc, char *argv[]) {
             if (uuid_parse(arguments.uuid_hex, userId) < 0) {
                 fprintf(stderr, "ERROR: UUID not in canonical form.\n");
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                 if(omp_pause_resource_all(omp_pause_hard)) {
                     fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                 }
@@ -1019,7 +1019,7 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                 if(omp_pause_resource_all(omp_pause_hard)) {
                     fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                 }
@@ -1076,7 +1076,7 @@ int main(int argc, char *argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                     if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
@@ -1095,7 +1095,7 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-#ifndef USE_MPI
+#if defined(USE_MPI) && __GNUC__ >= 9
                 if(omp_pause_resource_all(omp_pause_hard)) {
                     fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                 }
@@ -1306,9 +1306,11 @@ int main(int argc, char *argv[]) {
         printf("\n");
     }
 
+#if __GNUC__ >= 9
     if(omp_pause_resource_all(omp_pause_hard)) {
         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
     }
+#endif
 
     return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 #endif
