@@ -723,7 +723,9 @@ int ecc_validator(unsigned char *client_priv_key,
             // This might happen more than once if the # of threads exceeds the number of possible
             // keys
 #pragma omp critical
-            memcpy(client_priv_key, current_priv_key, ECC_PRIV_KEY_SIZE);
+            {
+                memcpy(client_priv_key, current_priv_key, ECC_PRIV_KEY_SIZE);
+            }
             break;
 #endif
         }
@@ -867,6 +869,9 @@ int main(int argc, char *argv[]) {
 #else
                                       numcores);
 #endif
+
+            // Clear GMP PRNG
+            gmp_randclear(randstate);
 
             if (arguments.mode == MODE_AES) {
                 uuid_generate(userId);
