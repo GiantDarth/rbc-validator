@@ -54,7 +54,12 @@ before_install:
   - eval "${MATRIX_EVAL}"
 
 before_script:
-  - if [[ $TRAVIS_OS_NAME == "linux" && $CC == "clang" ]]; then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then clang --version; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local; fi
+  - if [[ $TRAVIS_COMPILER == "clang" ]]; then ls /usr/local/clang; fi
+  - |
+    if [[ $TRAVIS_OS_NAME == "linux" && $TRAVIS_COMPILER == "clang" ]];
+    then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
 
 script:
   - cmake --version
