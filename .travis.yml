@@ -10,6 +10,11 @@ jobs:
       os: linux
       dist: focal
       compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-focal-10
     - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
       os: osx
       osx_image: xcode12
