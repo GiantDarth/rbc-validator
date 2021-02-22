@@ -10,17 +10,6 @@ jobs:
       os: linux
       dist: focal
       compiler: clang
-      addons:
-        apt:
-          packages:
-            - clang-10
-            - llvm-10-dev
-            - libomp-10-dev
-            - libopenmpi-dev
-            - openmpi-bin
-            - libgmp-dev
-            - uuid-dev
-            - libssl-dev
       env:
         - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
         - OMP_NUM_THREADS=4
@@ -41,6 +30,8 @@ env:
 addons:
   apt:
     packages:
+      - clang-10
+      - llvm-10-dev
       - libomp-dev
       - libopenmpi-dev
       - openmpi-bin
