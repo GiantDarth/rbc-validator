@@ -10,6 +10,11 @@ jobs:
       os: linux
       dist: focal
       compiler: clang
+      env:
+        - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
+        - OMP_NUM_THREADS=4
+      before_script:
+        - export LD_LIBRARY_PATH=/usr/lib/llvm-10/lib:$LD_LIBRARY_PATH;
     - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
       os: osx
       osx_image: xcode12
@@ -25,6 +30,8 @@ env:
 addons:
   apt:
     packages:
+      - clang-10
+      - llvm-10-dev
       - libomp-dev
       - libopenmpi-dev
       - openmpi-bin
@@ -32,6 +39,7 @@ addons:
       - uuid-dev
       - libssl-dev
   homebrew:
+    update: true
     packages:
       - libomp
       - open-mpi
@@ -39,10 +47,16 @@ addons:
       - ossp-uuid
       - argp-standalone
       - openssl@1.1
-    update: true
 
-before_script:
-  - if [[ $TRAVIS_OS_NAME == "linux" && $CC == "clang" ]]; then export LD_LIBRARY_PATH=/usr/local/clang/lib:$LD_LIBRARY_PATH; fi
+cache:
+  directories:
+    - $HOME/Library/Caches/Homebrew
+
+before_cache:
+  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then brew cleanup; fi
+
+before_install:
+  - eval "${MATRIX_EVAL}"
 
 script:
   - cmake --version
