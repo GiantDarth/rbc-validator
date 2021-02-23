@@ -1,11 +1,11 @@
-# hamming_validator
+# rbc_validator
 
 Primary and Auxiliary Authors:
 * Christopher R. Philabaum  
 * Christopher B. Coffey  
 * Duane Booher 
 
-`hamming_validator` is a tool suite written as real-world implementations demonstrating
+`rbc_validator` is a tool suite written as real-world implementations demonstrating
 ***RBC (Response-based Cryptography)***, both as a drop-in tool and as a benchmark set.
 This solution does _not_ provide a real-world means of generating the disparate server-client
 key pairs that need to be corrected (e.g. noisy sources, PUFs, etc.). Instead, the benchmark
@@ -49,7 +49,8 @@ brew install libomp open-mpi gmp ossp-uuid argp-standalone
 
 ## Install
 
-_hamming_validator_ uses CMake to best support cross-platform toolchains as much as possible.
+_rbc_validator_ uses CMake to best support cross-platform toolchains as much as possible.
+However, at the time of this writing Windows is near-impossible to compile to without Cygwin or WSL.
 
 1. `mkdir build`
 2. `cd build`
@@ -72,7 +73,7 @@ Some auxiliary commands also exist for testing the AES-256 and ECC-Secp256r1 imp
 target keys and their associated ciphers:
 
 1. `aes256_test`
-2. `ecc256_test`
+2. `ecc_test`
 
 Finally, there exists a few Python scripts to generate some test data, as well as utility
 functions.

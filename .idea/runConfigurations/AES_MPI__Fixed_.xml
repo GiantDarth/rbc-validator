@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="AES MPI (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="MPI" PROGRAM_PARAMS="--mode=aes -vcf -m2 e1f84be812b36432e05b22c3490394cfeabe94d9bcacfb3e224b5bdd10c7401b 55d3008d6109a91a7092e195f7e2eae6 ee3b5bcd-4207-4a79-8ba7-167123b7c081" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="hamming_benchmark" TARGET_NAME="rbc_validator_mpi" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="hamming_benchmark" RUN_TARGET_NAME="rbc_validator_mpi">
+  <configuration default="false" name="AES MPI (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="MPI" PROGRAM_PARAMS="--mode=aes -vcf -m2 e1f84be812b36432e05b22c3490394cfeabe94d9bcacfb3e224b5bdd10c7401b 55d3008d6109a91a7092e195f7e2eae6 ee3b5bcd-4207-4a79-8ba7-167123b7c081" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator_mpi" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator_mpi">
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>
