@@ -63,6 +63,12 @@ validator_t* validator_create(const unsigned char *host_seed, const uint256_t *s
         return NULL;
     }
 
+    if(host_seed == NULL || starting_perm == NULL || last_perm == NULL) {
+        validator_destroy(v);
+
+        return NULL;
+    }
+
     if((v->iter = uint256_key_iter_create(host_seed, starting_perm, last_perm)) == NULL) {
         validator_destroy(v);
 
@@ -135,6 +141,12 @@ aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsi
         return NULL;
     }
 
+    if(v->msg == NULL || v->client_cipher == NULL) {
+        aes256_validator_destroy(v);
+
+        return NULL;
+    }
+
     if((v->curr_cipher = malloc(n * sizeof(*(v->curr_cipher)))) == NULL) {
         aes256_validator_destroy(v);
 
@@ -171,7 +183,7 @@ ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *clien
     v->group = group;
     v->client_point = client_point;
 
-    if((v->client_point = EC_POINT_new(v->group)) == NULL) {
+    if(v->group == NULL || v->client_point == NULL) {
         ec_validator_destroy(v);
 
         return NULL;
@@ -215,10 +227,6 @@ void ec_validator_destroy(ec_validator_t *v) {
     }
 
     if(v->curr_point != NULL) {
-        EC_POINT_free(v->curr_point);
-    }
-
-    if(v->client_point != NULL) {
         EC_POINT_free(v->curr_point);
     }
 
