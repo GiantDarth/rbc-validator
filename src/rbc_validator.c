@@ -338,7 +338,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                                               ERR_error_string(ERR_get_error(), NULL));
                         }
                         size_t order_len = (EC_GROUP_order_bits(group) + 7) / 8;
-                        if(strlen(arg) != order_len + 1 && strlen(arg) != (order_len * 2) + 1) {
+                        if(strlen(arg) != order_len + 1 && strlen(arg) != (order_len + 1) * 2) {
                             argp_error(state, "CLIENT_PUB_KEY not %zu nor %zu bytes for %s\n",
                                        order_len + 1, (order_len * 2) + 1, arguments->algo->full_name);
                         }
