@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <openssl/evp.h>
 #include <openssl/err.h>
 #include <uuid/uuid.h>
 #include <argp.h>
@@ -33,8 +34,25 @@
 
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
 #define MODE_NULL 0
-#define MODE_AES 1
-#define MODE_ECC 2
+// Used with symmetric encryption
+#define MODE_CIPHER 1
+// Used with matching a public key
+#define MODE_EC 2
+
+typedef struct algo {
+    const char *abbr_name;
+    const char *full_name;
+    int nid;
+    int mode;
+} algo;
+
+const algo supported_algos[] = {
+        // Cipher algorithms
+        { "aes","AES256", NID_aes_256_ecb, MODE_CIPHER },
+        // EC algorithms
+        { "ecc","Secp256r1", NID_X9_62_prime256v1, MODE_EC },
+        { 0 }
+};
 
 #ifdef USE_MPI
 const char *argp_program_version = "rbc_validator_mpi (MPI) 0.1.0";
@@ -91,7 +109,8 @@ static char prog_desc[] = "Given an HOST_SEED and either:"
                           " characters).";
 
 struct arguments {
-    int mode, verbose, benchmark, random, fixed, count, all;
+    const algo *algo;
+    int verbose, benchmark, random, fixed, count, all;
     char *seed_hex, *client_crypto_hex, *uuid_hex;
     int mismatches, subkey_length;
 #ifndef USE_MPI
@@ -148,7 +167,7 @@ static struct argp_option options[] = {
         'r',
         0,
         0,
-        "Instead of using arguments, randomly generate CIPHER, KEY, and UUID. This must be"
+        "Instead of using arguments, randomly generate HOST_SEED and CLIENT_*. This must be"
         " accompanied by --mismatches, since it is used to corrupt the random key by the same # of"
         " bits. --random and --benchmark cannot be used together.",
         0},
@@ -157,8 +176,8 @@ static struct argp_option options[] = {
         'b',
         0,
         0,
-        "Instead of using arguments, strategically generate CIPHER, KEY, and UUID."
-        " Specifically, generates a corrupted key that's always 50% of way through a rank's"
+        "Instead of using arguments, strategically generate HOST_SEED and CLIENT_*."
+        " Specifically, generates a client seed that's always 50% of the way through a rank's"
         " workload, but randomly chooses the thread. --random and --benchmark cannot be used"
         " together.",
         0},
@@ -182,6 +201,17 @@ static struct argp_option options[] = {
     { 0 }
 };
 
+const algo *find_algo(const char* abbr_name, const algo *algos) {
+    while(algos->abbr_name != NULL) {
+        if(!strcmp(abbr_name, algos->abbr_name)) {
+            return algos;
+        }
+        algos++;
+    }
+
+    return NULL;
+}
+
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
 
@@ -191,14 +221,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
     switch(key) {
         case '\5':
-            if(!strncmp(arg, "aes", 3)) {
-                arguments->mode = MODE_AES;
-            }
-            else if(!strncmp(arg, "ecc", 3)) {
-                arguments->mode = MODE_ECC;
-            }
-            else {
-                argp_error(state, "--mode is invalid.\n");
+            if((arguments->algo = find_algo(arg, supported_algos)) == NULL) {
+                argp_error(state, "--mode is invalid or unsupported.");
             }
         case 'v':
             arguments->verbose = 1;
@@ -292,17 +316,39 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     arguments->seed_hex = arg;
                     break;
                 case 1:
-                    if(arguments->mode == MODE_AES) {
-                        if(strlen(arg) != AES_BLOCK_SIZE * 2) {
-                            argp_error(state, "CIPHER not equivalent to 128-bits long.\n");
+                    if(arguments->algo->mode == MODE_CIPHER) {
+                        const EVP_CIPHER *cipher = EVP_get_cipherbynid(arguments->algo->nid);
+                        if(cipher == NULL) {
+                            argp_error(state, "ERROR: EVP_get_cipherbynid failed.\nOpenSSL Error:"
+                                              "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                        }
+                        size_t block_len = EVP_CIPHER_block_size(cipher);
+                        if(strlen(arg) % block_len * 2 != 0) {
+                            argp_error(state, "CLIENT_CIPHER not a multiple of the block size"
+                                              " %zu bytes for %s\n",
+                                       block_len, arguments->algo->full_name);
+                        }
+                    }
+                    if(arguments->algo->mode == MODE_EC) {
+                        const EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
+                        if(group == NULL) {
+                            argp_error(state, "ERROR: EC_GROUP_new_by_curve_name failed.\n"
+                                              "OpenSSL Error: %s\n",
+                                              ERR_error_string(ERR_get_error(), NULL));
+                        }
+                        size_t order_len = (EC_GROUP_order_bits(group) + 7) / 8;
+                        if(strlen(arg) != order_len + 1 && strlen(arg) != (order_len * 2) + 1) {
+                            argp_error(state, "CLIENT_PUB_KEY not %zu nor %zu bytes for %s\n",
+                                       order_len + 1, (order_len * 2) + 1, arguments->algo->full_name);
                         }
                     }
                     arguments->client_crypto_hex = arg;
                     break;
                 case 2:
-                    if(arguments->mode == MODE_AES) {
-                        if(strlen(arg) != 36) {
-                            argp_error(state, "UUID not 36 characters long.\n");
+                    if(arguments->algo->mode == MODE_CIPHER) {
+                        size_t uuid_hex_len = (sizeof(uuid_t) * 2) + 4;
+                        if(strlen(arg) != uuid_hex_len) {
+                            argp_error(state, "UUID not %zu characters long.\n", uuid_hex_len);
                         }
                         arguments->uuid_hex = arg;
                     }
@@ -320,7 +366,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
             break;
         case ARGP_KEY_END:
-            if(arguments->mode == MODE_NULL) {
+            if(arguments->algo == NULL) {
                 argp_error(state, "--mode is required!\n");
             }
 
@@ -331,7 +377,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     argp_usage(state);
                 }
 
-                if(arguments->mode == MODE_AES && arguments->uuid_hex == NULL) {
+                if(arguments->algo->mode == MODE_CIPHER && arguments->uuid_hex == NULL) {
                     argp_usage(state);
                 }
             }
@@ -341,8 +387,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             }
 
             if(arguments->random && arguments->benchmark) {
-                argp_error(state, "--random and --benchmark cannot be both set"
-                                  " simultaneously.\n");
+                argp_error(state, "--random and --benchmark cannot be both set simultaneously.\n");
             }
 
             if(arguments->mismatches < 0) {
@@ -405,7 +450,7 @@ int main(int argc, char *argv[]) {
 
     double start_time, duration, key_rate;
     long long int validated_keys = 0;
-    int mode, found, subfound;
+    int found, subfound;
 
     long long int sub_validated_keys;
 
@@ -450,8 +495,9 @@ int main(int argc, char *argv[]) {
     numcores = omp_get_num_threads();
 #endif
 
-    if(arguments.mode == MODE_ECC) {
-        if((ec_group = EC_GROUP_new_by_curve_name(EC_CURVE)) == NULL) {
+    // Memory alloc/init
+    if(arguments.algo->mode == MODE_EC) {
+        if((ec_group = EC_GROUP_new_by_curve_name(arguments.algo->nid)) == NULL) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
 
@@ -510,21 +556,23 @@ int main(int argc, char *argv[]) {
             // Clear GMP PRNG
             gmp_randclear(randstate);
 
-            if (arguments.mode == MODE_AES) {
+            if(arguments.algo->mode == MODE_CIPHER) {
                 uuid_generate(userId);
 
-                if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
-                    fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
+                if(arguments.algo->nid == NID_aes_256_ecb) {
+                    if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
+                        fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
 
 #ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
+                        if(omp_pause_resource_all(omp_pause_hard)) {
                         fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
                     }
 #endif
 
-                    return ERROR_CODE_FAILURE;
+                        return ERROR_CODE_FAILURE;
+                    }
                 }
-            } else if (arguments.mode == MODE_ECC) {
+            } else if (arguments.algo->mode == MODE_EC) {
                 BIGNUM *scalar;
 
                 if((scalar = BN_secure_new()) == NULL) {
@@ -571,10 +619,10 @@ int main(int argc, char *argv[]) {
         MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
-        if(arguments.mode == MODE_AES) {
-            MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        if(arguments.algo->mode == MODE_CIPHER) {
+            MPI_Bcast(client_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
             MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        } else if(arguments.mode == MODE_ECC) {
+        } else if(arguments.algo->mode == MODE_EC) {
             unsigned char client_public_key[100];
             int len;
 
@@ -597,14 +645,15 @@ int main(int argc, char *argv[]) {
 
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
+
 #endif
     }
     else {
         switch(parse_hex(host_seed, arguments.seed_hex)) {
             case 1:
-                fprintf(stderr, "ERROR: KEY had non-hexadecimal characters.\n");
+                fprintf(stderr, "ERROR: HOST_SEED had non-hexadecimal characters.\n");
 
-                if(arguments.mode == MODE_ECC) {
+                if(arguments.algo->mode == MODE_EC) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
                 }
@@ -617,9 +666,9 @@ int main(int argc, char *argv[]) {
 
                 return ERROR_CODE_FAILURE;
             case 2:
-                fprintf(stderr, "ERROR: KEY did not have even length.\n");
+                fprintf(stderr, "ERROR: HOST_SEED did not have even length.\n");
 
-                if(arguments.mode == MODE_ECC) {
+                if(arguments.algo->mode == MODE_EC) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
                 }
@@ -635,7 +684,7 @@ int main(int argc, char *argv[]) {
                 break;
         }
 
-        if(arguments.mode == MODE_AES) {
+        if(arguments.algo->mode == MODE_CIPHER) {
             switch(parse_hex(client_cipher, arguments.client_crypto_hex)) {
                 case 1:
                     fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
@@ -673,8 +722,9 @@ int main(int argc, char *argv[]) {
                 return ERROR_CODE_FAILURE;
             }
         }
-        else if(arguments.mode == MODE_ECC) {
-            if(EC_POINT_hex2point(ec_group, arguments.client_crypto_hex, client_ec_point, NULL) == NULL) {
+        else if(arguments.algo->mode == MODE_EC) {
+            if(EC_POINT_hex2point(ec_group, arguments.client_crypto_hex,
+                                  client_ec_point, NULL) == NULL) {
                 fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
                         ERR_error_string(ERR_get_error(), NULL));
 
@@ -704,16 +754,16 @@ int main(int argc, char *argv[]) {
         if(arguments.random || arguments.benchmark) {
             fprintf(stderr, "INFO: Using CLIENT_SEED (%d mismatches): ",
                     arguments.mismatches);
-            if(arguments.mode == MODE_ECC) {
-                fprintf(stderr, "      ");
-            }
             fprint_hex(stderr, client_seed, SEED_SIZE);
             fprintf(stderr, "\n");
         }
 
-        if(arguments.mode == MODE_AES) {
-            fprintf(stderr, "INFO: AES-256 CLIENT_CIPHER:            ");
-            fprint_hex(stderr, client_cipher, AES_BLOCK_SIZE);
+        fprintf(stderr, "INFO: Using %s", arguments.algo->full_name);
+
+        if(arguments.algo->mode == MODE_CIPHER) {
+            fprintf(stderr, " CLIENT_CIPHER: %*s",
+                    (int)strlen(arguments.algo->full_name), "");
+            fprint_hex(stderr, client_cipher, sizeof(uuid_t));
             fprintf(stderr, "\n");
 
             // Convert the uuid to a string for printing
@@ -721,11 +771,12 @@ int main(int argc, char *argv[]) {
 
             fprintf(stderr, "INFO: Using UUID:                       %s\n", uuid_str);
         }
-        else if(arguments.mode == MODE_ECC) {
+        else if(arguments.algo->mode == MODE_EC) {
             if(arguments.random || arguments.benchmark) {
-                fprintf(stderr, "INFO: Using ECC Secp256r1 Host Public Key:    ");
+                fprintf(stderr, " HOST_PUB_KEY:%*s", (int)strlen(arguments.algo->full_name) - 4,
+                        "");
                 if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
-                                 NULL)) {
+                                    NULL)) {
                     fprintf(stderr, "ERROR: fprintf_ec_point failed.\n");
 
                     EC_POINT_free(client_ec_point);
@@ -742,9 +793,10 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "\n");
             }
 
-            fprintf(stderr, "INFO: Using ECC Secp256r1 Client Public Key:  ");
+            fprintf(stderr, "INFO: Using %s CLIENT_PUB_KEY:%*s", arguments.algo->full_name,
+                    (int)strlen(arguments.algo->full_name) - 6, "");
             if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
-                             NULL)) {
+                                NULL)) {
                 fprintf(stderr, "ERROR: fprintf_ec_point failed.\n");
 
                 EC_POINT_free(client_ec_point);
@@ -762,8 +814,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // mode needs to be copied for OpenMP shared access
-    mode = arguments.mode;
     found = 0;
 
 #ifdef USE_MPI
@@ -784,7 +834,7 @@ int main(int argc, char *argv[]) {
         }
 
 #ifndef USE_MPI
-#pragma omp parallel default(none) shared(mode, found, host_seed, client_seed, client_cipher,\
+#pragma omp parallel default(none) shared(found, host_seed, client_seed, client_cipher,\
             userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
             private(subfound, sub_validated_keys)
         {
@@ -797,12 +847,14 @@ int main(int argc, char *argv[]) {
 
         subfound = 0;
 
-        if(mode == MODE_AES) {
-            crypto_func = aes256_crypto_func;
-            crypto_cmp = aes256_crypto_cmp;
-            v_args = aes256_validator_create(userId, client_cipher, sizeof(uuid_t));
+        if(arguments.algo->mode == MODE_CIPHER) {
+            if(arguments.algo->nid == NID_aes_256_ecb) {
+                crypto_func = aes256_crypto_func;
+                crypto_cmp = aes256_crypto_cmp;
+                v_args = aes256_validator_create(userId, client_cipher, sizeof(uuid_t));
+            }
         }
-        else if(mode == MODE_ECC) {
+        else if(arguments.algo->mode == MODE_EC) {
             crypto_func = ec_crypto_func;
             crypto_cmp = ec_crypto_cmp;
             v_args = ec_validator_create(ec_group, client_ec_point);
@@ -813,7 +865,7 @@ int main(int argc, char *argv[]) {
             // Cleanup
             mpz_clear(key_count);
 
-            if(mode == MODE_ECC) {
+            if(arguments.algo->mode == MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
             }
@@ -854,7 +906,7 @@ int main(int argc, char *argv[]) {
                 // Cleanup
                 mpz_clear(key_count);
 
-                if(mode == MODE_ECC) {
+                if(arguments.algo->mode == MODE_EC) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
                 }
@@ -877,7 +929,6 @@ int main(int argc, char *argv[]) {
                                           &found, crypto_func, crypto_cmp, v_args);
         }
 
-
 #pragma omp critical
             {
                 // If the result is positive set the "global" found to 1. Will cause the other
@@ -899,10 +950,12 @@ int main(int argc, char *argv[]) {
                 }
             }
 #endif
-            if(mode == MODE_AES) {
-                aes256_validator_destroy(v_args);
+            if(arguments.algo->mode == MODE_CIPHER) {
+                if(arguments.algo->nid == NID_aes_256_ecb) {
+                    aes256_validator_destroy(v_args);
+                }
             }
-            else if(mode == MODE_ECC) {
+            else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI
@@ -910,7 +963,7 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-    if(arguments.mode == MODE_ECC) {
+    if(arguments.algo->mode == MODE_EC) {
         EC_POINT_free(client_ec_point);
         EC_GROUP_free(ec_group);
     }
@@ -954,9 +1007,7 @@ int main(int argc, char *argv[]) {
     }
 
     if(subfound) {
-        if(arguments.mode == MODE_AES || arguments.mode == MODE_ECC) {
-            fprint_hex(stdout, client_seed, SEED_SIZE);
-        }
+        fprint_hex(stdout, client_seed, SEED_SIZE);
         printf("\n");
     }
 
@@ -999,9 +1050,7 @@ int main(int argc, char *argv[]) {
     }
 
     if(found > 0) {
-        if(arguments.mode == MODE_AES || arguments.mode == MODE_ECC) {
-            fprint_hex(stdout, client_seed, SEED_SIZE);
-        }
+        fprint_hex(stdout, client_seed, SEED_SIZE);
         printf("\n");
     }
 

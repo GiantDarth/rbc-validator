@@ -6,6 +6,10 @@
 
 #include "crypto/ec.h"
 
+#define EC_CURVE NID_X9_62_prime256v1
+#define EC_PRIV_KEY_SIZE 32
+#define EC_PUB_COMP_KEY_SIZE 33
+
 typedef struct ec_test_wrapper {
     EC_GROUP *group;
     EC_POINT *point;
