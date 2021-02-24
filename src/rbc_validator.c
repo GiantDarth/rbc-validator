@@ -204,6 +204,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             else {
                 argp_error(state, "--mode is invalid.\n");
             }
+            break;
         case 'v':
             arguments->verbose = 1;
             break;
