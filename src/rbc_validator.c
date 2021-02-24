@@ -309,6 +309,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
 #endif
         case ARGP_KEY_ARG:
+            if(arguments->random || arguments->benchmark) {
+                argp_usage(state);
+            }
+
             switch(state->arg_num) {
                 case 0:
                     if(strlen(arg) != SEED_SIZE * 2) {
@@ -538,14 +542,6 @@ int main(int argc, char *argv[]) {
             // Set the gmp prng algorithm and set a seed based on the current time
             gmp_randinit_default(randstate);
             gmp_randseed_ui(randstate, (unsigned long) time(NULL));
-
-            if (arguments.random) {
-                fprintf(stderr, "WARNING: Random mode set. All three arguments will be ignored"
-                                " and randomly generated ones will be used in their place.\n");
-            } else if (arguments.benchmark) {
-                fprintf(stderr, "WARNING: Benchmark mode set. All three arguments will be ignored"
-                                " and randomly generated ones will be used in their place.\n");
-            }
 
             get_random_seed(host_seed, SEED_SIZE, randstate);
             get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
