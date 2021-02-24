@@ -224,6 +224,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             if((arguments->algo = find_algo(arg, supported_algos)) == NULL) {
                 argp_error(state, "--mode is invalid or unsupported.");
             }
+            break;
         case 'v':
             arguments->verbose = 1;
             break;
