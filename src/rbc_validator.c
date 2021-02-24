@@ -759,10 +759,9 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
         }
 
-        fprintf(stderr, "INFO: Using %s", arguments.algo->full_name);
 
         if(arguments.algo->mode == MODE_CIPHER) {
-            fprintf(stderr, " CLIENT_CIPHER: %*s",
+            fprintf(stderr, "INFO: Using CLIENT_CIPHER: %*s",
                     (int)strlen(arguments.algo->full_name), "");
             fprint_hex(stderr, client_cipher, sizeof(uuid_t));
             fprintf(stderr, "\n");
@@ -774,7 +773,7 @@ int main(int argc, char *argv[]) {
         }
         else if(arguments.algo->mode == MODE_EC) {
             if(arguments.random || arguments.benchmark) {
-                fprintf(stderr, " HOST_PUB_KEY:%*s", (int)strlen(arguments.algo->full_name) - 4,
+                fprintf(stderr, "INFO: Using HOST_PUB_KEY:%*s", (int)strlen(arguments.algo->full_name) - 4,
                         "");
                 if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
                                     NULL)) {
