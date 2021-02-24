@@ -6,6 +6,10 @@
 
 #include "crypto/ec.h"
 
+#define EC_CURVE NID_X9_62_prime256v1
+#define EC_PRIV_KEY_SIZE 32
+#define EC_PUB_COMP_KEY_SIZE 33
+
 typedef struct ec_test_wrapper {
     EC_GROUP *group;
     EC_POINT *point;
@@ -115,7 +119,7 @@ int main() {
     }
 
     if(!EC_POINT_oct2point(test_wrapper->group, test_wrapper->expected_point, expected_public_key,
-                          EC_PUB_COMP_KEY_SIZE, test_wrapper->ctx)) {
+                           EC_PUB_COMP_KEY_SIZE, test_wrapper->ctx)) {
         fprintf(stderr, "ERROR: EC_POINT_oct2point failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
