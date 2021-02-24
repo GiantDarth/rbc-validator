@@ -131,17 +131,17 @@ aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsi
         return NULL;
     }
 
-    v->n = n;
-    v->msg = msg;
-    v->client_cipher = client_cipher;
-
-    if(n % AES_BLOCK_SIZE != 0) {
+    if(msg == NULL || client_cipher == NULL) {
         aes256_validator_destroy(v);
 
         return NULL;
     }
 
-    if(v->msg == NULL || v->client_cipher == NULL) {
+    v->n = n;
+    v->msg = msg;
+    v->client_cipher = client_cipher;
+
+    if(n % AES_BLOCK_SIZE != 0) {
         aes256_validator_destroy(v);
 
         return NULL;
@@ -179,15 +179,15 @@ ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *clien
         return NULL;
     }
 
-    v->ctx_started = 0;
-    v->group = group;
-    v->client_point = client_point;
-
-    if(v->group == NULL || v->client_point == NULL) {
+    if(group == NULL || client_point == NULL) {
         ec_validator_destroy(v);
 
         return NULL;
     }
+
+    v->ctx_started = 0;
+    v->group = group;
+    v->client_point = client_point;
 
     if((v->curr_point = EC_POINT_new(v->group)) == NULL) {
         ec_validator_destroy(v);

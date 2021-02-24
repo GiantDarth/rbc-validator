@@ -8,8 +8,15 @@
 
 gmp_key_iter* gmp_key_iter_create(const unsigned char *key, size_t key_size,
         const mpz_t first_perm, const mpz_t last_perm) {
-    gmp_key_iter *iter;
-    if((iter = malloc(sizeof(*iter))) == NULL) {
+    gmp_key_iter *iter = malloc(sizeof(*iter));
+
+    if(iter == NULL) {
+        return NULL;
+    }
+
+    if(key == NULL) {
+        gmp_key_iter_destroy(iter);
+
         return NULL;
     }
 
@@ -30,6 +37,10 @@ gmp_key_iter* gmp_key_iter_create(const unsigned char *key, size_t key_size,
 }
 
 void gmp_key_iter_destroy(gmp_key_iter *iter) {
+    if(iter == NULL) {
+        return;
+    }
+
     mpz_clears(iter->curr_perm, iter->last_perm, iter->t, iter->tmp, iter->key_mpz,
             iter->corrupted_key_mpz, NULL);
     free(iter);
