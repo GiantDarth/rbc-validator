@@ -115,7 +115,7 @@ int main() {
     }
 
     if(!EC_POINT_oct2point(test_wrapper->group, test_wrapper->expected_point, expected_public_key,
-                          EC_PUB_COMP_KEY_SIZE, test_wrapper->ctx)) {
+                           EC_PUB_COMP_KEY_SIZE, test_wrapper->ctx)) {
         fprintf(stderr, "ERROR: EC_POINT_oct2point failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
