@@ -5,8 +5,15 @@
 
 uint256_key_iter* uint256_key_iter_create(const unsigned char *key, const uint256_t *first_perm,
         const uint256_t *last_perm) {
-    uint256_key_iter *iter;
-    if((iter = calloc(1, sizeof(uint256_key_iter))) == NULL) {
+    uint256_key_iter *iter = calloc(1, sizeof(uint256_key_iter));
+
+    if(iter == NULL) {
+        return NULL;
+    }
+
+    if(key == NULL || first_perm == NULL || last_perm == NULL) {
+        uint256_key_iter_destroy(iter);
+
         return NULL;
     }
 
@@ -24,7 +31,9 @@ uint256_key_iter* uint256_key_iter_create(const unsigned char *key, const uint25
 }
 
 void uint256_key_iter_destroy(uint256_key_iter *iter) {
-    free(iter);
+    if(iter != NULL) {
+        free(iter);
+    }
 }
 
 void uint256_key_iter_next(uint256_key_iter *iter) {

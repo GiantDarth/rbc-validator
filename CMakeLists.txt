@@ -17,6 +17,7 @@ set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src
         src/util.c src/util.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
+set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
@@ -28,10 +29,12 @@ list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 
-add_executable(rbc_validator src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${EC_FILES})
+add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
+        ${AES_FILES} ${EC_FILES})
 
 if(NOT CYGWIN)
-    add_executable(rbc_validator_mpi src/rbc_validator.c ${SOURCE_FILES} ${AES_FILES} ${EC_FILES})
+    add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
+            ${AES_FILES} ${EC_FILES})
 endif(NOT CYGWIN)
 
 find_package(OpenSSL 1.1 REQUIRED)
@@ -53,7 +56,7 @@ target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API
         OPENSSL_NO_DEPRECATED)
 
 if(NOT CYGWIN)
-    target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI  PENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+    target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
             OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
