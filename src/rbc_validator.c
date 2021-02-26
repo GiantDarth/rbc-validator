@@ -29,7 +29,12 @@
 // If using OpenMP, and using Clang 10+ or GCC 9+, support omp_pause_resource_all
 #if !defined(USE_MPI) && ((defined(__clang__) && __clang_major__ >= 10) || (!defined(__clang) && \
     __GNUC__ >= 9))
-#define OMP_DESTROY_SUPPORT
+#define OMP_DESTROY()\
+if(omp_pause_resource_all(omp_pause_hard)) {\
+    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");\
+}
+#else
+#define OMP_DESTROY()
 #endif
 
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
@@ -508,11 +513,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
 
-#ifdef OMP_DESTROY_SUPPORT
-            if(omp_pause_resource_all(omp_pause_hard)) {
-                fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-            }
-#endif
+            OMP_DESTROY()
 
             return ERROR_CODE_FAILURE;
         }
@@ -523,11 +524,7 @@ int main(int argc, char *argv[]) {
 
             EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-            if(omp_pause_resource_all(omp_pause_hard)) {
-                fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-            }
-#endif
+            OMP_DESTROY()
 
             return ERROR_CODE_FAILURE;
         }
@@ -562,11 +559,7 @@ int main(int argc, char *argv[]) {
                     if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
                         fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                        if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                         return ERROR_CODE_FAILURE;
                     }
@@ -581,11 +574,7 @@ int main(int argc, char *argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 }
@@ -657,11 +646,7 @@ int main(int argc, char *argv[]) {
                     EC_GROUP_free(ec_group);
                 }
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             case 2:
@@ -672,11 +657,7 @@ int main(int argc, char *argv[]) {
                     EC_GROUP_free(ec_group);
                 }
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             default:
@@ -688,21 +669,13 @@ int main(int argc, char *argv[]) {
                 case 1:
                     fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 case 2:
                     fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 default:
@@ -712,11 +685,7 @@ int main(int argc, char *argv[]) {
             if (uuid_parse(arguments.uuid_hex, userId) < 0) {
                 fprintf(stderr, "ERROR: UUID not in canonical form.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             }
@@ -730,11 +699,7 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             }
@@ -780,11 +745,7 @@ int main(int argc, char *argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 }
@@ -800,11 +761,7 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             }
@@ -1033,11 +990,7 @@ int main(int argc, char *argv[]) {
         printf("\n");
     }
 
-#ifdef OMP_DESTROY_SUPPORT
-    if(omp_pause_resource_all(omp_pause_hard)) {
-        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-    }
-#endif
+    OMP_DESTROY()
 
     return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 #endif
