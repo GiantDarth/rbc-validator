@@ -775,9 +775,8 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
         }
 
-
         if(arguments.algo->mode == MODE_CIPHER) {
-            fprintf(stderr, "INFO: Using CLIENT_CIPHER: %*s",
+            fprintf(stderr, "INFO: Using %s CLIENT_CIPHER: %*s", arguments.algo->full_name,
                     (int)strlen(arguments.algo->full_name), "");
             fprint_hex(stderr, client_cipher, sizeof(uuid_t));
             fprintf(stderr, "\n");
