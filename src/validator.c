@@ -10,6 +10,9 @@
 
 #include <string.h>
 
+#include "crypto/aes256-ni_enc.h"
+#include "crypto/cipher.h"
+
 typedef struct validator_t {
     uint256_key_iter *iter;
     unsigned char *curr_seed;
@@ -35,6 +38,32 @@ int aes256_crypto_func(unsigned char *curr_seed, void *args) {
 int aes256_crypto_cmp(void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
     return memcmp(v->curr_cipher, v->client_cipher, v->n);
+}
+
+int cipher_crypto_func(unsigned char *curr_seed, void *args) {
+    cipher_validator_t *v = (cipher_validator_t*)args;
+
+    if(v == NULL || v->ctx == NULL || v->msg == NULL || v->curr_cipher == NULL) {
+        return -1;
+    }
+
+    evp_encrypt_msg(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv);
+    // By setting the EVP structure to NULL, we avoid reallocation later
+    if(v->evp_cipher != NULL) {
+        v->evp_cipher = NULL;
+    }
+
+    return 0;
+}
+
+int cipher_crypto_cmp(void *args) {
+    cipher_validator_t *v = (cipher_validator_t*)args;
+
+    if(v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
+        return -1;
+    }
+
+    return memcmp(v->curr_cipher, v->client_cipher, v->msg_size) != 0;
 }
 
 int ec_crypto_func(unsigned char *curr_seed, void *args) {
@@ -120,7 +149,6 @@ void validator_destroy(validator_t *v) {
     free(v);
 }
 
-
 aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
                                             size_t n) {
     aes256_validator_t *v = malloc(sizeof(*v));
@@ -159,6 +187,65 @@ aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsi
 void aes256_validator_destroy(aes256_validator_t *v) {
     if(v == NULL) {
         return;
+    }
+
+    if(v->curr_cipher != NULL) {
+        free(v->curr_cipher);
+    }
+
+    free(v);
+}
+
+cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
+                                            const unsigned char *client_cipher, const unsigned char *msg,
+                                            size_t msg_size, const unsigned char *iv) {
+    cipher_validator_t *v = malloc(sizeof(*v));
+
+    if(v == NULL) {
+        return NULL;
+    }
+
+    v->evp_cipher = evp_cipher;
+    v->msg_size = msg_size;
+    v->msg = msg;
+    v->client_cipher = client_cipher;
+    // IV is optional as NULL depending on the cipher chosen
+    v->iv = iv;
+    v->cipher_inited = 0;
+
+    v->curr_cipher = malloc(msg_size * sizeof(*(v->curr_cipher)));
+    v->ctx = EVP_CIPHER_CTX_new();
+
+    if(v->evp_cipher == NULL || v->msg == NULL || v->client_cipher == NULL || v->curr_cipher == NULL
+            || v->ctx == NULL) {
+        cipher_validator_destroy(v);
+
+        return NULL;
+    }
+
+    if(msg_size % EVP_CIPHER_block_size(v->evp_cipher) != 0) {
+        cipher_validator_destroy(v);
+
+        return NULL;
+    }
+
+    if((iv == NULL && EVP_CIPHER_iv_length(v->evp_cipher) != 0)
+            || (iv != NULL && EVP_CIPHER_iv_length(v->evp_cipher) == 0)) {
+        cipher_validator_destroy(v);
+
+        return NULL;
+    }
+
+    return v;
+}
+
+void cipher_validator_destroy(cipher_validator_t *v) {
+    if(v == NULL) {
+        return;
+    }
+
+    if(v->ctx != NULL) {
+        EVP_CIPHER_CTX_free(v->ctx);
     }
 
     if(v->curr_cipher != NULL) {
@@ -298,7 +385,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            memcpy(client_seed, v->curr_seed, AES256_KEY_SIZE);
+            memcpy(client_seed, v->curr_seed, SEED_SIZE);
 
             if(!all) {
                 // alert all ranks that the key was found, including yourself
@@ -320,7 +407,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
             // This might happen more than once if the # of threads exceeds the number of possible
             // keys
 #pragma omp critical
-            memcpy(client_seed, v->curr_seed, AES256_KEY_SIZE);
+            memcpy(client_seed, v->curr_seed, SEED_SIZE);
             break;
 #endif
         }

@@ -20,6 +20,8 @@
 
 #include "validator.h"
 #include "util.h"
+#include "crypto/aes256-ni_enc.h"
+#include "crypto/cipher.h"
 #include "crypto/ec.h"
 
 #define ERROR_CODE_FOUND 0
@@ -449,7 +451,8 @@ int main(int argc, char *argv[]) {
     unsigned char host_seed[SEED_SIZE];
     unsigned char client_seed[SEED_SIZE];
 
-    unsigned char client_cipher[AES_BLOCK_SIZE];
+    const EVP_CIPHER *evp_cipher;
+    unsigned char client_cipher[EVP_MAX_BLOCK_LENGTH];
     EC_GROUP *ec_group;
     EC_POINT *client_ec_point;
 
@@ -503,7 +506,9 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Memory alloc/init
-    if(arguments.algo->mode == MODE_EC) {
+    if(arguments.algo->mode == MODE_CIPHER) {
+        evp_cipher = EVP_get_cipherbynid(arguments.algo->nid);
+    } else if(arguments.algo->mode == MODE_EC) {
         if((ec_group = EC_GROUP_new_by_curve_name(arguments.algo->nid)) == NULL) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
@@ -564,12 +569,25 @@ int main(int argc, char *argv[]) {
 
 #ifdef OMP_DESTROY_SUPPORT
                         if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
+                            fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
+                        }
 #endif
 
                         return ERROR_CODE_FAILURE;
                     }
+                }
+                else if(evp_encrypt_msg(client_cipher, NULL, evp_cipher, client_seed, userId,
+                                   sizeof(uuid_t), NULL)) {
+                    fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
+
+#ifdef OMP_DESTROY_SUPPORT
+                        if(omp_pause_resource_all(omp_pause_hard)) {
+                            fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
+                        }
+#endif
+
+                    return ERROR_CODE_FAILURE;
                 }
             } else if (arguments.algo->mode == MODE_EC) {
                 BIGNUM *scalar;
@@ -832,7 +850,7 @@ int main(int argc, char *argv[]) {
         }
 
 #ifndef USE_MPI
-#pragma omp parallel default(none) shared(found, host_seed, client_seed, client_cipher,\
+#pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher,\
             userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
             private(subfound, sub_validated_keys)
         {
@@ -850,6 +868,11 @@ int main(int argc, char *argv[]) {
                 crypto_func = aes256_crypto_func;
                 crypto_cmp = aes256_crypto_cmp;
                 v_args = aes256_validator_create(userId, client_cipher, sizeof(uuid_t));
+            }
+            else {
+                crypto_func = cipher_crypto_func;
+                crypto_cmp = cipher_crypto_cmp;
+                v_args = cipher_validator_create(evp_cipher, client_cipher, userId, sizeof(uuid_t), NULL);
             }
         }
         else if(arguments.algo->mode == MODE_EC) {
@@ -902,6 +925,10 @@ int main(int argc, char *argv[]) {
 
             if (subfound < 0) {
                 // Cleanup
+                if(arguments.algo->mode == MODE_CIPHER) {
+                    cipher_validator_destroy(v_args);
+                }
+
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_EC) {
@@ -951,9 +978,10 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
+                } else {
+                    cipher_validator_destroy(v_args);
                 }
-            }
-            else if(arguments.algo->mode == MODE_EC) {
+            } else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI
