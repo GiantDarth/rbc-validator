@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <openssl/evp.h>
 #include <openssl/err.h>
 #include <uuid/uuid.h>
 #include <argp.h>
