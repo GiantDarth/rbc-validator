@@ -31,7 +31,10 @@ int main() {
     unsigned char cipher[16];
     int status;
 
-    aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
+    if(aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
+        fprintf(stderr, "ERROR: evp_encrypt_msg failed\n");
+        return EXIT_FAILURE;
+    }
 
     printf("Encryption: Test ");
     if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
