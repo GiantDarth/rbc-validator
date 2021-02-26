@@ -14,7 +14,6 @@ typedef struct ec_test_wrapper {
     EC_GROUP *group;
     EC_POINT *point;
     EC_POINT *expected_point;
-    BN_CTX *ctx;
 } ec_test_wrapper;
 
 ec_test_wrapper* ec_test_wrapper_create();
@@ -54,15 +53,6 @@ ec_test_wrapper* ec_test_wrapper_create() {
         return NULL;
     }
 
-    if((wrapper->ctx = BN_CTX_new()) == NULL) {
-        fprintf(stderr, "ERROR: BN_CTX_new failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        ec_test_wrapper_destroy(wrapper);
-
-        return NULL;
-    }
-
     return wrapper;
 }
 
@@ -70,10 +60,6 @@ void ec_test_wrapper_destroy(ec_test_wrapper *wrapper) {
     // If wrapper is already NULL, escape early
     if (wrapper == NULL) {
         return;
-    }
-
-    if (wrapper->ctx != NULL) {
-        BN_CTX_free(wrapper->ctx);
     }
 
     if (wrapper->expected_point != NULL) {
@@ -111,7 +97,6 @@ int main() {
     };
 
     ec_test_wrapper *test_wrapper;
-    BIGNUM *scalar;
     int status, cmp_status;
 
     if((test_wrapper = ec_test_wrapper_create()) == NULL) {
@@ -119,7 +104,7 @@ int main() {
     }
 
     if(!EC_POINT_oct2point(test_wrapper->group, test_wrapper->expected_point, expected_public_key,
-                           EC_PUB_COMP_KEY_SIZE, test_wrapper->ctx)) {
+                           EC_PUB_COMP_KEY_SIZE, NULL)) {
         fprintf(stderr, "ERROR: EC_POINT_oct2point failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
@@ -128,36 +113,10 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    BN_CTX_start(test_wrapper->ctx);
-
-    if((scalar = BN_CTX_get(test_wrapper->ctx)) == NULL) {
-        fprintf(stderr, "ERROR: BN_CTX_get failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(test_wrapper->ctx);
-        ec_test_wrapper_destroy(test_wrapper);
-
-        return EXIT_FAILURE;
-    }
-
-    BN_bin2bn(private_key, EC_PRIV_KEY_SIZE, scalar);
-
-    if(!EC_POINT_mul(test_wrapper->group, test_wrapper->point, scalar, NULL, NULL,
-                     test_wrapper->ctx)) {
-        fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
-                ERR_error_string(ERR_get_error(), NULL));
-
-        BN_CTX_end(test_wrapper->ctx);
-        ec_test_wrapper_destroy(test_wrapper);
-
-       return EXIT_FAILURE;
-    }
-
-    // We no longer need to use scalar after this point
-    BN_CTX_end(test_wrapper->ctx);
+    get_ec_public_key(test_wrapper->point, NULL, test_wrapper->group, private_key, EC_PRIV_KEY_SIZE);
 
     if((cmp_status = EC_POINT_cmp(test_wrapper->group, test_wrapper->point, test_wrapper->expected_point,
-                                  test_wrapper->ctx)) < 0) {
+                                  NULL)) < 0) {
         fprintf(stderr, "ERROR: EC_POINT_cmp failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
@@ -167,7 +126,7 @@ int main() {
     }
 
     printf("Public Key Generation: Test ");
-    if(!cmp_status) {
+    if(cmp_status == 0) {
         printf("Passed\n");
         status = EXIT_SUCCESS;
     }
@@ -178,7 +137,7 @@ int main() {
 
     printf("Expected Public Key: ");
     if(fprintf_ec_point(stdout, test_wrapper->group, test_wrapper->point,
-                        POINT_CONVERSION_COMPRESSED, test_wrapper->ctx)) {
+                        POINT_CONVERSION_COMPRESSED, NULL)) {
         fprintf(stderr, "ERROR: fprintf_point failed.\n");
 
         ec_test_wrapper_destroy(test_wrapper);
@@ -189,7 +148,7 @@ int main() {
 
     printf("Actual Public Key:   ");
     if(fprintf_ec_point(stdout, test_wrapper->group, test_wrapper->point,
-                        POINT_CONVERSION_COMPRESSED, test_wrapper->ctx)) {
+                        POINT_CONVERSION_COMPRESSED, NULL)) {
         fprintf(stderr, "ERROR: fprintf_point failed.\n");
 
         ec_test_wrapper_destroy(test_wrapper);
