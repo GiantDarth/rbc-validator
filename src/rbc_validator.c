@@ -859,25 +859,6 @@ int main(int argc, char *argv[]) {
         }
 
 #ifdef USE_MPI
-        if(v_args == NULL) {
-            // Cleanup
-            mpz_clear(key_count);
-
-            if(arguments.algo->mode == MODE_EC) {
-                EC_POINT_free(client_ec_point);
-                EC_GROUP_free(ec_group);
-            }
-
-            MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
-        }
-#else
-        if(v_args == NULL) {
-#pragma omp critical
-            subfound = -1;
-        }
-#endif
-
-#ifdef USE_MPI
         mpz_bin_uiui(key_count, arguments.subkey_length, mismatch);
 
         // Only have this rank run if it's within range of possible keys
