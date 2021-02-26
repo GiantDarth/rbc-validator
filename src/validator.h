@@ -24,8 +24,6 @@ typedef struct ec_validator_t {
     const EC_POINT *client_point;
     EC_POINT *curr_point;
     BN_CTX *ctx;
-    BIGNUM *scalar;
-    int ctx_started;
 } ec_validator_t;
 
 int aes256_crypto_func(unsigned char *curr_seed, void *args);
@@ -38,6 +36,8 @@ void aes256_validator_destroy(aes256_validator_t *v);
 int ec_crypto_func(unsigned char *curr_seed, void *args);
 int ec_crypto_cmp(void *args);
 
+/// \param EC_GROUP The EC group to use
+/// \param EC_POINT The client EC public key
 ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *client_point);
 void ec_validator_destroy(ec_validator_t *v);
 
