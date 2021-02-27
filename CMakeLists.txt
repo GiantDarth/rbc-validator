@@ -51,13 +51,13 @@ include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
 target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
-        OPENSSL_NO_DEPRECATED)
+        PUBLIC OPENSSL_NO_DEPRECATED)
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
-        OPENSSL_NO_DEPRECATED)
+        PUBLIC OPENSSL_NO_DEPRECATED)
 
 if(NOT CYGWIN)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
-            OPENSSL_NO_DEPRECATED)
+            PUBLIC OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
 target_link_libraries(ecc_test OpenSSL::SSL)
