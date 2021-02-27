@@ -13,7 +13,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
 # Equivalent to OpenSSL 1.1.1
 set(OPENSSL_API_COMPAT 10101)
 
-set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
+set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
         src/util.c src/util.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
