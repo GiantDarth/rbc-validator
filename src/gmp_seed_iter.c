@@ -4,10 +4,7 @@
 
 #include "gmp_seed_iter.h"
 
-#include <stdlib.h>
 #include <string.h>
-
-mp_limb_t mpn_one[ITER_LIMB_SIZE] = {0x1, 0, 0, 0};
 
 void mpn_overflowing_rshift(mp_limb_t *rop, const mp_limb_t *op1, mp_size_t n, unsigned int shift);
 
