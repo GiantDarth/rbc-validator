@@ -14,6 +14,45 @@ void print_hex(const unsigned char *array, size_t count) {
     }
 }
 
+int generic_test(const char *name, const EVP_CIPHER *evp_cipher, const unsigned char *key,
+                 const unsigned char *msg, const unsigned char *expected_cipher, size_t msg_len,
+                 const unsigned char *iv) {
+    int status;
+    unsigned char *cipher = malloc(msg_len);
+    if(cipher == NULL) {
+        return 1;
+    }
+
+    if(evp_encrypt(cipher, NULL, evp_cipher, key, (const unsigned char *)msg, msg_len, iv)) {
+        fprintf(stderr, "ERROR: evp_encrypt failed\n");
+        return EXIT_FAILURE;
+    }
+
+    printf("%s Encryption: Test ", name);
+    if(!memcmp(cipher, expected_cipher, msg_len)) {
+        printf("Passed\n");
+        status = 0;
+    }
+    else {
+        printf("Failed\n");
+        status = 1;
+    }
+
+    printf("Expected: ");
+    print_hex(expected_cipher, msg_len);
+    printf("\n");
+
+    printf("Actual:   ");
+    print_hex(cipher, msg_len);
+    printf("\n");
+
+    free(cipher);
+
+    return status;
+}
+
+#define TEST_SIZE 2
+
 int main() {
     const unsigned char key[] = {
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -23,37 +62,34 @@ int main() {
     };
     // A message that's exactly 16 bytes long (excluding the null character)
     const char msg[] = "Hello world x2!\n";
-    const unsigned char expected_cipher[] = {
-            0x00, 0x80, 0xb5, 0xcd, 0x7d, 0x63, 0x1b, 0x04,
-            0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33, 0x1b, 0x3e
+
+    const EVP_CIPHER *evp_ciphers[TEST_SIZE] = { EVP_aes_256_ecb(), EVP_chacha20() };
+    const char *names[TEST_SIZE] = { "AES-256-ECB", "ChaCha20" };
+    const unsigned char expected_ciphers[TEST_SIZE][sizeof(msg) - 1] = {
+            {
+                    0x00, 0x80, 0xb5, 0xcd, 0x7d, 0x63, 0x1b, 0x04,
+                    0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33, 0x1b, 0x3e
+            },
+            {
+                    0x8f, 0xba, 0x63, 0x2c, 0x58, 0x8c, 0xec, 0xbe,
+                    0x91, 0x2d, 0xd1, 0x6a, 0xcd, 0x24, 0x54, 0xb4
+            }
     };
+    const unsigned char chacha20_iv[16] = {
+            0x00, 0x00, 0x00, 0x00, 0x65, 0xda, 0x01, 0x76,
+            0x39, 0x72, 0xe3, 0x5d, 0xfa, 0x28, 0x2e, 0xb8
+    };
+    const unsigned char *ivs[TEST_SIZE] = { NULL, chacha20_iv };
 
-    unsigned char cipher[16];
-    int status;
+    int status = 0;
 
-    const EVP_CIPHER *evp_cipher = EVP_aes_256_ecb();
-
-    if(evp_encrypt(cipher, NULL, evp_cipher, key, (const unsigned char *) msg,
-                   EVP_CIPHER_block_size(evp_cipher), NULL)) {
-        fprintf(stderr, "ERROR: evp_encrypt failed\n");
-        return EXIT_FAILURE;
+    for(size_t i = 0; i < TEST_SIZE; i++) {
+        status |= generic_test(names[i], evp_ciphers[i], key, (unsigned char*)msg, expected_ciphers[i],
+                     sizeof(msg) - 1, ivs[i]);
+        if(i < TEST_SIZE - 1) {
+            printf("\n");
+        }
     }
 
-    printf("Encryption: Test ");
-    if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
-        printf("Passed\n");
-        status = EXIT_SUCCESS;
-    }
-    else {
-        printf("Failed\n");
-        status = EXIT_FAILURE;
-    }
-
-    print_hex(cipher, sizeof(cipher));
-    printf("\n");
-
-    print_hex(expected_cipher, sizeof(expected_cipher));
-    printf("\n");
-
-    return status;
+    return status ? EXIT_FAILURE : EXIT_SUCCESS;
 }

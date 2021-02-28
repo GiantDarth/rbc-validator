@@ -38,6 +38,7 @@ int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
     // By setting the EVP structure to NULL, we avoid reallocation later
     if(v->evp_cipher != NULL) {
         v->evp_cipher = NULL;
+        v->iv = NULL;
     }
 
     return 0;
@@ -141,14 +142,14 @@ cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
         return NULL;
     }
 
-    if(msg_size % EVP_CIPHER_block_size(v->evp_cipher) != 0) {
+    if(v->msg_size % EVP_CIPHER_block_size(v->evp_cipher) != 0) {
         cipher_validator_destroy(v);
 
         return NULL;
     }
 
-    if((iv == NULL && EVP_CIPHER_iv_length(v->evp_cipher) != 0)
-            || (iv != NULL && EVP_CIPHER_iv_length(v->evp_cipher) == 0)) {
+    if((v->iv == NULL && EVP_CIPHER_iv_length(v->evp_cipher) != 0)
+            || (v->iv != NULL && EVP_CIPHER_iv_length(v->evp_cipher) == 0)) {
         cipher_validator_destroy(v);
 
         return NULL;
