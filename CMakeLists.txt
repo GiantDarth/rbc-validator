@@ -37,7 +37,7 @@ if(NOT CYGWIN)
             ${AES_FILES} ${EC_FILES})
 endif(NOT CYGWIN)
 
-find_package(OpenSSL 1.1 REQUIRED)
+find_package(OpenSSL 1.1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
 if(NOT CYGWIN)
     find_package(MPI REQUIRED)
