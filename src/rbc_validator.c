@@ -565,7 +565,7 @@ int main(int argc, char *argv[]) {
                     if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
                         fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
 
-                    OMP_DESTROY()
+                        OMP_DESTROY()
 
                         return ERROR_CODE_FAILURE;
                     }
