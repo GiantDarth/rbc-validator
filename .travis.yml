@@ -64,6 +64,8 @@ script:
   - ./aes256_test
   - ./cipher_test
   - ./ecc_test
+  - chmod u+x ./travis/test_omp.sh
+  - chmod u+x ./travis/test_mpi.sh
   - ./.travis/test_omp.sh
   - if [ $TRAVIS_OS_NAME = 'linux' ]; then ./.travis/test_mpi.sh; fi
 
