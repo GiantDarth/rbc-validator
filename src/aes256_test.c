@@ -28,7 +28,7 @@ int main() {
             0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33, 0x1b, 0x3e
     };
 
-    unsigned char cipher[16];
+    unsigned char cipher[AES_BLOCK_SIZE];
     int status;
 
     if(aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
