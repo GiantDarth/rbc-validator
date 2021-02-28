@@ -513,10 +513,10 @@ int main(int argc, char *argv[]) {
 
 #ifdef USE_MPI
     if(my_rank == 0) {
-        printf("INFO: Using %d ranks...\n", nprocs);
+        fprintf(stderr, "INFO: Using %d ranks...\n", nprocs);
     }
 #else
-    printf("INFO: Using %d threads...\n", numcores);
+    fprintf(stderr, "INFO: Using %d threads...\n", numcores);
 #endif
 
     // Memory alloc/init
