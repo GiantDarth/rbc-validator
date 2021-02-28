@@ -39,7 +39,7 @@ if(NOT CYGWIN)
             ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 endif(NOT CYGWIN)
 
-find_package(OpenSSL 1.1 REQUIRED)
+find_package(OpenSSL 1.1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
 if(NOT CYGWIN)
     find_package(MPI REQUIRED)
@@ -64,13 +64,13 @@ if(NOT CYGWIN)
             PUBLIC OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
-target_link_libraries(cipher_test OpenSSL::SSL)
-target_link_libraries(ecc_test OpenSSL::SSL)
-target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
+target_link_libraries(cipher_test OpenSSL::Crypto)
+target_link_libraries(ecc_test OpenSSL::Crypto)
+target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
         ${ARGP_LIBRARIES})
 
 if(NOT CYGWIN)
-    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
+    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
             ${ARGP_LIBRARIES})
 endif(NOT CYGWIN)
 
