@@ -20,7 +20,7 @@ int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
 
 int aes256_crypto_cmp(void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
-    return memcmp(v->curr_cipher, v->client_cipher, v->n);
+    return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
 }
 
 int ec_crypto_func(const unsigned char *curr_seed, void *args) {
