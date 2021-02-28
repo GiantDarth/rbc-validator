@@ -53,13 +53,6 @@ addons:
       - argp-standalone
       - openssl@1.1
 
-cache:
-  directories:
-    - $HOME/Library/Caches/Homebrew
-
-before_cache:
-  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then brew cleanup; fi
-
 before_install:
   - eval "${MATRIX_EVAL}"
 
