@@ -47,13 +47,7 @@ aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsi
                                             size_t n) {
     aes256_validator_t *v = malloc(sizeof(*v));
 
-    if(v == NULL) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    if(msg == NULL || client_cipher == NULL) {
+    if(v == NULL || msg == NULL || client_cipher == NULL) {
         aes256_validator_destroy(v);
 
         return NULL;
@@ -94,6 +88,8 @@ ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *clien
     ec_validator_t *v = malloc(sizeof(*v));
 
     if(v == NULL || group == NULL || client_point == NULL) {
+        ec_validator_destroy(v);
+
         return NULL;
     }
 
