@@ -341,7 +341,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         }
                     }
                     if(arguments->algo->mode == MODE_EC) {
-                        const EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
+                        EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
                         if(group == NULL) {
                             argp_error(state, "ERROR: EC_GROUP_new_by_curve_name failed.\n"
                                               "OpenSSL Error: %s\n",
@@ -354,6 +354,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                             argp_error(state, "CLIENT_PUB_KEY not %zu nor %zu bytes for %s\n",
                                        comp_len, uncomp_len, arguments->algo->full_name);
                         }
+                        EC_GROUP_free(group);
                     }
                     arguments->client_crypto_hex = arg;
                     break;
