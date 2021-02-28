@@ -21,6 +21,7 @@
 #include "validator.h"
 #include "util.h"
 #include "crypto/ec.h"
+#include "gmp_seed_iter.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -117,7 +118,7 @@ struct arguments {
     const algo *algo;
     int verbose, benchmark, random, fixed, count, all;
     char *seed_hex, *client_crypto_hex, *uuid_hex;
-    int mismatches, subkey_length;
+    int mismatches, subseed_length;
 #ifndef USE_MPI
     int threads;
 #endif
@@ -288,7 +289,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 argp_error(state, "--subkey must be at least 1.\n");
             }
 
-            arguments->subkey_length = (int)value;
+            arguments->subseed_length = (int)value;
 
             break;
 #ifndef USE_MPI
@@ -417,7 +418,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 }
             }
 
-            if(arguments->mismatches > arguments->subkey_length) {
+            if(arguments->mismatches > arguments->subseed_length) {
                 argp_error(state, "--mismatches cannot be set larger than --subkey.\n");
             }
 
@@ -477,13 +478,13 @@ int main(int argc, char *argv[]) {
     arguments.uuid_hex = NULL;
     // Default to -1 for no mismatches provided, aka. go through all mismatches.
     arguments.mismatches = -1;
-    arguments.subkey_length = SEED_SIZE * 8;
+    arguments.subseed_length = SEED_SIZE * 8;
 
     // Parse arguments
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     mismatch = 0;
-    ending_mismatch = arguments.subkey_length;
+    ending_mismatch = arguments.subseed_length;
 
     // If --fixed option was set, set the validation range to only use the --mismatches value.
     if (arguments.fixed) {
@@ -541,8 +542,8 @@ int main(int argc, char *argv[]) {
             gmp_randseed_ui(randstate, (unsigned long) time(NULL));
 
             get_random_seed(host_seed, SEED_SIZE, randstate);
-            get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
-                                      arguments.subkey_length, randstate, arguments.benchmark,
+            get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches, SEED_SIZE,
+                                      arguments.subseed_length, randstate, arguments.benchmark,
 #ifdef USE_MPI
                                       nprocs);
 #else
@@ -769,7 +770,7 @@ int main(int argc, char *argv[]) {
         {
 #endif
 
-        int (*crypto_func)(unsigned char*, void*);
+        int (*crypto_func)(const unsigned char*, void*);
         int (*crypto_cmp)(void*);
 
         void *v_args;
@@ -790,11 +791,13 @@ int main(int argc, char *argv[]) {
         }
 
 #ifdef USE_MPI
-        mpz_bin_uiui(key_count, arguments.subkey_length, mismatch);
+        mpz_bin_uiui(key_count, arguments.subseed_length, mismatch);
 
         // Only have this rank run if it's within range of possible keys
         if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0) {
-            uint256_t starting_perm, ending_perm;
+            mpz_t first_perm, last_perm;
+
+            mpz_inits(first_perm, last_perm, NULL);
 
             max_count = nprocs;
             // Set the count of pairs to the range of possible keys if there are more ranks
@@ -803,10 +806,10 @@ int main(int argc, char *argv[]) {
                 max_count = mpz_get_ui(key_count);
             }
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count,
-                                  mismatch, arguments.subkey_length);
+            gmp_get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
+                              mismatch, arguments.subseed_length);
 
-            subfound = find_matching_seed(client_seed, host_seed, &starting_perm, &ending_perm,
+            subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
                                           arguments.count ? &sub_validated_keys : NULL,
                                           &found, arguments.verbose, my_rank, max_count,
@@ -818,6 +821,7 @@ int main(int argc, char *argv[]) {
                     ec_validator_destroy(v_args);
                 }
 
+                mpz_clears(first_perm, last_perm, NULL);
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_EC) {
@@ -827,20 +831,26 @@ int main(int argc, char *argv[]) {
 
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
+
+            mpz_clears(first_perm, last_perm, NULL);
         }
 #else
         if(subfound >= 0) {
-            uint256_t starting_perm, ending_perm;
+            mpz_t first_perm, last_perm;
             sub_validated_keys = 0;
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
-                                  (size_t) omp_get_num_threads(), mismatch,
-                                  arguments.subkey_length);
+            mpz_inits(first_perm, last_perm, NULL);
 
-            subfound = find_matching_seed(client_seed, host_seed, &starting_perm, &ending_perm,
+            gmp_get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
+                              (size_t) omp_get_num_threads(), mismatch,
+                              arguments.subseed_length);
+
+            subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
                                           arguments.count ? &sub_validated_keys : NULL,
                                           &found, crypto_func, crypto_cmp, v_args);
+
+            mpz_clears(first_perm, last_perm, NULL);
         }
 
 #pragma omp critical

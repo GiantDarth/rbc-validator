@@ -10,26 +10,10 @@
 
 #include <string.h>
 
+#include "gmp_seed_iter.h"
 #include "crypto/ec.h"
 
-typedef struct validator_t {
-    uint256_key_iter *iter;
-    unsigned char *curr_seed;
-#ifdef USE_MPI
-    MPI_Request *requests;
-    MPI_Status *statuses;
-#endif
-} validator_t;
-
-validator_t* validator_create(const unsigned char *host_seed, const uint256_t *starting_perm,
-                              const uint256_t *last_perm
-#ifdef USE_MPI
-                              , int nprocs
-#endif
-                              );
-void validator_destroy(validator_t *v);
-
-int aes256_crypto_func(unsigned char *curr_seed, void *args) {
+int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
     return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->n);
 }
@@ -39,7 +23,7 @@ int aes256_crypto_cmp(void *args) {
     return memcmp(v->curr_cipher, v->client_cipher, v->n);
 }
 
-int ec_crypto_func(unsigned char *curr_seed, void *args) {
+int ec_crypto_func(const unsigned char *curr_seed, void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
     if(curr_seed == NULL || v == NULL || v->group == NULL || v->curr_point == NULL) {
@@ -58,80 +42,6 @@ int ec_crypto_cmp(void *args) {
 
     return EC_POINT_cmp(v->group, v->curr_point, v->client_point, v->ctx);
 }
-
-validator_t* validator_create(const unsigned char *host_seed, const uint256_t *starting_perm,
-                              const uint256_t *last_perm
-#ifdef USE_MPI
-                              , int nprocs
-#endif
-                              ) {
-    validator_t *v = malloc(sizeof(*v));
-
-    if(v == NULL) {
-        return NULL;
-    }
-
-    if(host_seed == NULL || starting_perm == NULL || last_perm == NULL) {
-        validator_destroy(v);
-
-        return NULL;
-    }
-
-    if((v->iter = uint256_key_iter_create(host_seed, starting_perm, last_perm)) == NULL) {
-        validator_destroy(v);
-
-        return NULL;
-    }
-
-    if((v->curr_seed = malloc(SEED_SIZE * sizeof(*(v->curr_seed)))) == NULL) {
-        validator_destroy(v);
-
-        return NULL;
-    }
-
-#ifdef USE_MPI
-    if((v->requests = malloc(nprocs * sizeof(*(v->requests)))) == NULL) {
-        validator_destroy(v);
-
-        return NULL;
-    }
-
-    if((v->statuses = malloc(nprocs * sizeof(*(v->statuses)))) == NULL) {
-        validator_destroy(v);
-
-        return NULL;
-    }
-#endif
-
-    return v;
-}
-
-void validator_destroy(validator_t *v) {
-    if(v == NULL) {
-        return;
-    }
-
-#ifdef USE_MPI
-    if(v->requests != NULL) {
-        free(v->requests);
-    }
-
-    if(v->statuses != NULL) {
-        free(v->statuses);
-    }
-#endif
-
-    if(v->curr_seed != NULL) {
-        free(v->curr_seed);
-    }
-
-    if(v->iter != NULL) {
-        uint256_key_iter_destroy(v->iter);
-    }
-
-    free(v);
-}
-
 
 aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
                                             size_t n) {
@@ -225,7 +135,7 @@ void ec_validator_destroy(ec_validator_t *v) {
 /// \param host_seed The original AES host_seed.
 /// \param client_cipher The client cipher (16 bytes) to test against.
 /// \param userId A uuid_t that's used as the plaintext to encrypt.
-/// \param starting_perm The permutation to start iterating from.
+/// \param first_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \param all If benchmark mode is set to a non-zero value, then continue even if found.
@@ -233,40 +143,47 @@ void ec_validator_destroy(ec_validator_t *v) {
 /// is skipped.
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has occurred.
 int find_matching_seed(unsigned char *client_seed, const unsigned char *host_seed,
-                       const uint256_t *starting_perm, const uint256_t *last_perm,
+                       const mpz_t first_perm, const mpz_t last_perm,
                        int all, long long int *validated_keys,
 #ifdef USE_MPI
                        int *signal, int verbose, int my_rank, int nprocs,
 #else
                        const int* signal,
 #endif
-                       int (*crypto_func)(unsigned char*, void*), int (*crypto_cmp)(void*),
+                       int (*crypto_func)(const unsigned char*, void*), int (*crypto_cmp)(void*),
                        void *crypto_args) {
     // Declaration
     int status = 0, cmp_status;
-
+    gmp_seed_iter iter;
+    const unsigned char *curr_seed;
 #ifdef USE_MPI
     int probe_flag = 0;
     long long int iter_count = 0;
-#endif
 
-    validator_t *v = validator_create(host_seed, starting_perm, last_perm
-#ifdef USE_MPI
-                                      , nprocs
-#endif
-                                     );
-    if(v == NULL || signal == NULL || crypto_func == NULL || crypto_cmp == NULL || crypto_args == NULL) {
+    MPI_Request *requests;
+    MPI_Status *statuses;
+
+    if((requests = malloc(nprocs * sizeof(*(requests)))) == NULL) {
         return -1;
     }
 
-    while(!uint256_key_iter_end(v->iter) && (all || !(*signal))) {
+    if((statuses = malloc(nprocs * sizeof(*(statuses)))) == NULL) {
+        free(requests);
+
+        return -1;
+    }
+#endif
+
+    gmp_seed_iter_init(&iter, host_seed, SEED_SIZE, first_perm, last_perm);
+
+    while(!gmp_seed_iter_end(&iter) && (all || !(*signal))) {
         if(validated_keys != NULL) {
             ++(*validated_keys);
         }
-        uint256_key_iter_get(v->iter, v->curr_seed);
+        curr_seed = gmp_seed_iter_get(&iter);
 
         // If crypto_func fails for some reason, break prematurely.
-        if(crypto_func(v->curr_seed, crypto_args)) {
+        if(crypto_func(curr_seed, crypto_args)) {
             status = -1;
             break;
         }
@@ -289,20 +206,19 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
                 fprintf(stderr, "INFO: Found by rank: %d, alerting ranks ...\n", my_rank);
             }
 
-            memcpy(client_seed, v->curr_seed, AES256_KEY_SIZE);
+            memcpy(client_seed, curr_seed, SEED_SIZE);
 
             if(!all) {
                 // alert all ranks that the key was found, including yourself
                 for (int i = 0; i < nprocs; i++) {
                     if(i != my_rank) {
-                        MPI_Isend(signal, 1, MPI_INT, i, 0, MPI_COMM_WORLD,
-                                  &(v->requests[i]));
+                        MPI_Isend(signal, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &(requests[i]));
                     }
                 }
 
                 for (int i = 0; i < nprocs; i++) {
                     if(i != my_rank) {
-                        MPI_Wait(&(v->requests[i]), MPI_STATUS_IGNORE);
+                        MPI_Wait(&(requests[i]), MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -311,7 +227,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
             // This might happen more than once if the # of threads exceeds the number of possible
             // keys
 #pragma omp critical
-            memcpy(client_seed, v->curr_seed, AES256_KEY_SIZE);
+            memcpy(client_seed, curr_seed, SEED_SIZE);
             break;
 #endif
         }
@@ -321,16 +237,18 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
             MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &probe_flag, MPI_STATUS_IGNORE);
 
             if(probe_flag) {
-                MPI_Recv(signal, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD,
-                        MPI_STATUS_IGNORE);
+                MPI_Recv(signal, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
 #endif
 
-        uint256_key_iter_next(v->iter);
+        gmp_seed_iter_next(&iter);
     }
 
-    validator_destroy(v);
+#ifdef USE_MPI
+    free(requests);
+    free(statuses);
+#endif
 
     return status;
 }
