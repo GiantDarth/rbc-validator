@@ -88,63 +88,42 @@ void gmp_assign_last_permutation(mpz_t perm, int mismatches, size_t subkey_lengt
     mpz_mul_2exp(perm, perm, subkey_length - mismatches);
 }
 
-void uint256_assign_first_permutation(uint256_t *perm, int mismatches) {
-    // Set perm to first key
-    // Equivalent to: (perm << mismatches) - 1
-    uint256_shift_left(perm, perm, (int)mismatches);
-    uint256_add(perm, perm, &UINT256_NEG_ONE);
-}
-
-void uint256_assign_last_permutation(uint256_t *perm, int mismatches, size_t subkey_length) {
-    // First set the value to the first permutation.
-    uint256_assign_first_permutation(perm, mismatches);
-    // Equivalent to: perm << (key_length - mismatches)
-    // E.g. if key_length = 256 and mismatches = 5
-    // Then we want to shift left 256 - 5 = 251 times.
-    uint256_shift_left(perm, perm, (int)(subkey_length - mismatches));
-}
-
 void get_random_seed(unsigned char *key, size_t key_size, gmp_randstate_t randstate) {
     mpz_t key_mpz;
     mpz_init(key_mpz);
 
     mpz_urandomb(key_mpz, randstate, key_size * 8);
 
-    mpz_export(key, NULL, sizeof(*key), 1, 0, 0, key_mpz);
+    mpz_export(key, NULL, -1, sizeof(*key), 0, 0, key_mpz);
 
     mpz_clear(key_mpz);
 }
 
 void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned char *seed, int mismatches,
-                               size_t subkey_length, gmp_randstate_t randstate,
+                               size_t seed_size, size_t subseed_length, gmp_randstate_t randstate,
                                int benchmark, int numcores) {
-    mpz_t perm_mpz;
-    uint256_t key_uint, corrupted_key_uint, perm_uint;
+    mpz_t perm_mpz, seed_mpz, corrupted_seed_mpz;
 
-    mpz_init(perm_mpz);
-    uint256_set_ui(&corrupted_key_uint, 0);
+    mpz_inits(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
+    mpz_set_ui(corrupted_seed_mpz, 0);
 
     if(benchmark) {
-        get_benchmark_permutation(perm_mpz, mismatches, subkey_length, randstate, numcores);
+        get_benchmark_permutation(perm_mpz, mismatches, subseed_length, randstate, numcores);
     }
     else {
-        get_random_permutation(perm_mpz, mismatches, subkey_length, randstate);
+        get_random_permutation(perm_mpz, mismatches, subseed_length, randstate);
     }
 
-    // Left shift permutation by (key_size * 8) - subkey_length bits to make it most significant bit
-    // aligned.
-
-    uint256_import(&key_uint, seed);
-    uint256_from_mpz(&perm_uint, perm_mpz);
+    mpz_import(seed_mpz, seed_size, -1, sizeof(*seed), 0, 0, seed);
 
     // Perform an XOR operation between the permutation and the seed.
     // If a bit is set in permutation, then flip the bit in the seed.
     // Otherwise, leave it as is.
-    uint256_xor(&corrupted_key_uint, &key_uint, &perm_uint);
+    mpz_xor(corrupted_seed_mpz, seed_mpz, perm_mpz);
 
-    uint256_export(corrupted_seed, &corrupted_key_uint);
+    mpz_export(corrupted_seed, NULL, -1, sizeof(*corrupted_seed), 0, 0, corrupted_seed_mpz);
 
-    mpz_clear(perm_mpz);
+    mpz_clears(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
 }
 
 void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
@@ -178,21 +157,6 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
     // aligned.
 
     mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
-}
-
-void uint256_get_perm_pair(uint256_t *starting_perm, uint256_t *ending_perm, size_t pair_index,
-        size_t pair_count, int mismatches, size_t subkey_length) {
-    mpz_t starting_perm_mpz, ending_perm_mpz;
-
-    mpz_inits(starting_perm_mpz, ending_perm_mpz, NULL);
-
-    gmp_get_perm_pair(starting_perm_mpz, ending_perm_mpz, pair_index, pair_count, mismatches,
-            subkey_length);
-
-    uint256_from_mpz(starting_perm, starting_perm_mpz);
-    uint256_from_mpz(ending_perm, ending_perm_mpz);
-
-    mpz_clears(starting_perm_mpz, ending_perm_mpz, NULL);
 }
 
 void fprint_hex(FILE *stream, const unsigned char *array, size_t count) {
