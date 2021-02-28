@@ -511,14 +511,6 @@ int main(int argc, char *argv[]) {
     numcores = omp_get_num_threads();
 #endif
 
-#ifdef USE_MPI
-    if(my_rank == 0) {
-        fprintf(stderr, "INFO: Using %d ranks...\n", nprocs);
-    }
-#else
-    fprintf(stderr, "INFO: Using %d threads...\n", numcores);
-#endif
-
     // Memory alloc/init
     if(arguments.algo->mode == MODE_CIPHER) {
         evp_cipher = EVP_get_cipherbynid(arguments.algo->nid);
