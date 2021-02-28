@@ -11,8 +11,8 @@ jobs:
       dist: focal
       compiler: clang
       env:
-        - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
         - OMP_NUM_THREADS=4
+        - MATRIX_EVAL="CC=clang-10 && CXX=clang++-10"
       before_script:
         - export LD_LIBRARY_PATH=/usr/lib/llvm-10/lib:$LD_LIBRARY_PATH;
     - name: macOS 10.15.7 (Catalina, Xcode 12.0.1)
@@ -20,15 +20,15 @@ jobs:
       osx_image: xcode12
       compiler: clang
       env:
-        - HOMEBREW_NO_AUTO_UPDATE=1
         - OMP_NUM_THREADS=4
+        - HOMEBREW_NO_AUTO_UPDATE=1
     - name: macOS 11.1 (Big Sur, Xcode 12.3)
       os: osx
       osx_image: xcode12.3
       compiler: clang
       env:
-        - HOMEBREW_NO_AUTO_UPDATE=1
         - OMP_NUM_THREADS=4
+        - HOMEBREW_NO_AUTO_UPDATE=1
 
 env:
   - OMP_NUM_THREADS=4
@@ -60,13 +60,76 @@ script:
   - cmake --version
   - cmake ./CMakeLists.txt
   - cmake --build .
+
   - ./aes256_test
   - ./cipher_test
   - ./ecc_test
-  - chmod u+x ./.travis/test_omp.sh
-  - chmod u+x ./.travis/test_mpi.sh
-  - ./.travis/test_omp.sh
-  - if [ $TRAVIS_OS_NAME = 'linux' ]; then ./.travis/test_mpi.sh; fi
+
+  - ./rbc_validator --usage
+  - ./rbc_validator --help
+
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then ./rbc_validator_mpi --usage; fi
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then ./rbc_validator_mpi --help; fi
+
+  - ./rbc_validator --mode=aes -rv -m3
+  - ./rbc_validator --mode=aes -bv -m3
+  - |
+    [[ $(./rbc_validator --mode=aes -v -m3 \
+        ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
+        73962ffac2a737632b4e3dc0ce424dac \
+        78df66c7-4723-434f-b5b9-ae61e02cd97c) == \
+      "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]
+
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then mpirun ./rbc_validator_mpi --mode=aes -rv -m3; fi
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then mpirun ./rbc_validator_mpi --mode=aes -bv -m3; fi
+  - |
+    if [ $TRAVIS_OS_NAME = 'linux' ]; then [[ $(mpirun ./rbc_validator_mpi --mode=aes -v -m3 \
+        ddca0139c56a104940ecb16c9a64c689d18fa36c7d6bab71563dd0e540bdd028 \
+        73962ffac2a737632b4e3dc0ce424dac \
+        78df66c7-4723-434f-b5b9-ae61e02cd97c) == \
+      "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]; fi
+
+  - ./rbc_validator --mode=ecc -rv -m2
+  - ./rbc_validator --mode=ecc -bv -m2
+  # Compressed Form
+  - |
+    [[ $(./rbc_validator --mode=ecc -v -m2 \
+        000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        02d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce9) == \
+      "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
+  # Uncompressed Form
+  - |
+    [[ $(./rbc_validator --mode=ecc -v -m2 \
+        000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        04d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+      "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
+  # Hybrid Form
+  - |
+    [[ $(./rbc_validator --mode=ecc -v -m2 \
+        000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        06d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+      "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
+
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then mpirun ./rbc_validator_mpi --mode=ecc -rv -m2; fi
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then mpirun ./rbc_validator_mpi --mode=ecc -bv -m2; fi
+  # Compressed Form
+  - |
+    if [ $TRAVIS_OS_NAME = 'linux' ]; then [[ $(mpirun ./rbc_validator_mpi --mode=ecc -v -m2 \
+        000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        02d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce9) == \
+      "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]; fi
+  # Uncompressed Form
+  - |
+    if [ $TRAVIS_OS_NAME = 'linux' ]; then [[ $(mpirun ./rbc_validator_mpi --mode=ecc -v -m2 \
+        000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        04d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+      "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]; fi
+  # Hybrid Form
+  - |
+    if [ $TRAVIS_OS_NAME = 'linux' ]; then [[ $(mpirun ./rbc_validator_mpi --mode=ecc -v -m2 \
+        000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+        06d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
+      "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]; fi
 
 notifications:
   webhooks:
