@@ -15,8 +15,9 @@ set(OPENSSL_API_COMPAT 10101)
 
 set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
         src/util.c src/util.h)
-set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
+set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
+set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -27,14 +28,15 @@ list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr
         /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
 
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
+add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 
 add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
-        ${AES_FILES} ${EC_FILES})
+        ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 
 if(NOT CYGWIN)
     add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
-            ${AES_FILES} ${EC_FILES})
+            ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 endif(NOT CYGWIN)
 
 find_package(OpenSSL 1.1 REQUIRED)
@@ -50,6 +52,8 @@ include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
 
+target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+        OPENSSL_NO_DEPRECATED)
 target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
@@ -60,6 +64,7 @@ if(NOT CYGWIN)
             PUBLIC OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
+target_link_libraries(cipher_test OpenSSL::SSL)
 target_link_libraries(ecc_test OpenSSL::SSL)
 target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
         ${ARGP_LIBRARIES})
