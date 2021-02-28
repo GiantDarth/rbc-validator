@@ -19,10 +19,16 @@ jobs:
       os: osx
       osx_image: xcode12
       compiler: clang
+      env:
+        - HOMEBREW_NO_AUTO_UPDATE=1
+        - OMP_NUM_THREADS=4
     - name: macOS 11.1 (Big Sur, Xcode 12.3)
       os: osx
       osx_image: xcode12.3
       compiler: clang
+      env:
+        - HOMEBREW_NO_AUTO_UPDATE=1
+        - OMP_NUM_THREADS=4
 
 env:
   - OMP_NUM_THREADS=4
