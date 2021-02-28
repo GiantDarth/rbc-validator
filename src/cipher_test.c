@@ -33,9 +33,9 @@ int main() {
 
     const EVP_CIPHER *evp_cipher = EVP_aes_256_ecb();
 
-    if(evp_encrypt_msg(cipher, NULL, evp_cipher, key, (const unsigned char*)msg,
-                       EVP_CIPHER_block_size(evp_cipher), NULL)) {
-        fprintf(stderr, "ERROR: evp_encrypt_msg failed\n");
+    if(evp_encrypt(cipher, NULL, evp_cipher, key, (const unsigned char *) msg,
+                   EVP_CIPHER_block_size(evp_cipher), NULL)) {
+        fprintf(stderr, "ERROR: evp_encrypt failed\n");
         return EXIT_FAILURE;
     }
 

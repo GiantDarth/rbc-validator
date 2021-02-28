@@ -570,8 +570,8 @@ int main(int argc, char *argv[]) {
                         return ERROR_CODE_FAILURE;
                     }
                 }
-                else if(evp_encrypt_msg(client_cipher, NULL, evp_cipher, client_seed, userId,
-                                   sizeof(uuid_t), NULL)) {
+                else if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, userId,
+                                    sizeof(uuid_t), NULL)) {
                     fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
                             ERR_error_string(ERR_get_error(), NULL));
 

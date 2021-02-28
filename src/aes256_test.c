@@ -32,7 +32,7 @@ int main() {
     int status;
 
     if(aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
-        fprintf(stderr, "ERROR: evp_encrypt_msg failed\n");
+        fprintf(stderr, "ERROR: evp_encrypt failed\n");
         return EXIT_FAILURE;
     }
 

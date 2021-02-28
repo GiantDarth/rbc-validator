@@ -31,7 +31,7 @@ int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
         return 1;
     }
 
-    if(evp_encrypt_msg(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv)) {
+    if(evp_encrypt(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv)) {
         return 1;
     }
 
