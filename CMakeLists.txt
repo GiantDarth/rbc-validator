@@ -9,11 +9,11 @@ project(rbc_validator C)
 
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -mtune=generic")
 # Equivalent to OpenSSL 1.1.1
 set(OPENSSL_API_COMPAT 10101)
 
-set(SOURCE_FILES src/uint256_t.c src/uint256_t.h src/iter/uint256_key_iter.c src/iter/uint256_key_iter.h
+set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
         src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
@@ -55,13 +55,13 @@ include_directories(${ARGP_INCLUDE_DIR})
 target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
 target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
-        OPENSSL_NO_DEPRECATED)
+        PUBLIC OPENSSL_NO_DEPRECATED)
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
-        OPENSSL_NO_DEPRECATED)
+        PUBLIC OPENSSL_NO_DEPRECATED)
 
 if(NOT CYGWIN)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
-            OPENSSL_NO_DEPRECATED)
+            PUBLIC OPENSSL_NO_DEPRECATED)
 endif(NOT CYGWIN)
 
 target_link_libraries(cipher_test OpenSSL::SSL)

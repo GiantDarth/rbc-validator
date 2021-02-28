@@ -23,6 +23,7 @@
 #include "crypto/aes256-ni_enc.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
+#include "gmp_seed_iter.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -31,7 +32,12 @@
 // If using OpenMP, and using Clang 10+ or GCC 9+, support omp_pause_resource_all
 #if !defined(USE_MPI) && ((defined(__clang__) && __clang_major__ >= 10) || (!defined(__clang) && \
     __GNUC__ >= 9))
-#define OMP_DESTROY_SUPPORT
+#define OMP_DESTROY()\
+if(omp_pause_resource_all(omp_pause_hard)) {\
+    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");\
+}
+#else
+#define OMP_DESTROY()
 #endif
 
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
@@ -114,7 +120,7 @@ struct arguments {
     const algo *algo;
     int verbose, benchmark, random, fixed, count, all;
     char *seed_hex, *client_crypto_hex, *uuid_hex;
-    int mismatches, subkey_length;
+    int mismatches, subseed_length;
 #ifndef USE_MPI
     int threads;
 #endif
@@ -285,7 +291,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 argp_error(state, "--subkey must be at least 1.\n");
             }
 
-            arguments->subkey_length = (int)value;
+            arguments->subseed_length = (int)value;
 
             break;
 #ifndef USE_MPI
@@ -414,7 +420,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 }
             }
 
-            if(arguments->mismatches > arguments->subkey_length) {
+            if(arguments->mismatches > arguments->subseed_length) {
                 argp_error(state, "--mismatches cannot be set larger than --subkey.\n");
             }
 
@@ -475,13 +481,13 @@ int main(int argc, char *argv[]) {
     arguments.uuid_hex = NULL;
     // Default to -1 for no mismatches provided, aka. go through all mismatches.
     arguments.mismatches = -1;
-    arguments.subkey_length = SEED_SIZE * 8;
+    arguments.subseed_length = SEED_SIZE * 8;
 
     // Parse arguments
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     mismatch = 0;
-    ending_mismatch = arguments.subkey_length;
+    ending_mismatch = arguments.subseed_length;
 
     // If --fixed option was set, set the validation range to only use the --mismatches value.
     if (arguments.fixed) {
@@ -513,11 +519,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
 
-#ifdef OMP_DESTROY_SUPPORT
-            if(omp_pause_resource_all(omp_pause_hard)) {
-                fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-            }
-#endif
+            OMP_DESTROY()
 
             return ERROR_CODE_FAILURE;
         }
@@ -528,11 +530,7 @@ int main(int argc, char *argv[]) {
 
             EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-            if(omp_pause_resource_all(omp_pause_hard)) {
-                fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-            }
-#endif
+            OMP_DESTROY()
 
             return ERROR_CODE_FAILURE;
         }
@@ -549,8 +547,8 @@ int main(int argc, char *argv[]) {
             gmp_randseed_ui(randstate, (unsigned long) time(NULL));
 
             get_random_seed(host_seed, SEED_SIZE, randstate);
-            get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches,
-                                      arguments.subkey_length, randstate, arguments.benchmark,
+            get_random_corrupted_seed(client_seed, host_seed, arguments.mismatches, SEED_SIZE,
+                                      arguments.subseed_length, randstate, arguments.benchmark,
 #ifdef USE_MPI
                                       nprocs);
 #else
@@ -567,11 +565,7 @@ int main(int argc, char *argv[]) {
                     if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
                         fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                        if(omp_pause_resource_all(omp_pause_hard)) {
-                            fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                        }
-#endif
+                    OMP_DESTROY()
 
                         return ERROR_CODE_FAILURE;
                     }
@@ -590,44 +584,14 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             } else if (arguments.algo->mode == MODE_EC) {
-                BIGNUM *scalar;
-
-                if((scalar = BN_secure_new()) == NULL) {
-                    fprintf(stderr, "ERROR: BN_CTX_new failed.\nOpenSSL Error: %s\n",
-                            ERR_error_string(ERR_get_error(), NULL));
-
+                if(get_ec_public_key(client_ec_point, NULL, ec_group, client_seed, SEED_SIZE)) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 }
-
-                BN_bin2bn(client_seed, SEED_SIZE, scalar);
-
-                if(!EC_POINT_mul(ec_group, client_ec_point, scalar, NULL, NULL, NULL)) {
-                    fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
-                            ERR_error_string(ERR_get_error(), NULL));
-
-                    BN_clear_free(scalar);
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
-
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
-
-                    return ERROR_CODE_FAILURE;
-                }
-
-                BN_clear_free(scalar);
             }
 #ifdef USE_MPI
         }
@@ -675,11 +639,7 @@ int main(int argc, char *argv[]) {
                     EC_GROUP_free(ec_group);
                 }
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             case 2:
@@ -690,11 +650,7 @@ int main(int argc, char *argv[]) {
                     EC_GROUP_free(ec_group);
                 }
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             default:
@@ -706,21 +662,13 @@ int main(int argc, char *argv[]) {
                 case 1:
                     fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 case 2:
                     fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 default:
@@ -730,11 +678,7 @@ int main(int argc, char *argv[]) {
             if (uuid_parse(arguments.uuid_hex, userId) < 0) {
                 fprintf(stderr, "ERROR: UUID not in canonical form.\n");
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             }
@@ -748,11 +692,7 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             }
@@ -788,8 +728,8 @@ int main(int argc, char *argv[]) {
         }
         else if(arguments.algo->mode == MODE_EC) {
             if(arguments.random || arguments.benchmark) {
-                fprintf(stderr, "INFO: Using HOST_PUB_KEY:%*s", (int)strlen(arguments.algo->full_name) - 4,
-                        "");
+                fprintf(stderr, "INFO: Using %s HOST_PUB_KEY:%*s",
+                        arguments.algo->full_name, (int)strlen(arguments.algo->full_name) - 4, "");
                 if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
                                     NULL)) {
                     fprintf(stderr, "ERROR: fprintf_ec_point failed.\n");
@@ -797,11 +737,7 @@ int main(int argc, char *argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 }
@@ -817,11 +753,7 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
 
-#ifdef OMP_DESTROY_SUPPORT
-                if(omp_pause_resource_all(omp_pause_hard)) {
-                    fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                }
-#endif
+                OMP_DESTROY()
 
                 return ERROR_CODE_FAILURE;
             }
@@ -855,7 +787,7 @@ int main(int argc, char *argv[]) {
         {
 #endif
 
-        int (*crypto_func)(unsigned char*, void*);
+        int (*crypto_func)(const unsigned char*, void*);
         int (*crypto_cmp)(void*);
 
         void *v_args;
@@ -881,30 +813,13 @@ int main(int argc, char *argv[]) {
         }
 
 #ifdef USE_MPI
-        if(v_args == NULL) {
-            // Cleanup
-            mpz_clear(key_count);
-
-            if(arguments.algo->mode == MODE_EC) {
-                EC_POINT_free(client_ec_point);
-                EC_GROUP_free(ec_group);
-            }
-
-            MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
-        }
-#else
-        if(v_args == NULL) {
-#pragma omp critical
-            subfound = -1;
-        }
-#endif
-
-#ifdef USE_MPI
-        mpz_bin_uiui(key_count, arguments.subkey_length, mismatch);
+        mpz_bin_uiui(key_count, arguments.subseed_length, mismatch);
 
         // Only have this rank run if it's within range of possible keys
         if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0) {
-            uint256_t starting_perm, ending_perm;
+            mpz_t first_perm, last_perm;
+
+            mpz_inits(first_perm, last_perm, NULL);
 
             max_count = nprocs;
             // Set the count of pairs to the range of possible keys if there are more ranks
@@ -913,14 +828,16 @@ int main(int argc, char *argv[]) {
                 max_count = mpz_get_ui(key_count);
             }
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t)my_rank, max_count,
-                                  mismatch, arguments.subkey_length);
+            gmp_get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
+                              mismatch, arguments.subseed_length);
 
-            subfound = find_matching_seed(client_seed, host_seed, &starting_perm, &ending_perm,
+            subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
                                           arguments.count ? &sub_validated_keys : NULL,
                                           &found, arguments.verbose, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
+
+            mpz_clears(first_perm, last_perm, NULL);
 
             if (subfound < 0) {
                 // Cleanup
@@ -931,6 +848,8 @@ int main(int argc, char *argv[]) {
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_EC) {
+                    ec_validator_destroy(v_args);
+
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
                 }
@@ -940,17 +859,21 @@ int main(int argc, char *argv[]) {
         }
 #else
         if(subfound >= 0) {
-            uint256_t starting_perm, ending_perm;
+            mpz_t first_perm, last_perm;
             sub_validated_keys = 0;
 
-            uint256_get_perm_pair(&starting_perm, &ending_perm, (size_t) omp_get_thread_num(),
-                                  (size_t) omp_get_num_threads(), mismatch,
-                                  arguments.subkey_length);
+            mpz_inits(first_perm, last_perm, NULL);
 
-            subfound = find_matching_seed(client_seed, host_seed, &starting_perm, &ending_perm,
+            gmp_get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
+                              (size_t) omp_get_num_threads(), mismatch,
+                              arguments.subseed_length);
+
+            subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
                                           arguments.count ? &sub_validated_keys : NULL,
                                           &found, crypto_func, crypto_cmp, v_args);
+
+            mpz_clears(first_perm, last_perm, NULL);
         }
 
 #pragma omp critical
@@ -974,6 +897,7 @@ int main(int argc, char *argv[]) {
                 }
             }
 #endif
+
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
@@ -1079,11 +1003,7 @@ int main(int argc, char *argv[]) {
         printf("\n");
     }
 
-#ifdef OMP_DESTROY_SUPPORT
-    if(omp_pause_resource_all(omp_pause_hard)) {
-        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-    }
-#endif
+    OMP_DESTROY()
 
     return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 #endif
