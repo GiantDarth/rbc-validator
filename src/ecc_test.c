@@ -16,17 +16,17 @@ typedef struct ec_test_wrapper {
     EC_POINT *expected_point;
 } ec_test_wrapper;
 
-ec_test_wrapper* ec_test_wrapper_create();
+ec_test_wrapper* ec_test_wrapper_create(int group_nid);
 void ec_test_wrapper_destroy(ec_test_wrapper *wrapper);
 
-ec_test_wrapper* ec_test_wrapper_create() {
-    ec_test_wrapper *wrapper;
+ec_test_wrapper* ec_test_wrapper_create(int group_nid) {
+    ec_test_wrapper *wrapper = malloc(sizeof(*wrapper));
 
-    if((wrapper = malloc(sizeof(*wrapper))) == NULL) {
+    if(wrapper == NULL) {
         return NULL;
     }
 
-    if((wrapper->group = EC_GROUP_new_by_curve_name(EC_CURVE)) == NULL) {
+    if((wrapper->group = EC_GROUP_new_by_curve_name(group_nid)) == NULL) {
         fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
@@ -99,7 +99,7 @@ int main() {
     ec_test_wrapper *test_wrapper;
     int status, cmp_status;
 
-    if((test_wrapper = ec_test_wrapper_create()) == NULL) {
+    if((test_wrapper = ec_test_wrapper_create(EC_CURVE)) == NULL) {
         return EXIT_FAILURE;
     }
 
