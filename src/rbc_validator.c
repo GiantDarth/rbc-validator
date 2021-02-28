@@ -566,12 +566,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
             } else if (arguments.algo->mode == MODE_EC) {
-                BIGNUM *scalar;
-
-                if((scalar = BN_secure_new()) == NULL) {
-                    fprintf(stderr, "ERROR: BN_CTX_new failed.\nOpenSSL Error: %s\n",
-                            ERR_error_string(ERR_get_error(), NULL));
-
+                if(get_ec_public_key(client_ec_point, NULL, ec_group, client_seed, SEED_SIZE)) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
@@ -579,27 +574,6 @@ int main(int argc, char *argv[]) {
 
                     return ERROR_CODE_FAILURE;
                 }
-
-                BN_bin2bn(client_seed, SEED_SIZE, scalar);
-
-                if(!EC_POINT_mul(ec_group, client_ec_point, scalar, NULL, NULL, NULL)) {
-                    fprintf(stderr, "ERROR: ECC_POINT_mul failed.\nOpenSSL Error: %s\n",
-                            ERR_error_string(ERR_get_error(), NULL));
-
-                    BN_clear_free(scalar);
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
-
-#ifdef OMP_DESTROY_SUPPORT
-                    if(omp_pause_resource_all(omp_pause_hard)) {
-                        fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                    }
-#endif
-
-                    return ERROR_CODE_FAILURE;
-                }
-
-                BN_clear_free(scalar);
             }
 #ifdef USE_MPI
         }
@@ -737,8 +711,8 @@ int main(int argc, char *argv[]) {
         }
         else if(arguments.algo->mode == MODE_EC) {
             if(arguments.random || arguments.benchmark) {
-                fprintf(stderr, "INFO: Using HOST_PUB_KEY:%*s", (int)strlen(arguments.algo->full_name) - 4,
-                        "");
+                fprintf(stderr, "INFO: Using %s HOST_PUB_KEY:%*s",
+                        arguments.algo->full_name, (int)strlen(arguments.algo->full_name) - 4, "");
                 if(fprintf_ec_point(stderr, ec_group, client_ec_point, POINT_CONVERSION_COMPRESSED,
                                     NULL)) {
                     fprintf(stderr, "ERROR: fprintf_ec_point failed.\n");
@@ -841,20 +815,21 @@ int main(int argc, char *argv[]) {
                                           &found, arguments.verbose, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
 
+            mpz_clears(first_perm, last_perm, NULL);
+
             if (subfound < 0) {
                 // Cleanup
-                mpz_clears(first_perm, last_perm, NULL);
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_EC) {
+                    ec_validator_destroy(v_args);
+
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
                 }
 
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
-
-            mpz_clears(first_perm, last_perm, NULL);
         }
 #else
         if(subfound >= 0) {
@@ -896,6 +871,7 @@ int main(int argc, char *argv[]) {
                 }
             }
 #endif
+
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
