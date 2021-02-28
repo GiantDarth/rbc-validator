@@ -1015,13 +1015,6 @@ int main(int argc, char *argv[]) {
 
     MPI_Finalize();
 
-//    if(my_rank == 0) {
-//        return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
-//    }
-//    else {
-//        return ERROR_CODE_FOUND;
-//    }
-
     return EXIT_SUCCESS;
 #else
     // Check if an error occurred in one of the threads.
