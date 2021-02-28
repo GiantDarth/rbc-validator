@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "gmp_seed_iter.h"
+#include "crypto/ec.h"
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
@@ -19,34 +20,34 @@ int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
 
 int aes256_crypto_cmp(void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
-    return memcmp(v->curr_cipher, v->client_cipher, v->n);
+    return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
 }
 
 int ec_crypto_func(const unsigned char *curr_seed, void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    BN_bin2bn(curr_seed, SEED_SIZE, v->scalar);
+    if(curr_seed == NULL || v == NULL || v->group == NULL || v->curr_point == NULL) {
+        return -1;
+    }
 
-    return !EC_POINT_mul(v->group, v->curr_point, v->scalar, NULL, NULL, v->ctx);
+    return get_ec_public_key(v->curr_point, v->ctx, v->group, curr_seed, SEED_SIZE);
 }
 
 int ec_crypto_cmp(void *args) {
-    ec_validator_t *v_args = (ec_validator_t*)args;
+    ec_validator_t *v = (ec_validator_t*)args;
 
-    return EC_POINT_cmp(v_args->group, v_args->curr_point, v_args->client_point, v_args->ctx);
+    if(v == NULL || v->group == NULL || v->curr_point == NULL || v->client_point == NULL) {
+        return -1;
+    }
+
+    return EC_POINT_cmp(v->group, v->curr_point, v->client_point, v->ctx);
 }
 
 aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
                                             size_t n) {
     aes256_validator_t *v = malloc(sizeof(*v));
 
-    if(v == NULL) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    if(msg == NULL || client_cipher == NULL) {
+    if(v == NULL || msg == NULL || client_cipher == NULL) {
         aes256_validator_destroy(v);
 
         return NULL;
@@ -83,43 +84,22 @@ void aes256_validator_destroy(aes256_validator_t *v) {
     free(v);
 }
 
-/// \param EC_GROUP The EC group to se
-/// \param EC_POINT The client EC public key
 ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *client_point) {
     ec_validator_t *v = malloc(sizeof(*v));
 
-    if(v == NULL) {
+    if(v == NULL || group == NULL || client_point == NULL) {
         ec_validator_destroy(v);
 
         return NULL;
     }
 
-    if(group == NULL || client_point == NULL) {
-        ec_validator_destroy(v);
-
-        return NULL;
-    }
-
-    v->ctx_started = 0;
     v->group = group;
     v->client_point = client_point;
 
-    if((v->curr_point = EC_POINT_new(v->group)) == NULL) {
-        ec_validator_destroy(v);
+    v->curr_point = EC_POINT_new(v->group);
+    v->ctx = BN_CTX_secure_new();
 
-        return NULL;
-    }
-
-    if((v->ctx = BN_CTX_new()) == NULL) {
-        ec_validator_destroy(v);
-
-        return NULL;
-    }
-
-    BN_CTX_start(v->ctx);
-    v->ctx_started = 1;
-
-    if((v->scalar = BN_CTX_get(v->ctx)) == NULL) {
+    if(v->curr_point == NULL || v->ctx == NULL) {
         ec_validator_destroy(v);
 
         return NULL;
@@ -134,10 +114,6 @@ void ec_validator_destroy(ec_validator_t *v) {
     }
 
     if(v->ctx != NULL) {
-        if(v->ctx_started) {
-            BN_CTX_end(v->ctx);
-        }
-
         BN_CTX_free(v->ctx);
     }
 
@@ -173,7 +149,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
                        int (*crypto_func)(const unsigned char*, void*), int (*crypto_cmp)(void*),
                        void *crypto_args) {
     // Declaration
-    int status = 0;
+    int status = 0, cmp_status;
     gmp_seed_iter iter;
     const unsigned char *curr_seed;
 #ifdef USE_MPI
@@ -208,9 +184,15 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
             break;
         }
 
+        // If crypto_cmp fails for some reason, break prematurely.
+        if((cmp_status = crypto_cmp(crypto_args)) < 0) {
+            status = -1;
+            break;
+        }
+
         // If the new crypto output is the same as the passed in client crypto output, set status to true
         // and break
-        if(!crypto_cmp(crypto_args)) {
+        if(cmp_status == 0) {
             status = 1;
 
 #ifdef USE_MPI
