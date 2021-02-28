@@ -28,10 +28,13 @@ int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
     cipher_validator_t *v = (cipher_validator_t*)args;
 
     if(v == NULL || v->ctx == NULL) {
-        return -1;
+        return 1;
     }
 
-    evp_encrypt_msg(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv);
+    if(evp_encrypt_msg(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv)) {
+        return 1;
+    }
+
     // By setting the EVP structure to NULL, we avoid reallocation later
     if(v->evp_cipher != NULL) {
         v->evp_cipher = NULL;
