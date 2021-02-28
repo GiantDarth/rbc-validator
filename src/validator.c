@@ -27,7 +27,7 @@ int aes256_crypto_cmp(void *args) {
 int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
     cipher_validator_t *v = (cipher_validator_t*)args;
 
-    if(v == NULL || v->ctx == NULL || v->msg == NULL || v->curr_cipher == NULL) {
+    if(v == NULL || v->ctx == NULL) {
         return -1;
     }
 
@@ -53,7 +53,7 @@ int cipher_crypto_cmp(void *args) {
 int ec_crypto_func(const unsigned char *curr_seed, void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    if(curr_seed == NULL || v == NULL || v->group == NULL || v->curr_point == NULL) {
+    if(v == NULL || curr_seed == NULL) {
         return -1;
     }
 
@@ -63,7 +63,7 @@ int ec_crypto_func(const unsigned char *curr_seed, void *args) {
 int ec_crypto_cmp(void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    if(v == NULL || v->group == NULL || v->curr_point == NULL || v->client_point == NULL) {
+    if(v == NULL) {
         return -1;
     }
 
