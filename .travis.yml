@@ -63,6 +63,7 @@ script:
   - cmake ./CMakeLists.txt
   - cmake --build .
   - ./aes256_test
+  - ./cipher_test
   - ./ecc_test
   - ./rbc_validator --usage
   - ./rbc_validator_mpi --usage

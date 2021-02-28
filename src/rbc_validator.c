@@ -20,6 +20,8 @@
 
 #include "validator.h"
 #include "util.h"
+#include "crypto/aes256-ni_enc.h"
+#include "crypto/cipher.h"
 #include "crypto/ec.h"
 #include "gmp_seed_iter.h"
 
@@ -341,7 +343,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         }
                     }
                     if(arguments->algo->mode == MODE_EC) {
-                        const EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
+                        EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
                         if(group == NULL) {
                             argp_error(state, "ERROR: EC_GROUP_new_by_curve_name failed.\n"
                                               "OpenSSL Error: %s\n",
@@ -354,6 +356,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                             argp_error(state, "CLIENT_PUB_KEY not %zu nor %zu bytes for %s\n",
                                        comp_len, uncomp_len, arguments->algo->full_name);
                         }
+                        EC_GROUP_free(group);
                     }
                     arguments->client_crypto_hex = arg;
                     break;
@@ -455,7 +458,8 @@ int main(int argc, char *argv[]) {
     unsigned char host_seed[SEED_SIZE];
     unsigned char client_seed[SEED_SIZE];
 
-    unsigned char client_cipher[AES_BLOCK_SIZE];
+    const EVP_CIPHER *evp_cipher;
+    unsigned char client_cipher[EVP_MAX_BLOCK_LENGTH];
     EC_GROUP *ec_group;
     EC_POINT *client_ec_point;
 
@@ -509,7 +513,9 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Memory alloc/init
-    if(arguments.algo->mode == MODE_EC) {
+    if(arguments.algo->mode == MODE_CIPHER) {
+        evp_cipher = EVP_get_cipherbynid(arguments.algo->nid);
+    } else if(arguments.algo->mode == MODE_EC) {
         if((ec_group = EC_GROUP_new_by_curve_name(arguments.algo->nid)) == NULL) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
@@ -560,10 +566,23 @@ int main(int argc, char *argv[]) {
                     if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
                         fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
 
-                    OMP_DESTROY()
+                        OMP_DESTROY()
 
                         return ERROR_CODE_FAILURE;
                     }
+                }
+                else if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, userId,
+                                    sizeof(uuid_t), NULL)) {
+                    fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
+
+#ifdef OMP_DESTROY_SUPPORT
+                        if(omp_pause_resource_all(omp_pause_hard)) {
+                            fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
+                        }
+#endif
+
+                    return ERROR_CODE_FAILURE;
                 }
             } else if (arguments.algo->mode == MODE_EC) {
                 if(get_ec_public_key(client_ec_point, NULL, ec_group, client_seed, SEED_SIZE)) {
@@ -697,9 +716,8 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
         }
 
-
         if(arguments.algo->mode == MODE_CIPHER) {
-            fprintf(stderr, "INFO: Using CLIENT_CIPHER: %*s",
+            fprintf(stderr, "INFO: Using %s CLIENT_CIPHER: %*s", arguments.algo->full_name,
                     (int)strlen(arguments.algo->full_name), "");
             fprint_hex(stderr, client_cipher, sizeof(uuid_t));
             fprintf(stderr, "\n");
@@ -764,7 +782,7 @@ int main(int argc, char *argv[]) {
         }
 
 #ifndef USE_MPI
-#pragma omp parallel default(none) shared(found, host_seed, client_seed, client_cipher,\
+#pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher,\
             userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
             private(subfound, sub_validated_keys)
         {
@@ -778,10 +796,17 @@ int main(int argc, char *argv[]) {
         subfound = 0;
 
         if(arguments.algo->mode == MODE_CIPHER) {
+            // Use a custom implementation for improved speed
             if(arguments.algo->nid == NID_aes_256_ecb) {
                 crypto_func = aes256_crypto_func;
                 crypto_cmp = aes256_crypto_cmp;
                 v_args = aes256_validator_create(userId, client_cipher, sizeof(uuid_t));
+            }
+            else {
+                crypto_func = cipher_crypto_func;
+                crypto_cmp = cipher_crypto_cmp;
+                v_args = cipher_validator_create(evp_cipher, client_cipher, userId, sizeof(uuid_t),
+                                                 NULL);
             }
         }
         else if(arguments.algo->mode == MODE_EC) {
@@ -819,6 +844,10 @@ int main(int argc, char *argv[]) {
 
             if (subfound < 0) {
                 // Cleanup
+                if(arguments.algo->mode == MODE_CIPHER) {
+                    cipher_validator_destroy(v_args);
+                }
+
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_EC) {
@@ -875,9 +904,10 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
+                } else {
+                    cipher_validator_destroy(v_args);
                 }
-            }
-            else if(arguments.algo->mode == MODE_EC) {
+            } else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI

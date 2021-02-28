@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "gmp_seed_iter.h"
+#include "crypto/cipher.h"
 #include "crypto/ec.h"
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
@@ -23,10 +24,39 @@ int aes256_crypto_cmp(void *args) {
     return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
 }
 
+int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
+    cipher_validator_t *v = (cipher_validator_t*)args;
+
+    if(v == NULL || v->ctx == NULL) {
+        return 1;
+    }
+
+    if(evp_encrypt(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv)) {
+        return 1;
+    }
+
+    // By setting the EVP structure to NULL, we avoid reallocation later
+    if(v->evp_cipher != NULL) {
+        v->evp_cipher = NULL;
+    }
+
+    return 0;
+}
+
+int cipher_crypto_cmp(void *args) {
+    cipher_validator_t *v = (cipher_validator_t*)args;
+
+    if(v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
+        return -1;
+    }
+
+    return memcmp(v->curr_cipher, v->client_cipher, v->msg_size) != 0;
+}
+
 int ec_crypto_func(const unsigned char *curr_seed, void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    if(curr_seed == NULL || v == NULL || v->group == NULL || v->curr_point == NULL) {
+    if(v == NULL || curr_seed == NULL) {
         return -1;
     }
 
@@ -36,7 +66,7 @@ int ec_crypto_func(const unsigned char *curr_seed, void *args) {
 int ec_crypto_cmp(void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    if(v == NULL || v->group == NULL || v->curr_point == NULL || v->client_point == NULL) {
+    if(v == NULL) {
         return -1;
     }
 
@@ -84,6 +114,67 @@ void aes256_validator_destroy(aes256_validator_t *v) {
     free(v);
 }
 
+cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
+                                            const unsigned char *client_cipher, const unsigned char *msg,
+                                            size_t msg_size, const unsigned char *iv) {
+    cipher_validator_t *v = malloc(sizeof(*v));
+
+    if(v == NULL) {
+        return NULL;
+    }
+
+    v->evp_cipher = evp_cipher;
+    v->msg_size = msg_size;
+    v->msg = msg;
+    v->client_cipher = client_cipher;
+    // IV is optional as NULL depending on the cipher chosen
+    v->iv = iv;
+    v->cipher_inited = 0;
+
+    v->curr_cipher = malloc(msg_size * sizeof(*(v->curr_cipher)));
+    v->ctx = EVP_CIPHER_CTX_new();
+
+    if(v->evp_cipher == NULL || v->msg == NULL || v->client_cipher == NULL || v->curr_cipher == NULL
+            || v->ctx == NULL) {
+        cipher_validator_destroy(v);
+
+        return NULL;
+    }
+
+    if(msg_size % EVP_CIPHER_block_size(v->evp_cipher) != 0) {
+        cipher_validator_destroy(v);
+
+        return NULL;
+    }
+
+    if((iv == NULL && EVP_CIPHER_iv_length(v->evp_cipher) != 0)
+            || (iv != NULL && EVP_CIPHER_iv_length(v->evp_cipher) == 0)) {
+        cipher_validator_destroy(v);
+
+        return NULL;
+    }
+
+    return v;
+}
+
+void cipher_validator_destroy(cipher_validator_t *v) {
+    if(v == NULL) {
+        return;
+    }
+
+    if(v->ctx != NULL) {
+        EVP_CIPHER_CTX_free(v->ctx);
+    }
+
+    if(v->curr_cipher != NULL) {
+        free(v->curr_cipher);
+    }
+
+    free(v);
+}
+
+/// \param EC_GROUP The EC group to se
+/// \param EC_POINT The client EC public key
 ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *client_point) {
     ec_validator_t *v = malloc(sizeof(*v));
 
