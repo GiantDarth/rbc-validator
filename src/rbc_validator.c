@@ -815,24 +815,21 @@ int main(int argc, char *argv[]) {
                                           &found, arguments.verbose, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
 
+            mpz_clears(first_perm, last_perm, NULL);
+
             if (subfound < 0) {
                 // Cleanup
-                if(arguments.algo->mode == MODE_EC) {
-                    ec_validator_destroy(v_args);
-                }
-
-                mpz_clears(first_perm, last_perm, NULL);
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_EC) {
+                    ec_validator_destroy(v_args);
+
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
                 }
 
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
             }
-
-            mpz_clears(first_perm, last_perm, NULL);
         }
 #else
         if(subfound >= 0) {
@@ -874,6 +871,7 @@ int main(int argc, char *argv[]) {
                 }
             }
 #endif
+
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
