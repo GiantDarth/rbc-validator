@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="ECC OpenMP (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="OpenMP" PROGRAM_PARAMS="--mode=ecc -vcf -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 02d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce9" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator">
+  <configuration default="false" name="ECC OpenMP (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="ECC" PROGRAM_PARAMS="--mode=ecc -vcf -m2 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 02d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce9" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator">
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>

@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="AES OpenMP (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="OpenMP" PROGRAM_PARAMS="--mode=aes -vcf -m2 c45a8dee600d5de0debdb0bad1b2e4cf5417e9fb8c634dca9b55bed16ab28b30 b3ded03e09b1132664c20aec714c2202 278bbaae-ec51-4a7d-9017-12748d3d6539" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator">
+  <configuration default="false" name="AES OpenMP (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="AES" PROGRAM_PARAMS="--mode=aes -vcf -m2 c45a8dee600d5de0debdb0bad1b2e4cf5417e9fb8c634dca9b55bed16ab28b30 b3ded03e09b1132664c20aec714c2202 278bbaae-ec51-4a7d-9017-12748d3d6539" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator">
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>
