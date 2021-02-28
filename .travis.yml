@@ -39,7 +39,7 @@ addons:
       - uuid-dev
       - libssl-dev
   homebrew:
-    update: true
+    update: false
     packages:
       - libomp
       - gmp
