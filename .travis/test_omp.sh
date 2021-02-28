@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -v
 
 ./rbc_validator --usage
 ./rbc_validator --help
