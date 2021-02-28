@@ -9,7 +9,7 @@ project(rbc_validator C)
 
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx -maes")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -mtune=generic")
 # Equivalent to OpenSSL 1.1.1
 set(OPENSSL_API_COMPAT 10101)
 
