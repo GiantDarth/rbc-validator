@@ -34,16 +34,16 @@ add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
         ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 
-if(NOT CYGWIN)
+if(NOT CYGWIN AND NOT APPLE)
     add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
             ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
-endif(NOT CYGWIN)
+endif(NOT CYGWIN AND NOT APPLE)
 
 find_package(OpenSSL 1.1 REQUIRED)
 find_package(OpenMP REQUIRED)
-if(NOT CYGWIN)
+if(NOT CYGWIN AND NOT APPLE)
     find_package(MPI REQUIRED)
-endif(NOT CYGWIN)
+endif(NOT CYGWIN AND NOT APPLE)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(UUID MODULE REQUIRED)
 find_package(Argp MODULE REQUIRED)
@@ -59,23 +59,23 @@ target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMP
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
 
-if(NOT CYGWIN)
+if(NOT CYGWIN AND NOT APPLE)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
             PUBLIC OPENSSL_NO_DEPRECATED)
-endif(NOT CYGWIN)
+endif(NOT CYGWIN AND NOT APPLE)
 
 target_link_libraries(cipher_test OpenSSL::SSL)
 target_link_libraries(ecc_test OpenSSL::SSL)
 target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
         ${ARGP_LIBRARIES})
 
-if(NOT CYGWIN)
+if(NOT CYGWIN AND NOT APPLE)
     target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::SSL ${UUID_LIBRARIES} ${GMP_LIBRARIES}
             ${ARGP_LIBRARIES})
-endif(NOT CYGWIN)
+endif(NOT CYGWIN AND NOT APPLE)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)
 
-if(NOT CYGWIN)
+if(NOT CYGWIN AND NOT APPLE)
     install(TARGETS rbc_validator_mpi RUNTIME DESTINATION bin)
-endif(NOT CYGWIN)
+endif(NOT CYGWIN AND NOT APPLE)
