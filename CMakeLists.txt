@@ -13,15 +13,13 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -mtune=generic")
 # Equivalent to OpenSSL 1.1.1
 set(OPENSSL_API_COMPAT 10101)
 
-set(TRAVIS_OS_NAME $ENV{TRAVIS_OS_NAME})
-
 # If not using Cygwin, Windows, or Travis-based OS X, default to MPI_ENABLED ON
 # Otherwise default to OFF
-if(NOT CYGWIN AND NOT WIN32 AND NOT (TRAVIS_OS_NAME STREQUAL "osx"))
+if(UNIX AND NOT CYGWIN AND NOT APPLE)
     set(MPI_ENABLED ON CACHE BOOL "Enable support for compiling an MPI version as well.")
-else(NOT CYGWIN AND NOT WIN32 AND NOT (TRAVIS_OS_NAME STREQUAL "osx"))
+else(UNIX AND NOT CYGWIN AND NOT APPLE)
     set(MPI_ENABLED OFF CACHE BOOL "Enable support for compiling an MPI version as well.")
-endif(NOT CYGWIN AND NOT WIN32 AND NOT (TRAVIS_OS_NAME STREQUAL "osx"))
+endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
         src/util.c src/util.h)
