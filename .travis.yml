@@ -71,6 +71,7 @@ script:
   - if [ $TRAVIS_OS_NAME = 'linux' ]; then ./rbc_validator_mpi --usage; fi
   - if [ $TRAVIS_OS_NAME = 'linux' ]; then ./rbc_validator_mpi --help; fi
 
+  # AES
   - ./rbc_validator --mode=aes -rv -m3
   - ./rbc_validator --mode=aes -bv -m3
   - |
@@ -89,6 +90,28 @@ script:
         78df66c7-4723-434f-b5b9-ae61e02cd97c) == \
       "ddca0139c56a104940ecb16c9a64c689d18fa36c7d63aa71543dd0e540bdd028" ]]; fi
 
+  # ChaCha20
+  - ./rbc_validator --mode=chacha20 -rv -m2
+  - ./rbc_validator --mode=chacha20 -bv -m2
+  - |
+    [[ $(./rbc_validator --mode=chacha20 -v -m3 \
+        54b93e74f84544b592b1909f4f44386c20cea701d01d44da527f326b7893ea80 \
+        185e5fde30cbc350b92f44ea7f93e9a9 \
+        b3022319-3c3f-44d3-8023-ee6b540335a5 \
+        0000000092e26c1446222ecd8d2fe2ac) == \
+      "54b93e74f84544b592b1909f4f44386c20cea701d01d44da567f336b7893ea80" ]]
+
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then mpirun ./rbc_validator_mpi --mode=chacha20 -rv -m2; fi
+  - if [ $TRAVIS_OS_NAME = 'linux' ]; then mpirun ./rbc_validator_mpi --mode=chacha20 -bv -m2; fi
+  - |
+    if [ $TRAVIS_OS_NAME = 'linux' ]; then [[ $(mpirun ./rbc_validator_mpi --mode=chacha20 -v -m3 \
+        54b93e74f84544b592b1909f4f44386c20cea701d01d44da527f326b7893ea80 \
+        185e5fde30cbc350b92f44ea7f93e9a9 \
+        b3022319-3c3f-44d3-8023-ee6b540335a5 \
+        0000000092e26c1446222ecd8d2fe2ac) == \
+      "54b93e74f84544b592b1909f4f44386c20cea701d01d44da567f336b7893ea80" ]]; fi
+
+  # ECC
   - ./rbc_validator --mode=ecc -rv -m2
   - ./rbc_validator --mode=ecc -bv -m2
   # Compressed Form
