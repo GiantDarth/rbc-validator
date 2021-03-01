@@ -98,25 +98,7 @@ static char prog_desc[] = "Given an HOST_SEED and either:"
                           "\n\nThe original HOST_SEED, passed in as hexadecimal, is corrupted by"
                           " a certain number of bits and used to generate the cryptographic output."
                           " HOST_SEED is always 32 bytes, which corresponds to 64 hexadecimal"
-                          " characters. If the cryptographic function requires more bytes, more will be"
-                          " generated from HOST_SEED using SHAKE256."
-
-                          "\n\nAES: Only AES-256-ECB is supported."
-
-                          "\n\nThe CLIENT_CIPHER, passed in as hexadecimal, is assumed to have been"
-                          " generated in ECB mode, meaning given a 128-bit UUID, this"
-                          " should be 128-bits long as well (32 hexadecimal characters)."
-
-                          "\n\nThe UUID, passed in canonical form,"
-                          " is the message that both sources encrypt and is previously agreed upon."
-
-                          "\n\nECC: Only ECC secp256r1 keys are currently supported."
-
-                          "\n\nThe resulting private key derived from corrupting HOST_SEED"
-                          " produces a new public key that is compared against"
-                          " the CLIENT_PUB_KEY (client public key) which is also passed"
-                          " in hexadecimal in uncompressed form (64 bytes, 128 hexadecimal"
-                          " characters).";
+                          " characters.";
 
 struct arguments {
     const algo *algo;
