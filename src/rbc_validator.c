@@ -325,7 +325,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                                        block_len, arguments->algo->full_name);
                         }
                     }
-                    if(arguments->algo->mode == MODE_EC) {
+                    else if(arguments->algo->mode == MODE_EC) {
                         EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
                         if(group == NULL) {
                             argp_error(state, "EC_GROUP_new_by_curve_name failed.\n");
@@ -516,7 +516,8 @@ int main(int argc, char *argv[]) {
     // Memory alloc/init
     if(arguments.algo->mode == MODE_CIPHER) {
         evp_cipher = EVP_get_cipherbynid(arguments.algo->nid);
-    } else if(arguments.algo->mode == MODE_EC) {
+    }
+    else if(arguments.algo->mode == MODE_EC) {
         if((ec_group = EC_GROUP_new_by_curve_name(arguments.algo->nid)) == NULL) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
@@ -589,7 +590,8 @@ int main(int argc, char *argv[]) {
 
                     return ERROR_CODE_FAILURE;
                 }
-            } else if (arguments.algo->mode == MODE_EC) {
+            }
+            else if (arguments.algo->mode == MODE_EC) {
                 if(get_ec_public_key(client_ec_point, NULL, ec_group, client_seed, SEED_SIZE)) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
@@ -609,7 +611,8 @@ int main(int argc, char *argv[]) {
         if(arguments.algo->mode == MODE_CIPHER) {
             MPI_Bcast(client_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
             MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        } else if(arguments.algo->mode == MODE_EC) {
+        }
+        else if(arguments.algo->mode == MODE_EC) {
             unsigned char client_public_key[100];
             int len;
 
@@ -933,10 +936,12 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
-                } else {
+                }
+                else {
                     cipher_validator_destroy(v_args);
                 }
-            } else if(arguments.algo->mode == MODE_EC) {
+            }
+        else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI
