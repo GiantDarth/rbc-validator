@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SHA1 OpenMP (Benchmark)" type="CMakeRunConfiguration" factoryName="Application" folderName="SHA1" PROGRAM_PARAMS="--mode=sha1 -bvcf -m2" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

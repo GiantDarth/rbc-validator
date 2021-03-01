@@ -23,6 +23,7 @@
 #include "crypto/aes256-ni_enc.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
+#include "crypto/hash.h"
 #include "gmp_seed_iter.h"
 
 #define ERROR_CODE_FOUND 0
@@ -46,6 +47,8 @@ if(omp_pause_resource_all(omp_pause_hard)) {\
 #define MODE_CIPHER 1
 // Used with matching a public key
 #define MODE_EC 2
+// Used with matching a digest
+#define MODE_HASH 3
 
 typedef struct algo {
     const char *abbr_name;
@@ -60,6 +63,17 @@ const algo supported_algos[] = {
         { "chacha20","ChaCha20", NID_chacha20, MODE_CIPHER },
         // EC algorithms
         { "ecc","Secp256r1", NID_X9_62_prime256v1, MODE_EC },
+        // Hashing algorithms
+        { "md5", "MD5", NID_sha1, MODE_HASH },
+        { "sha1", "SHA1", NID_sha1, MODE_HASH },
+        { "sha224", "SHA2-224", NID_sha224, MODE_HASH },
+        { "sha256", "SHA2-256", NID_sha256, MODE_HASH },
+        { "sha384", "SHA2-384", NID_sha384, MODE_HASH },
+        { "sha512", "SHA2-512", NID_sha512, MODE_HASH },
+        { "sha3-224", "SHA3-224", NID_sha3_224, MODE_HASH },
+        { "sha3-256", "SHA3-256", NID_sha3_256, MODE_HASH },
+        { "sha3-384", "SHA3-384", NID_sha3_384, MODE_HASH },
+        { "sha3-512", "SHA3-512", NID_sha3_512, MODE_HASH },
         { 0 }
 };
 
@@ -73,11 +87,15 @@ error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
 static char args_doc[] = "--mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]\n"
                          "--mode=ecc HOST_SEED CLIENT_PUB_KEY\n"
+                         "--mode=[md5,sha1,sha224,sha256,sha384,sha512,sha3-224,sha3-256,sha3-384,"
+                         "sha3-512] HOST_SEED CLIENT_DIGEST [SALT]\n"
                          "--mode=* -r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an HOST_SEED and either:"
                           "\n1) an AES256 CLIENT_CIPHER and plaintext UUID;"
                           "\n1) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;"
                           "\n2) an ECC Secp256r1 CLIENT_PUB_KEY;"
+                          "\n3) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256,"
+                          " SHA3-384, or SHA3-512 CLIENT_DIGEST;"
                           "\nwhere CLIENT_* is from an unreliable source."
                           " Progressively corrupt the chosen cryptographic function by a certain"
                           " number of bits until a matching client seed is found. The matching"
@@ -103,7 +121,7 @@ static char prog_desc[] = "Given an HOST_SEED and either:"
 struct arguments {
     const algo *algo;
     int verbose, benchmark, random, fixed, count, all;
-    char *seed_hex, *client_crypto_hex, *uuid_hex, *iv_hex;
+    char *seed_hex, *client_crypto_hex, *uuid_hex, *iv_hex, *salt_hex;
     int mismatches, subseed_length;
 #ifndef USE_MPI
     int threads;
@@ -339,6 +357,18 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         }
                         EC_GROUP_free(group);
                     }
+                    else if(arguments->algo->mode == MODE_HASH) {
+                        const EVP_MD *md;
+                        if((md = EVP_get_digestbynid(arguments->algo->nid)) == NULL) {
+                            argp_error(state, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
+                                              "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                        }
+                        size_t md_len = EVP_MD_size(md);
+                        if(strlen(arg) != md_len * 2) {
+                            argp_error(state, "CLIENT_DIGEST not equivalent to %zu bytes for %s\n",
+                                       md_len, arguments->algo->full_name);
+                        }
+                    }
                     arguments->client_crypto_hex = arg;
                     break;
                 case 2:
@@ -348,6 +378,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                             argp_error(state, "UUID not %zu characters long.\n", uuid_hex_len);
                         }
                         arguments->uuid_hex = arg;
+                    }
+                    else if (arguments->algo->mode == MODE_HASH) {
+                        const EVP_MD *md = EVP_get_digestbynid(arguments->algo->nid);
+                        if(md == NULL) {
+                            argp_error(state, "Not a valid EVP digest nid.\n");
+                        }
+                        arguments->salt_hex = arg;
                     }
                     else {
                         argp_usage(state);
@@ -463,6 +500,10 @@ int main(int argc, char *argv[]) {
     unsigned char iv[EVP_MAX_IV_LENGTH];
     EC_GROUP *ec_group;
     EC_POINT *client_ec_point;
+    unsigned char *client_digest;
+    const EVP_MD *md;
+    unsigned char *salt = NULL;
+    size_t salt_size = 0;
 
     int mismatch, ending_mismatch;
 
@@ -538,6 +579,38 @@ int main(int argc, char *argv[]) {
             return ERROR_CODE_FAILURE;
         }
     }
+    else if(arguments.algo->mode == MODE_HASH) {
+        // No need to deallocate an EVP_MD
+        if((md = EVP_get_digestbynid(arguments.algo->nid)) == NULL) {
+            fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error: %s\n",
+                    ERR_error_string(ERR_get_error(), NULL));
+
+            OMP_DESTROY()
+
+            return ERROR_CODE_FAILURE;
+        }
+
+        if((client_digest = malloc(EVP_MD_size(md))) == NULL) {
+            perror("ERROR");
+
+            OMP_DESTROY()
+
+            return ERROR_CODE_FAILURE;
+        }
+
+        if(arguments.salt_hex != NULL) {
+            salt_size = (strlen(arguments.salt_hex) + 1) / 2;
+
+            if((salt = malloc(salt_size)) == NULL) {
+                perror("ERROR");
+
+                free(client_digest);
+                OMP_DESTROY()
+
+                return ERROR_CODE_FAILURE;
+            }
+        }
+    }
 
     if (arguments.random || arguments.benchmark) {
 #ifdef USE_MPI
@@ -601,6 +674,18 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             }
+            else if(arguments.algo->mode == MODE_HASH) {
+                if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE)) {
+                    if(salt_size > 0) {
+                        free(salt);
+                    }
+                    free(client_digest);
+
+                    OMP_DESTROY()
+
+                    return ERROR_CODE_FAILURE;
+                }
+            }
 #ifdef USE_MPI
         }
 
@@ -636,6 +721,10 @@ int main(int argc, char *argv[]) {
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
 
+        if(arguments.algo->mode == MODE_HASH) {
+            MPI_Bcast(client_digest, EVP_MD_size(md), MPI_UNSIGNED_CHAR, 0,
+                      MPI_COMM_WORLD);
+        }
 #endif
     }
     else {
@@ -725,6 +814,51 @@ int main(int argc, char *argv[]) {
                 return ERROR_CODE_FAILURE;
             }
         }
+        else if(arguments.algo->mode == MODE_HASH) {
+            switch(parse_hex(client_digest, arguments.client_crypto_hex)) {
+                case 1:
+                    fprintf(stderr, "ERROR: CLIENT_DIGEST had non-hexadecimal characters.\n");
+
+                    free(salt);
+                    free(client_digest);
+                    OMP_DESTROY()
+
+                    return ERROR_CODE_FAILURE;
+                case 2:
+                    fprintf(stderr, "ERROR: CLIENT_DIGEST did not have even length.\n");
+
+                    free(salt);
+                    free(client_digest);
+                    OMP_DESTROY()
+
+                    return ERROR_CODE_FAILURE;
+                default:
+                    break;
+            }
+
+            if(arguments.salt_hex != NULL) {
+                switch(parse_hex(salt, arguments.salt_hex)) {
+                    case 1:
+                        fprintf(stderr, "ERROR: SALT had non-hexadecimal characters.\n");
+
+                        free(salt);
+                        free(client_digest);
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
+                    case 2:
+                        fprintf(stderr, "ERROR: SALT did not have even length.\n");
+
+                        free(salt);
+                        free(client_digest);
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
+                    default:
+                        break;
+                }
+            }
+        }
     }
 
     if (arguments.verbose
@@ -792,6 +926,19 @@ int main(int argc, char *argv[]) {
             }
             fprintf(stderr, "\n");
         }
+        else if(arguments.algo->mode == MODE_HASH) {
+            fprintf(stderr, "INFO: Using %s CLIENT_DIGEST: %*s",
+                    arguments.algo->full_name, (int)strlen(arguments.algo->full_name) - 4, "");
+            fprint_hex(stderr, client_digest, EVP_MD_size(md));
+            fprintf(stderr, "\n");
+
+            if(salt_size > 0) {
+                fprintf(stderr, "INFO: Using %s SALT:      %*s",
+                        arguments.algo->full_name, (int)strlen(arguments.algo->full_name), "");
+                fprint_hex(stderr, salt, salt_size);
+                fprintf(stderr, "\n");
+            }
+        }
     }
 
     found = 0;
@@ -815,7 +962,8 @@ int main(int argc, char *argv[]) {
 
 #ifndef USE_MPI
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
-            userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
+            userId, ec_group, client_ec_point, md, client_digest, salt, salt_size, mismatch, arguments,\
+            validated_keys)\
             private(subfound, sub_validated_keys)
         {
 #endif
@@ -845,6 +993,11 @@ int main(int argc, char *argv[]) {
             crypto_func = ec_crypto_func;
             crypto_cmp = ec_crypto_cmp;
             v_args = ec_validator_create(ec_group, client_ec_point);
+        }
+        else if(arguments.algo->mode == MODE_HASH) {
+            crypto_func = hash_crypto_func;
+            crypto_cmp = hash_crypto_cmp;
+            v_args = hash_validator_create(md, client_digest, salt, salt_size);
         }
 
 #ifdef USE_MPI
@@ -888,6 +1041,12 @@ int main(int argc, char *argv[]) {
 
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
+                }
+                else if(arguments.algo->mode == MODE_HASH) {
+                    if(salt_size > 0) {
+                        free(salt);
+                    }
+                    free(client_digest);
                 }
 
                 MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
@@ -953,6 +1112,12 @@ int main(int argc, char *argv[]) {
     if(arguments.algo->mode == MODE_EC) {
         EC_POINT_free(client_ec_point);
         EC_GROUP_free(ec_group);
+    }
+    else if(arguments.algo->mode == MODE_HASH) {
+        if(salt_size > 0) {
+            free(salt);
+        }
+        free(client_digest);
     }
 
 #ifdef USE_MPI

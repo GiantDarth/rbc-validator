@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SHA1+Salt MPI (Fixed) " type="CMakeRunConfiguration" factoryName="Application" folderName="SHA1" PROGRAM_PARAMS="--mode=sha1 -vcf -m2 9d64ef83744a4253d52f6ca7c51d4d8a4f24ca0f69d1f34dc7bb5f0981162a1c c6b1baf6cc9c975813a2731c7b8a0be54476f0fb 0b42bc07d5a22fd4f89b8a9ac179d9c7" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator_mpi" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator_mpi">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

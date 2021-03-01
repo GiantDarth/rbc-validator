@@ -26,6 +26,22 @@ set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
+set(QTESLA_FILES lib/qtesla/ref/qTesla_p_I/api.h lib/qtesla/ref/qTesla_p_I/CDT32.h
+        lib/qtesla/ref/qTesla_p_I/consts.c lib/qtesla/ref/qTesla_p_I/params.h
+        lib/qtesla/ref/qTesla_p_I/gauss.c lib/qtesla/ref/qTesla_p_I/gauss.h
+        lib/qtesla/ref/qTesla_p_I/pack.c lib/qtesla/ref/qTesla_p_I/pack.h
+        lib/qtesla/ref/qTesla_p_I/poly.c lib/qtesla/ref/qTesla_p_I/poly.h
+        lib/qtesla/ref/qTesla_p_I/sample.c lib/qtesla/ref/qTesla_p_I/sample.h
+        lib/qtesla/ref/qTesla_p_I/sign.c
+        lib/qtesla/ref/qTesla_p_I/random/random.c lib/qtesla/ref/qTesla_p_I/random/random.h
+        lib/qtesla/ref/qTesla_p_I/sha3/fips202.c lib/qtesla/ref/qTesla_p_I/sha3/fips202.h)
+set(DILITHIUM_FILES lib/dilithium/ref/api.h lib/dilithium/ref/params.h lib/dilithium/ref/sign.c
+        lib/dilithium/ref/sign.h lib/dilithium/ref/packing.c lib/dilithium/ref/packing.h
+        lib/dilithium/ref/polyvec.c lib/dilithium/ref/polyvec.h lib/dilithium/ref/poly.c
+        lib/dilithium/ref/poly.h lib/dilithium/ref/ntt.c lib/dilithium/ref/ntt.h
+        lib/dilithium/ref/reduce.c lib/dilithium/ref/reduce.h lib/dilithium/ref/rounding.c
+        lib/dilithium/ref/rounding.h lib/dilithium/ref/fips202.c lib/dilithium/ref/fips202.h
+        lib/dilithium/ref/symmetric-shake.c lib/dilithium/ref/symmetric.h)
 set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -38,13 +54,14 @@ list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr
 add_executable(aes256_test src/aes256_test.c ${AES_FILES})
 add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
+add_executable(hash_test src/hash_test.c ${HASH_FILES})
 
 add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
-        ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+        ${CIPHER_FILES} ${AES_FILES} ${EC_FILES} ${HASH_FILES})
 
 if(MPI_ENABLED)
     add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
-            ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+            ${CIPHER_FILES} ${AES_FILES} ${EC_FILES} ${HASH_FILES})
 endif(MPI_ENABLED)
 
 find_package(OpenSSL 1.1.1 REQUIRED)
@@ -64,6 +81,8 @@ target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_C
         OPENSSL_NO_DEPRECATED)
 target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
+target_compile_definitions(hash_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+        PUBLIC OPENSSL_NO_DEPRECATED)
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
 
@@ -74,6 +93,7 @@ endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
 target_link_libraries(ecc_test OpenSSL::Crypto)
+target_link_libraries(hash_test OpenSSL::Crypto)
 target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
         ${ARGP_LIBRARIES})
 

@@ -13,6 +13,7 @@
 #include "gmp_seed_iter.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
+#include "crypto/hash.h"
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
@@ -82,6 +83,31 @@ int ec_crypto_cmp(void *args) {
     }
 
     return EC_POINT_cmp(v->group, v->curr_point, v->client_point, v->ctx);
+}
+
+int hash_crypto_func(const unsigned char *curr_seed, void *args) {
+    hash_validator_t *v = (hash_validator_t*)args;
+
+    if(v == NULL) {
+        return -1;
+    }
+
+    if(v->salt == NULL) {
+        return evp_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE);
+    }
+    else {
+        return evp_salt_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+    }
+}
+
+int hash_crypto_cmp(void *args) {
+    hash_validator_t *v = (hash_validator_t*)args;
+
+    if(v == NULL) {
+        return -1;
+    }
+
+    return memcmp(v->curr_digest, v->client_digest, v->digest_size) != 0;
 }
 
 aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
@@ -218,6 +244,54 @@ void ec_validator_destroy(ec_validator_t *v) {
 
     if(v->curr_point != NULL) {
         EC_POINT_free(v->curr_point);
+    }
+
+    free(v);
+}
+
+hash_validator_t *hash_validator_create(const EVP_MD *md, const unsigned char *client_digest,
+                                        const unsigned char *salt, size_t salt_size) {
+    hash_validator_t *v = malloc(sizeof(*v));
+
+    if(v == NULL || md == NULL || client_digest == NULL || (salt == NULL && salt_size != 0)
+            || (salt != NULL && salt_size == 0)) {
+        hash_validator_destroy(v);
+
+        return NULL;
+    }
+
+    v->md = md;
+    v->digest_size = EVP_MD_size(md);
+    v->client_digest = client_digest;
+    v->salt = salt;
+    v->salt_size = salt_size;
+    v->curr_digest = malloc(v->digest_size * sizeof(*(v->curr_digest)));
+    v->ctx = EVP_MD_CTX_new();
+
+    if(v->curr_digest == NULL || v->ctx == NULL) {
+        hash_validator_destroy(v);
+
+        return NULL;
+    }
+
+    if(salt_size == 0) {
+        EVP_MD_CTX_set_flags(v->ctx, EVP_MD_CTX_FLAG_ONESHOT);
+    }
+
+    return v;
+}
+
+void hash_validator_destroy(hash_validator_t *v) {
+    if(v == NULL) {
+        return;
+    }
+
+    if(v->ctx != NULL) {
+        EVP_MD_CTX_free(v->ctx);
+    }
+
+    if(v->curr_digest != NULL) {
+        free(v->curr_digest);
     }
 
     free(v);
