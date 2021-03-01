@@ -98,25 +98,7 @@ static char prog_desc[] = "Given an HOST_SEED and either:"
                           "\n\nThe original HOST_SEED, passed in as hexadecimal, is corrupted by"
                           " a certain number of bits and used to generate the cryptographic output."
                           " HOST_SEED is always 32 bytes, which corresponds to 64 hexadecimal"
-                          " characters. If the cryptographic function requires more bytes, more will be"
-                          " generated from HOST_SEED using SHAKE256."
-
-                          "\n\nAES: Only AES-256-ECB is supported."
-
-                          "\n\nThe CLIENT_CIPHER, passed in as hexadecimal, is assumed to have been"
-                          " generated in ECB mode, meaning given a 128-bit UUID, this"
-                          " should be 128-bits long as well (32 hexadecimal characters)."
-
-                          "\n\nThe UUID, passed in canonical form,"
-                          " is the message that both sources encrypt and is previously agreed upon."
-
-                          "\n\nECC: Only ECC secp256r1 keys are currently supported."
-
-                          "\n\nThe resulting private key derived from corrupting HOST_SEED"
-                          " produces a new public key that is compared against"
-                          " the CLIENT_PUB_KEY (client public key) which is also passed"
-                          " in hexadecimal in uncompressed form (64 bytes, 128 hexadecimal"
-                          " characters).";
+                          " characters.";
 
 struct arguments {
     const algo *algo;
@@ -334,7 +316,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     if(arguments->algo->mode == MODE_CIPHER) {
                         const EVP_CIPHER *evp_cipher = EVP_get_cipherbynid(arguments->algo->nid);
                         if(evp_cipher == NULL) {
-                            argp_error(state, "Not a valid EVP nid.\n");
+                            argp_error(state, "Not a valid EVP cipher nid.\n");
                         }
                         size_t block_len = EVP_CIPHER_block_size(evp_cipher);
                         if(strlen(arg) % block_len * 2 != 0) {
@@ -343,7 +325,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                                        block_len, arguments->algo->full_name);
                         }
                     }
-                    if(arguments->algo->mode == MODE_EC) {
+                    else if(arguments->algo->mode == MODE_EC) {
                         EC_GROUP *group = EC_GROUP_new_by_curve_name(arguments->algo->nid);
                         if(group == NULL) {
                             argp_error(state, "EC_GROUP_new_by_curve_name failed.\n");
@@ -375,7 +357,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     if(arguments->algo->mode == MODE_CIPHER) {
                         const EVP_CIPHER *evp_cipher = EVP_get_cipherbynid(arguments->algo->nid);
                         if(evp_cipher == NULL) {
-                            argp_error(state, "Not a valid EVP nid.\n");
+                            argp_error(state, "Not a valid EVP cipher nid.\n");
                         }
                         if(EVP_CIPHER_iv_length(evp_cipher) == 0) {
                             argp_error(state, "The chosen cipher doesn't require an IV.\n");
@@ -534,7 +516,8 @@ int main(int argc, char *argv[]) {
     // Memory alloc/init
     if(arguments.algo->mode == MODE_CIPHER) {
         evp_cipher = EVP_get_cipherbynid(arguments.algo->nid);
-    } else if(arguments.algo->mode == MODE_EC) {
+    }
+    else if(arguments.algo->mode == MODE_EC) {
         if((ec_group = EC_GROUP_new_by_curve_name(arguments.algo->nid)) == NULL) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
@@ -607,7 +590,8 @@ int main(int argc, char *argv[]) {
 
                     return ERROR_CODE_FAILURE;
                 }
-            } else if (arguments.algo->mode == MODE_EC) {
+            }
+            else if (arguments.algo->mode == MODE_EC) {
                 if(get_ec_public_key(client_ec_point, NULL, ec_group, client_seed, SEED_SIZE)) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
@@ -627,7 +611,8 @@ int main(int argc, char *argv[]) {
         if(arguments.algo->mode == MODE_CIPHER) {
             MPI_Bcast(client_cipher, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
             MPI_Bcast(userId, sizeof(uuid_t), MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        } else if(arguments.algo->mode == MODE_EC) {
+        }
+        else if(arguments.algo->mode == MODE_EC) {
             unsigned char client_public_key[100];
             int len;
 
@@ -891,13 +876,14 @@ int main(int argc, char *argv[]) {
 
             if (subfound < 0) {
                 // Cleanup
-                if(arguments.algo->mode == MODE_CIPHER) {
-                    cipher_validator_destroy(v_args);
-                }
-
                 mpz_clear(key_count);
 
-                if(arguments.algo->mode == MODE_EC) {
+                if(arguments.algo->mode == MODE_CIPHER) {
+                    if(arguments.algo->nid != NID_aes_256_ecb) {
+                        cipher_validator_destroy(v_args);
+                    }
+                }
+                else if(arguments.algo->mode == MODE_EC) {
                     ec_validator_destroy(v_args);
 
                     EC_POINT_free(client_ec_point);
@@ -951,10 +937,12 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->mode == MODE_CIPHER) {
                 if(arguments.algo->nid == NID_aes_256_ecb) {
                     aes256_validator_destroy(v_args);
-                } else {
+                }
+                else {
                     cipher_validator_destroy(v_args);
                 }
-            } else if(arguments.algo->mode == MODE_EC) {
+            }
+        else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI

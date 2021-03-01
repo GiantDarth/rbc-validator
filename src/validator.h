@@ -24,7 +24,6 @@ typedef struct cipher_validator_t {
     size_t msg_size;
     const unsigned char *msg, *client_cipher, *iv;
     unsigned char *curr_cipher;
-    int cipher_inited;
 } cipher_validator_t;
 
 typedef struct ec_validator_t {

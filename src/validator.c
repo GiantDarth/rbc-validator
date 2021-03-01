@@ -16,11 +16,21 @@
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
+
+    if(v == NULL) {
+        return -1;
+    }
+
     return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->n);
 }
 
 int aes256_crypto_cmp(void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
+
+    if(v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
+        return -1;
+    }
+
     return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
 }
 
@@ -57,7 +67,7 @@ int cipher_crypto_cmp(void *args) {
 int ec_crypto_func(const unsigned char *curr_seed, void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    if(v == NULL || curr_seed == NULL) {
+    if(v == NULL) {
         return -1;
     }
 
@@ -130,7 +140,6 @@ cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
     v->client_cipher = client_cipher;
     // IV is optional as NULL depending on the cipher chosen
     v->iv = iv;
-    v->cipher_inited = 0;
 
     v->curr_cipher = malloc(msg_size * sizeof(*(v->curr_cipher)));
     v->ctx = EVP_CIPHER_CTX_new();
@@ -174,8 +183,6 @@ void cipher_validator_destroy(cipher_validator_t *v) {
     free(v);
 }
 
-/// \param EC_GROUP The EC group to se
-/// \param EC_POINT The client EC public key
 ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *client_point) {
     ec_validator_t *v = malloc(sizeof(*v));
 
