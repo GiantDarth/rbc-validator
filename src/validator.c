@@ -67,7 +67,7 @@ int cipher_crypto_cmp(void *args) {
 int ec_crypto_func(const unsigned char *curr_seed, void *args) {
     ec_validator_t *v = (ec_validator_t*)args;
 
-    if(v == NULL || curr_seed == NULL) {
+    if(v == NULL) {
         return -1;
     }
 
