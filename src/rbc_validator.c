@@ -316,7 +316,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     if(arguments->algo->mode == MODE_CIPHER) {
                         const EVP_CIPHER *evp_cipher = EVP_get_cipherbynid(arguments->algo->nid);
                         if(evp_cipher == NULL) {
-                            argp_error(state, "Not a valid EVP nid.\n");
+                            argp_error(state, "Not a valid EVP cipher nid.\n");
                         }
                         size_t block_len = EVP_CIPHER_block_size(evp_cipher);
                         if(strlen(arg) % block_len * 2 != 0) {
@@ -357,7 +357,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     if(arguments->algo->mode == MODE_CIPHER) {
                         const EVP_CIPHER *evp_cipher = EVP_get_cipherbynid(arguments->algo->nid);
                         if(evp_cipher == NULL) {
-                            argp_error(state, "Not a valid EVP nid.\n");
+                            argp_error(state, "Not a valid EVP cipher nid.\n");
                         }
                         if(EVP_CIPHER_iv_length(evp_cipher) == 0) {
                             argp_error(state, "The chosen cipher doesn't require an IV.\n");
