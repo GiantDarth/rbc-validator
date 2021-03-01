@@ -879,7 +879,9 @@ int main(int argc, char *argv[]) {
                 mpz_clear(key_count);
 
                 if(arguments.algo->mode == MODE_CIPHER) {
-                    cipher_validator_destroy(v_args);
+                    if(arguments.algo->nid != NID_aes_256_ecb) {
+                        cipher_validator_destroy(v_args);
+                    }
                 }
                 else if(arguments.algo->mode == MODE_EC) {
                     ec_validator_destroy(v_args);
