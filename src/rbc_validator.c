@@ -876,13 +876,12 @@ int main(int argc, char *argv[]) {
 
             if (subfound < 0) {
                 // Cleanup
+                mpz_clear(key_count);
+
                 if(arguments.algo->mode == MODE_CIPHER) {
                     cipher_validator_destroy(v_args);
                 }
-
-                mpz_clear(key_count);
-
-                if(arguments.algo->mode == MODE_EC) {
+                else if(arguments.algo->mode == MODE_EC) {
                     ec_validator_destroy(v_args);
 
                     EC_POINT_free(client_ec_point);
