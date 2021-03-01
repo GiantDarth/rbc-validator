@@ -16,11 +16,21 @@
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
+
+    if(v == NULL) {
+        return -1;
+    }
+
     return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->n);
 }
 
 int aes256_crypto_cmp(void *args) {
     aes256_validator_t *v = (aes256_validator_t*)args;
+
+    if(v == NULL || v->curr_cipher || v->client_cipher) {
+        return -1;
+    }
+
     return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
 }
 
