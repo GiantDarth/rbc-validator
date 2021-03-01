@@ -140,7 +140,6 @@ cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
     v->client_cipher = client_cipher;
     // IV is optional as NULL depending on the cipher chosen
     v->iv = iv;
-    v->cipher_inited = 0;
 
     v->curr_cipher = malloc(msg_size * sizeof(*(v->curr_cipher)));
     v->ctx = EVP_CIPHER_CTX_new();
