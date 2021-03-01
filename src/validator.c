@@ -183,8 +183,6 @@ void cipher_validator_destroy(cipher_validator_t *v) {
     free(v);
 }
 
-/// \param EC_GROUP The EC group to se
-/// \param EC_POINT The client EC public key
 ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *client_point) {
     ec_validator_t *v = malloc(sizeof(*v));
 
