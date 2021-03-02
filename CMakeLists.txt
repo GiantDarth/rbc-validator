@@ -26,6 +26,7 @@ set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
+set(HASH_FILES src/crypto/hash.c src/crypto/hash.h)
 set(QTESLA_FILES lib/qtesla/ref/qTesla_p_I/api.h lib/qtesla/ref/qTesla_p_I/CDT32.h
         lib/qtesla/ref/qTesla_p_I/consts.c lib/qtesla/ref/qTesla_p_I/params.h
         lib/qtesla/ref/qTesla_p_I/gauss.c lib/qtesla/ref/qTesla_p_I/gauss.h
