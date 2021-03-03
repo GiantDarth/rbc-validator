@@ -582,11 +582,7 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
                             ERR_error_string(ERR_get_error(), NULL));
 
-#ifdef OMP_DESTROY_SUPPORT
-                        if(omp_pause_resource_all(omp_pause_hard)) {
-                            fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-                        }
-#endif
+                    OMP_DESTROY()
 
                     return ERROR_CODE_FAILURE;
                 }
@@ -1007,9 +1003,7 @@ int main(int argc, char *argv[]) {
 #else
     // Check if an error occurred in one of the threads.
     if(found < 0) {
-        if(omp_pause_resource_all(omp_pause_hard)) {
-            fprintf(stderr, "ERROR: omp_pause_resource_all failed.");
-        }
+        OMP_DESTROY()
 
         return ERROR_CODE_FAILURE;
     }
