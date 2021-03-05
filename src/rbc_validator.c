@@ -392,7 +392,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             if(!(arguments->random) && !(arguments->benchmark)) {
                 // We don't need to check seed_hex since the first argument will always be set to it
                 // and NO_ARGS is checked above
-                if(arguments->client_crypto_hex == NULL) {
+                if(arguments->algo->mode != MODE_NONE && arguments->client_crypto_hex == NULL) {
                     argp_usage(state);
                 }
 
