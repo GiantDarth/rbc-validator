@@ -21,7 +21,7 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
     set(MPI_ENABLED OFF CACHE BOOL "Enable support for compiling an MPI version as well.")
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
-set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
+set(SOURCE_FILES src/seed_iter.c src/seed_iter.h
         src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
