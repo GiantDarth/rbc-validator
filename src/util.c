@@ -67,7 +67,7 @@ void get_benchmark_permutation(mpz_t perm, int mismatches, size_t subkey_length,
 /// Assigns the first possible permutation for a given # of mismatches.
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
 /// \param mismatches The hamming distance that you want to base the permutation on.
-void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
+void assign_first_permutation(mpz_t perm, int mismatches) {
     // Set perm to first key
     // Equivalent to: (perm << mismatches) - 1
     mpz_set_ui(perm, 1);
@@ -79,9 +79,9 @@ void gmp_assign_first_permutation(mpz_t perm, int mismatches) {
 /// \param perm A pre-allocated mpz_t to fill the permutation to.
 /// \param mismatches The hamming distance that you want to base the permutation on.
 /// \param subkey_length How big the relevant key is in # of bits.
-void gmp_assign_last_permutation(mpz_t perm, int mismatches, size_t subkey_length) {
+void assign_last_permutation(mpz_t perm, int mismatches, size_t subkey_length) {
     // First set the value to the first permutation.
-    gmp_assign_first_permutation(perm, mismatches);
+    assign_first_permutation(perm, mismatches);
     // Equivalent to: perm << (subkey_length - mismatches)
     // E.g. if subkey_length = 256 and mismatches = 5
     // Then we want to shift left 256 - 5 = 251 times.
@@ -126,7 +126,7 @@ void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned cha
     mpz_clears(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
 }
 
-void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
                    int mismatches, size_t subkey_length) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
@@ -134,7 +134,7 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
     mpz_bin_uiui(total_perms, subkey_length, mismatches);
 
     if(pair_index == 0) {
-        gmp_assign_first_permutation(starting_perm, mismatches);
+        assign_first_permutation(starting_perm, mismatches);
     }
     else {
         mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
@@ -144,7 +144,7 @@ void gmp_get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index
     }
 
     if(pair_index == pair_count - 1) {
-        gmp_assign_last_permutation(ending_perm, mismatches, subkey_length);
+        assign_last_permutation(ending_perm, mismatches, subkey_length);
     }
     else {
         mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);

@@ -23,7 +23,7 @@
 #include "crypto/aes256-ni_enc.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
-#include "gmp_seed_iter.h"
+#include "seed_iter.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -896,9 +896,9 @@ int main(int argc, char *argv[]) {
 
             mpz_inits(first_perm, last_perm, NULL);
 
-            gmp_get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
-                              (size_t) omp_get_num_threads(), mismatch,
-                              arguments.subseed_length);
+            get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
+                          (size_t) omp_get_num_threads(), mismatch,
+                          arguments.subseed_length);
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
