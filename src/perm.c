@@ -16,11 +16,9 @@ void decode_ordinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subk
     mpz_set(curr_ordinal, ordinal);
 
     mpz_set_ui(perm, 0);
-    for (unsigned long bit = subkey_length - 1; mismatches > 0; bit--)
-    {
+    for (unsigned long bit = subkey_length - 1; mismatches > 0; bit--) {
         mpz_bin_uiui(binom, bit, mismatches);
-        if (mpz_cmp(curr_ordinal, binom) >= 0)
-        {
+        if (mpz_cmp(curr_ordinal, binom) >= 0) {
             mpz_sub(curr_ordinal, curr_ordinal, binom);
             mpz_setbit(perm, bit);
             mismatches--;
@@ -154,9 +152,6 @@ void get_perm_pair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t 
 
         decode_ordinal(last_perm, ending_ordinal, mismatches, subkey_length);
     }
-
-    // Left shift permutations by (key_size * 8) - subkey_length bits to make them most significant bit
-    // aligned.
 
     mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
 }
