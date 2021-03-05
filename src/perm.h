@@ -33,8 +33,8 @@ void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned cha
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of
 /// them. Meant to be used to feed into a gmp_key_iter.
-/// \param starting_perm A pre-allocated mpz_t to fill the starting permutation to.
-/// \param ending_perm A pre-allocated mpz_t to fill the ending permutation to.
+/// \param first_perm A pre-allocated mpz_t to fill the starting permutation to.
+/// \param last_perm A pre-allocated mpz_t to fill the ending permutation to.
 /// \param pair_index A zero-based index out of all the possible pairs expected. Cannot exceed
 /// @param pair_count.
 /// \param pair_count The total amount of pairs expected to generate.
@@ -42,7 +42,7 @@ void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned cha
 /// \param key_size How big the relevant entire key is in # of bytes.
 /// \param subkey_length How big the only the potentially corruption portion is in bits, starting from
 /// the most-significant bit.
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void get_perm_pair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t pair_count,
                    int mismatches, size_t subkey_length);
 
 #endif //RBC_VALIDATOR_PERM_H

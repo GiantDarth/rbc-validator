@@ -636,7 +636,6 @@ int main(int argc, char *argv[]) {
 
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
-
 #endif
     }
     else {
