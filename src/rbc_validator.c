@@ -23,7 +23,7 @@
 #include "crypto/aes256-ni_enc.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
-#include "gmp_seed_iter.h"
+#include "seed_iter.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -41,7 +41,7 @@ if(omp_pause_resource_all(omp_pause_hard)) {\
 #endif
 
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
-#define MODE_NULL 0
+#define MODE_NONE 0
 // Used with symmetric encryption
 #define MODE_CIPHER 1
 // Used with matching a public key
@@ -55,6 +55,7 @@ typedef struct algo {
 } algo;
 
 const algo supported_algos[] = {
+        {"none", "None", 0, MODE_NONE },
         // Cipher algorithms
         { "aes","AES-256-ECB", NID_aes_256_ecb, MODE_CIPHER },
         { "chacha20","ChaCha20", NID_chacha20, MODE_CIPHER },
@@ -71,13 +72,14 @@ const char *argp_program_version = "rbc_validator (OpenMP) 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "--mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]\n"
+static char args_doc[] = "--mode=none HOST_SEED\n"
+                         "--mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]\n"
                          "--mode=ecc HOST_SEED CLIENT_PUB_KEY\n"
                          "--mode=* -r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an HOST_SEED and either:"
                           "\n1) an AES256 CLIENT_CIPHER and plaintext UUID;"
-                          "\n1) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;"
-                          "\n2) an ECC Secp256r1 CLIENT_PUB_KEY;"
+                          "\n2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;"
+                          "\n3) an ECC Secp256r1 CLIENT_PUB_KEY;"
                           "\nwhere CLIENT_* is from an unreliable source."
                           " Progressively corrupt the chosen cryptographic function by a certain"
                           " number of bits until a matching client seed is found. The matching"
@@ -115,9 +117,10 @@ static struct argp_option options[] = {
         "mode",
         // Use the non-printable ASCII character '\5' to always enforce long mode (--mode)
         '\5',
-        "[aes,chacha20,ecc]",
+        "[none,aes,chacha20,ecc]",
         0,
-        "REQUIRED. Choose between AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc).",
+        "REQUIRED. Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20),"
+        " and ECC Secp256r1 (ecc).",
         0},
     {"all", 'a', 0, 0, "Don't cut out early when key is found.", 0},
     {
@@ -816,10 +819,10 @@ int main(int argc, char *argv[]) {
         {
 #endif
 
-        int (*crypto_func)(const unsigned char*, void*);
-        int (*crypto_cmp)(void*);
+        int (*crypto_func)(const unsigned char*, void*) = NULL;
+        int (*crypto_cmp)(void*) = NULL;
 
-        void *v_args;
+        void *v_args = NULL;
 
         subfound = 0;
 
@@ -859,7 +862,7 @@ int main(int argc, char *argv[]) {
                 max_count = mpz_get_ui(key_count);
             }
 
-            gmp_get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
+            get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
                               mismatch, arguments.subseed_length);
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
@@ -896,9 +899,9 @@ int main(int argc, char *argv[]) {
 
             mpz_inits(first_perm, last_perm, NULL);
 
-            gmp_get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
-                              (size_t) omp_get_num_threads(), mismatch,
-                              arguments.subseed_length);
+            get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
+                          (size_t) omp_get_num_threads(), mismatch,
+                          arguments.subseed_length);
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
@@ -938,7 +941,7 @@ int main(int argc, char *argv[]) {
                     cipher_validator_destroy(v_args);
                 }
             }
-        else if(arguments.algo->mode == MODE_EC) {
+            else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI
@@ -1030,6 +1033,6 @@ int main(int argc, char *argv[]) {
 
     OMP_DESTROY()
 
-    return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
+    return found || arguments.algo->mode == MODE_NONE ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 #endif
 }

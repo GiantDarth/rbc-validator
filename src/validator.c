@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-#include "gmp_seed_iter.h"
+#include "seed_iter.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
 
@@ -248,8 +248,8 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
                        int (*crypto_func)(const unsigned char*, void*), int (*crypto_cmp)(void*),
                        void *crypto_args) {
     // Declaration
-    int status = 0, cmp_status;
-    gmp_seed_iter iter;
+    int status = 0, cmp_status = 1;
+    seed_iter iter;
     const unsigned char *curr_seed;
 #ifdef USE_MPI
     int probe_flag = 0;
@@ -269,22 +269,22 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
     }
 #endif
 
-    gmp_seed_iter_init(&iter, host_seed, SEED_SIZE, first_perm, last_perm);
+    seed_iter_init(&iter, host_seed, SEED_SIZE, first_perm, last_perm);
 
-    while(!gmp_seed_iter_end(&iter) && (all || !(*signal))) {
+    while(!seed_iter_end(&iter) && (all || !(*signal))) {
         if(validated_keys != NULL) {
             ++(*validated_keys);
         }
-        curr_seed = gmp_seed_iter_get(&iter);
+        curr_seed = seed_iter_get(&iter);
 
         // If crypto_func fails for some reason, break prematurely.
-        if(crypto_func(curr_seed, crypto_args)) {
+        if(crypto_func != NULL && crypto_func(curr_seed, crypto_args)) {
             status = -1;
             break;
         }
 
         // If crypto_cmp fails for some reason, break prematurely.
-        if((cmp_status = crypto_cmp(crypto_args)) < 0) {
+        if(crypto_cmp != NULL && (cmp_status = crypto_cmp(crypto_args)) < 0) {
             status = -1;
             break;
         }
@@ -337,7 +337,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
         }
 #endif
 
-        gmp_seed_iter_next(&iter);
+        seed_iter_next(&iter);
     }
 
 #ifdef USE_MPI
