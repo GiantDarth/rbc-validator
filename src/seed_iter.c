@@ -4,6 +4,7 @@
 
 #include "seed_iter.h"
 
+#include <openssl/crypto.h>
 #include <string.h>
 
 void mpn_overflowing_rshift(mp_limb_t *rop, const mp_limb_t *op1, mp_size_t n, unsigned int shift);

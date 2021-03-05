@@ -8,6 +8,7 @@
 #include <mpi.h>
 #endif
 
+#include <openssl/crypto.h>
 #include <string.h>
 
 #include "seed_iter.h"
@@ -86,7 +87,7 @@ int ec_crypto_cmp(void *args) {
 
 aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
                                             size_t n) {
-    aes256_validator_t *v = malloc(sizeof(*v));
+    aes256_validator_t *v = OPENSSL_malloc(sizeof(*v));
 
     if(v == NULL || msg == NULL || client_cipher == NULL) {
         aes256_validator_destroy(v);
@@ -104,7 +105,7 @@ aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsi
         return NULL;
     }
 
-    if((v->curr_cipher = malloc(n * sizeof(*(v->curr_cipher)))) == NULL) {
+    if((v->curr_cipher = OPENSSL_malloc(n * sizeof(*(v->curr_cipher)))) == NULL) {
         aes256_validator_destroy(v);
 
         return NULL;
@@ -119,10 +120,10 @@ void aes256_validator_destroy(aes256_validator_t *v) {
     }
 
     if(v->curr_cipher != NULL) {
-        free(v->curr_cipher);
+        OPENSSL_clear_free(v->curr_cipher, v->n * sizeof(*(v->curr_cipher)));
     }
 
-    free(v);
+    OPENSSL_clear_free(v, sizeof(*v));
 }
 
 cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
@@ -179,6 +180,7 @@ void cipher_validator_destroy(cipher_validator_t *v) {
     if(v->curr_cipher != NULL) {
         free(v->curr_cipher);
     }
+
 
     free(v);
 }
