@@ -18,6 +18,6 @@ void fprint_hex(FILE *stream, const unsigned char *array, size_t count);
 /// \param hex_string A null-terminated hex string.
 /// \return Returns 0 on success, 1 if the string contains any invalid characters, or 2
 /// if the hex string length is odd.
-int parse_hex(unsigned char *array, char *hex_string);
+int parse_hex(unsigned char *array, const char *hex_string);
 
 #endif //HAMMING_BENCHMARK_UTIL_H

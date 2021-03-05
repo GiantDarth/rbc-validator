@@ -27,7 +27,7 @@ int parse_hex_char(char hex_char) {
     }
 }
 
-int parse_hex(unsigned char *array, char *hex_string) {
+int parse_hex(unsigned char *array, const char *hex_string) {
     size_t i, b;
     int value;
 

@@ -438,6 +438,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
+int parse_hex_handler(unsigned char *buffer, const char *hex) {
+    int status = parse_hex(buffer, hex);
+
+    if(status == 1) {
+        fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
+    }
+    else if(status == 2) {
+        fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+    }
+
+    return status != 0;
+}
+
 /// OpenMP implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
@@ -638,91 +651,39 @@ int main(int argc, char *argv[]) {
 #endif
     }
     else {
-        switch(parse_hex(host_seed, arguments.seed_hex)) {
-            case 1:
-                fprintf(stderr, "ERROR: HOST_SEED had non-hexadecimal characters.\n");
+        int parse_status = parse_hex_handler(host_seed, arguments.seed_hex);
 
-                if(arguments.algo->mode == MODE_EC) {
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
+        if(!parse_status) {
+            if(arguments.algo->mode == MODE_CIPHER) {
+                parse_status = parse_hex_handler(client_cipher, arguments.client_crypto_hex);
+
+                if(!parse_status && uuid_parse(arguments.uuid_hex, userId) < 0) {
+                    fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+                    parse_status = 1;
                 }
 
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            case 2:
-                fprintf(stderr, "ERROR: HOST_SEED did not have even length.\n");
-
-                if(arguments.algo->mode == MODE_EC) {
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
+                if (!parse_status && arguments.iv_hex != NULL) {
+                    parse_status = parse_hex_handler(iv, arguments.iv_hex);
                 }
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            default:
-                break;
-        }
-
-        if(arguments.algo->mode == MODE_CIPHER) {
-            switch(parse_hex(client_cipher, arguments.client_crypto_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
-
-                    OMP_DESTROY()
-
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
-
-                    OMP_DESTROY()
-
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
             }
-
-            if (uuid_parse(arguments.uuid_hex, userId) < 0) {
-                fprintf(stderr, "ERROR: UUID not in canonical form.\n");
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            }
-
-            if(arguments.iv_hex != NULL) {
-                switch(parse_hex(iv, arguments.iv_hex)) {
-                    case 1:
-                        fprintf(stderr, "ERROR: IV had non-hexadecimal characters.\n");
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    case 2:
-                        fprintf(stderr, "ERROR: IV did not have even length.\n");
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    default:
-                        break;
+            else if (arguments.algo->mode == MODE_EC) {
+                if (EC_POINT_hex2point(ec_group, arguments.client_crypto_hex,
+                                       client_ec_point, NULL) == NULL) {
+                    fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
+                    parse_status = 1;
                 }
             }
         }
-        else if(arguments.algo->mode == MODE_EC) {
-            if(EC_POINT_hex2point(ec_group, arguments.client_crypto_hex,
-                                  client_ec_point, NULL) == NULL) {
-                fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
-                        ERR_error_string(ERR_get_error(), NULL));
 
+        if(parse_status) {
+            if(arguments.algo->mode == MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
             }
+            OMP_DESTROY()
+
+            return ERROR_CODE_FAILURE;
         }
     }
 
