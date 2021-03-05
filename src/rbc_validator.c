@@ -569,17 +569,8 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->mode == MODE_CIPHER) {
                 uuid_generate(userId);
 
-                if(arguments.algo->nid == NID_aes_256_ecb) {
-                    if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
-                        fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    }
-                }
-                else if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, userId,
-                                    sizeof(uuid_t), iv)) {
+                if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, userId,
+                               sizeof(uuid_t), iv)) {
                     fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
                             ERR_error_string(ERR_get_error(), NULL));
 
