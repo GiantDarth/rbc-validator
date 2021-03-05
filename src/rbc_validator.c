@@ -706,12 +706,12 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 else {
-                    if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE)) {
+                    if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE, NULL,
+                                0)) {
                         if(salt_size > 0) {
                             free(salt);
                         }
                         free(client_digest);
-
                         OMP_DESTROY()
 
                         return ERROR_CODE_FAILURE;

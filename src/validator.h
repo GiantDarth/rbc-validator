@@ -35,6 +35,7 @@ typedef struct ec_validator_t {
 
 typedef struct hash_validator_t {
     const EVP_MD *md;
+    int nid;
     size_t digest_size, salt_size;
     EVP_MD_CTX *ctx;
     const unsigned char *client_digest, *salt;

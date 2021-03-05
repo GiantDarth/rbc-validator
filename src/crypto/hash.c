@@ -4,10 +4,253 @@
 
 #include "hash.h"
 
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <XKCP/KeccakHash.h>
 #include <XKCP/KangarooTwelve.h>
 
+int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
+                const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size);
+
+int md5_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+             const unsigned char *salt, size_t salt_size) {
+    MD5_CTX ctx;
+
+    if(!MD5_Init(&ctx)) {
+        return 1;
+    }
+
+    if(!MD5_Update(&ctx, msg, msg_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(salt_size > 0 && !MD5_Update(&ctx, salt, salt_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(!MD5_Final(digest, &ctx)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&ctx, sizeof(ctx));
+
+    return 0;
+}
+
+int sha1_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+              const unsigned char *salt, size_t salt_size) {
+    SHA_CTX ctx;
+
+    if(!SHA1_Init(&ctx)) {
+        return 1;
+    }
+
+    if(!SHA1_Update(&ctx, msg, msg_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(salt_size > 0 && !SHA1_Update(&ctx, salt, salt_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(!SHA1_Final(digest, &ctx)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&ctx, sizeof(ctx));
+
+    return 0;
+}
+
+int sha224_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    SHA256_CTX ctx;
+
+    if(!SHA224_Init(&ctx)) {
+        return 1;
+    }
+
+    if(!SHA224_Update(&ctx, msg, msg_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(salt_size > 0 && !SHA224_Update(&ctx, salt, salt_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(!SHA224_Final(digest, &ctx)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&ctx, sizeof(ctx));
+
+    return 0;
+}
+
+int sha256_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    SHA256_CTX ctx;
+
+    if(!SHA256_Init(&ctx)) {
+        return 1;
+    }
+
+    if(!SHA256_Update(&ctx, msg, msg_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(salt_size > 0 && !SHA256_Update(&ctx, salt, salt_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(!SHA256_Final(digest, &ctx)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&ctx, sizeof(ctx));
+
+    return 0;
+}
+
+int sha384_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    SHA512_CTX ctx;
+
+    if(!SHA384_Init(&ctx)) {
+        return 1;
+    }
+
+    if(!SHA384_Update(&ctx, msg, msg_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(salt_size > 0 && !SHA384_Update(&ctx, salt, salt_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(!SHA384_Final(digest, &ctx)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&ctx, sizeof(ctx));
+
+    return 0;
+}
+
+int sha512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    SHA512_CTX ctx;
+
+    if(!SHA512_Init(&ctx)) {
+        return 1;
+    }
+
+    if(!SHA512_Update(&ctx, msg, msg_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(salt_size > 0 && !SHA512_Update(&ctx, salt, salt_size)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    if(!SHA512_Final(digest, &ctx)) {
+        OPENSSL_cleanse(&ctx, sizeof(ctx));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&ctx, sizeof(ctx));
+
+    return 0;
+}
+
+int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
+                const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    if(Keccak_HashUpdate(inst, msg, msg_size * 8) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    if(salt_size > 0 && Keccak_HashUpdate(inst, salt, salt_size * 8) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    if(Keccak_HashFinal(inst, digest) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    OPENSSL_cleanse(inst, sizeof(*inst));
+
+    return 0;
+}
+
+int sha3_224_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    Keccak_HashInstance inst;
+
+    if(Keccak_HashInitialize_SHA3_224(&inst) == KECCAK_FAIL) {
+        return 1;
+    }
+
+    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+}
+
+int sha3_256_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                  const unsigned char *salt, size_t salt_size) {
+    Keccak_HashInstance inst;
+
+    if(Keccak_HashInitialize_SHA3_256(&inst) == KECCAK_FAIL) {
+        return 1;
+    }
+
+    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+}
+
+int sha3_384_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                  const unsigned char *salt, size_t salt_size) {
+    Keccak_HashInstance inst;
+
+    if(Keccak_HashInitialize_SHA3_384(&inst) == KECCAK_FAIL) {
+        return 1;
+    }
+
+    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+}
+
+int sha3_512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
+                  const unsigned char *salt, size_t salt_size) {
+    Keccak_HashInstance inst;
+
+    if(Keccak_HashInitialize_SHA3_512(&inst) == KECCAK_FAIL) {
+        return 1;
+    }
+
+    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+}
+
 int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
-             const unsigned char *msg, size_t msg_size) {
+             const unsigned char *msg, size_t msg_size,
+             const unsigned char *salt, size_t salt_size) {
     EVP_MD_CTX *new_ctx = NULL;
 
     if(msg == NULL) {
@@ -28,39 +271,7 @@ int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
         return 1;
     }
 
-    if(!EVP_DigestFinal_ex(ctx, digest, NULL)) {
-        return 1;
-    }
-
-    EVP_MD_CTX_free(new_ctx);
-
-    return 0;
-}
-
-int evp_salt_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
-                  const unsigned char *msg, size_t msg_size,
-                  const unsigned char *salt, size_t salt_size) {
-    EVP_MD_CTX *new_ctx = NULL;
-
-    if(msg == NULL || salt == NULL) {
-        return 1;
-    }
-
-    if(ctx == NULL) {
-        if(md == NULL || (ctx = new_ctx = EVP_MD_CTX_new()) == NULL) {
-            return 1;
-        }
-    }
-
-    if(!EVP_DigestInit_ex(ctx, md, NULL)) {
-        return 1;
-    }
-
-    if(!EVP_DigestUpdate(ctx, msg, msg_size)) {
-        return 1;
-    }
-
-    if(!EVP_DigestUpdate(ctx, salt, salt_size)) {
+    if(salt_size > 0 && !EVP_DigestUpdate(ctx, salt, salt_size)) {
         return 1;
     }
 
@@ -82,12 +293,21 @@ int kang12_hash(unsigned char *digest, size_t digest_size, const unsigned char *
     }
 
     if(KangarooTwelve_Update(&inst, msg, msg_size)) {
+        OPENSSL_cleanse(&inst, sizeof(inst));
         return 1;
     }
 
     if(salt_size > 0 && KangarooTwelve_Update(&inst, salt, salt_size)) {
+        OPENSSL_cleanse(&inst, sizeof(inst));
         return 1;
     }
 
-    return KangarooTwelve_Final(&inst, digest, NULL, 0);
+    if(KangarooTwelve_Final(&inst, digest, NULL, 0)) {
+        OPENSSL_cleanse(&inst, sizeof(inst));
+        return 1;
+    }
+
+    OPENSSL_cleanse(&inst, sizeof(inst));
+
+    return 0;
 }

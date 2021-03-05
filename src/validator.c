@@ -92,11 +92,29 @@ int hash_crypto_func(const unsigned char *curr_seed, void *args) {
         return -1;
     }
 
-    if(v->salt == NULL) {
-        return evp_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE);
-    }
-    else {
-        return evp_salt_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+    switch(v->nid) {
+        case NID_md5:
+            return md5_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha1:
+            return sha1_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha224:
+            return sha224_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha256:
+            return sha256_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha384:
+            return sha384_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha512:
+            return sha512_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha3_224:
+            return sha3_224_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha3_256:
+            return sha3_256_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha3_384:
+            return sha3_384_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_sha3_512:
+            return sha3_512_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        default:
+            return evp_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE, v->salt, v->salt_size);
     }
 }
 
@@ -281,6 +299,7 @@ hash_validator_t *hash_validator_create(const EVP_MD *md, const unsigned char *c
     }
 
     v->md = md;
+    v->nid = EVP_MD_nid(md);
     v->digest_size = EVP_MD_size(md);
     v->client_digest = client_digest;
     v->salt = salt;
