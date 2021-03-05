@@ -12,5 +12,7 @@ int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
 int evp_salt_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
                   const unsigned char *msg, size_t msg_size,
                   const unsigned char *salt, size_t salt_size);
+int kang12_hash(unsigned char *digest, size_t digest_size, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size);
 
 #endif //RBC_VALIDATOR_HASH_H

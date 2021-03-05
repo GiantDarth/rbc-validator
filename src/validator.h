@@ -41,6 +41,12 @@ typedef struct hash_validator_t {
     unsigned char *curr_digest;
 } hash_validator_t;
 
+typedef struct kang12_validator_t {
+    size_t digest_size, salt_size;
+    const unsigned char *client_digest, *salt;
+    unsigned char *curr_digest;
+} kang12_validator_t;
+
 int aes256_crypto_func(const unsigned char *curr_seed, void *args);
 int aes256_crypto_cmp(void *args);
 
@@ -70,6 +76,13 @@ void hash_validator_destroy(hash_validator_t *v);
 
 int hash_crypto_func(const unsigned char *curr_seed, void *args);
 int hash_crypto_cmp(void *args);
+
+kang12_validator_t *kang12_validator_create(const unsigned char *client_digest, size_t digest_size,
+                                            const unsigned char *salt, size_t salt_size);
+void kang12_validator_destroy(kang12_validator_t *v);
+
+int kang12_crypto_func(const unsigned char *curr_seed, void *args);
+int kang12_crypto_cmp(void *args);
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.

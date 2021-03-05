@@ -44,6 +44,7 @@ addons:
       - libgmp-dev
       - uuid-dev
       - libssl-dev
+      - xsltproc
   homebrew:
     update: false
     packages:
@@ -57,6 +58,16 @@ before_install:
   - eval "${MATRIX_EVAL}"
 
 script:
+  - mkdir -p ~/.local/lib
+  - mkdir -p ~/.local/include
+
+  # Build XKCP and manually copy it to ~/.local (since no make install is provided)
+  - cd lib/XKCP
+  - make generic64/libXKCP.a
+  - cp bin/generic64/libXKCP.a ~/.local/lib
+  - cp -r bin/generic64/libXKCP.a.headers ~/.local/include/XKCP
+  - cd ../..
+
   - cmake --version
   - cmake ./CMakeLists.txt
   - cmake --build .
@@ -215,6 +226,8 @@ script:
         8577b043f052dcfd9360d09033606c853705f23a8412e131861bc80b94b34fd898fe1a314f570fc2e349de435b80d6b0 \
         0beabe4beee3ca3a51762120df37fb35) == \
       "4c5d41d98af9b502d27206769cb5d35d6e870d742ac2e83774c45809aa9f5114" ]]; fi
+
+  # TODO: Add testing for KangarooTwelve
 
 notifications:
   webhooks:

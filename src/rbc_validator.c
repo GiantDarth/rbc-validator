@@ -50,6 +50,9 @@ if(omp_pause_resource_all(omp_pause_hard)) {\
 // Used with matching a digest
 #define MODE_HASH 3
 
+#define NID_kang12 -1
+#define KANG12_SIZE 32
+
 typedef struct algo {
     const char *abbr_name;
     const char *full_name;
@@ -75,6 +78,7 @@ const algo supported_algos[] = {
         { "sha3-256", "SHA3-256", NID_sha3_256, MODE_HASH },
         { "sha3-384", "SHA3-384", NID_sha3_384, MODE_HASH },
         { "sha3-512", "SHA3-512", NID_sha3_512, MODE_HASH },
+        { "kang12", "KangarooTwelve", NID_kang12, MODE_HASH },
         { 0 }
 };
 
@@ -90,14 +94,14 @@ static char args_doc[] = "--mode=none HOST_SEED\n"
                          "--mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]\n"
                          "--mode=ecc HOST_SEED CLIENT_PUB_KEY\n"
                          "--mode=[md5,sha1,sha224,sha256,sha384,sha512,sha3-224,sha3-256,sha3-384,"
-                         "sha3-512] HOST_SEED CLIENT_DIGEST [SALT]\n"
+                         "sha3-512,kang12] HOST_SEED CLIENT_DIGEST [SALT]\n"
                          "--mode=* -r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an HOST_SEED and either:"
                           "\n1) an AES256 CLIENT_CIPHER and plaintext UUID;"
                           "\n2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;"
                           "\n3) an ECC Secp256r1 CLIENT_PUB_KEY;"
                           "\n4) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256,"
-                          " SHA3-384, or SHA3-512 CLIENT_DIGEST;"
+                          " SHA3-384, SHA3-512, or KangarooTwelve CLIENT_DIGEST;"
                           "\nwhere CLIENT_* is from an unreliable source."
                           " Progressively corrupt the chosen cryptographic function by a certain"
                           " number of bits until a matching client seed is found. The matching"
@@ -361,15 +365,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                         EC_GROUP_free(group);
                     }
                     else if(arguments->algo->mode == MODE_HASH) {
-                        const EVP_MD *md;
-                        if((md = EVP_get_digestbynid(arguments->algo->nid)) == NULL) {
-                            argp_error(state, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
-                                              "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                        size_t digest_size = KANG12_SIZE;
+                        if(arguments->algo->nid != KANG12_SIZE) {
+                            const EVP_MD *md = EVP_get_digestbynid(arguments->algo->nid);
+                            if(md == NULL) {
+                                argp_error(state, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
+                                                  "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                            }
+                            digest_size = EVP_MD_size(md);
                         }
-                        size_t md_len = EVP_MD_size(md);
-                        if(strlen(arg) != md_len * 2) {
+
+                        if(strlen(arg) != digest_size * 2) {
                             argp_error(state, "CLIENT_DIGEST not equivalent to %zu bytes for %s\n",
-                                       md_len, arguments->algo->full_name);
+                                       digest_size, arguments->algo->full_name);
                         }
                     }
                     arguments->client_crypto_hex = arg;
@@ -517,6 +525,7 @@ int main(int argc, char *argv[]) {
     EC_GROUP *ec_group;
     EC_POINT *client_ec_point;
     unsigned char *client_digest;
+    size_t digest_size;
     const EVP_MD *md;
     unsigned char *salt = NULL;
     size_t salt_size = 0;
@@ -594,17 +603,24 @@ int main(int argc, char *argv[]) {
         }
     }
     else if(arguments.algo->mode == MODE_HASH) {
-        // No need to deallocate an EVP_MD
-        if((md = EVP_get_digestbynid(arguments.algo->nid)) == NULL) {
-            fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error: %s\n",
-                    ERR_error_string(ERR_get_error(), NULL));
+        if(arguments.algo->nid == NID_kang12) {
+            digest_size = KANG12_SIZE;
+        }
+        else {
+            // No need to deallocate an EVP_MD
+            if ((md = EVP_get_digestbynid(arguments.algo->nid)) == NULL) {
+                fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error: %s\n",
+                        ERR_error_string(ERR_get_error(), NULL));
 
-            OMP_DESTROY()
+                OMP_DESTROY()
 
-            return ERROR_CODE_FAILURE;
+                return ERROR_CODE_FAILURE;
+            }
+
+            digest_size = EVP_MD_size(md);
         }
 
-        if((client_digest = malloc(EVP_MD_size(md))) == NULL) {
+        if ((client_digest = malloc(digest_size)) == NULL) {
             perror("ERROR");
 
             OMP_DESTROY()
@@ -612,10 +628,10 @@ int main(int argc, char *argv[]) {
             return ERROR_CODE_FAILURE;
         }
 
-        if(arguments.salt_hex != NULL) {
+        if (arguments.salt_hex != NULL) {
             salt_size = (strlen(arguments.salt_hex) + 1) / 2;
 
-            if((salt = malloc(salt_size)) == NULL) {
+            if ((salt = malloc(salt_size)) == NULL) {
                 perror("ERROR");
 
                 free(client_digest);
@@ -676,15 +692,30 @@ int main(int argc, char *argv[]) {
                 }
             }
             else if(arguments.algo->mode == MODE_HASH) {
-                if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE)) {
-                    if(salt_size > 0) {
-                        free(salt);
+                if(arguments.algo->nid == NID_kang12) {
+                    if(kang12_hash(client_digest, KANG12_SIZE, client_seed, SEED_SIZE, NULL,
+                                   0)) {
+                        if(salt_size > 0) {
+                            free(salt);
+                        }
+                        free(client_digest);
+
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
                     }
-                    free(client_digest);
+                }
+                else {
+                    if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE)) {
+                        if(salt_size > 0) {
+                            free(salt);
+                        }
+                        free(client_digest);
 
-                    OMP_DESTROY()
+                        OMP_DESTROY()
 
-                    return ERROR_CODE_FAILURE;
+                        return ERROR_CODE_FAILURE;
+                    }
                 }
             }
 #ifdef USE_MPI
@@ -722,7 +753,7 @@ int main(int argc, char *argv[]) {
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
         else if(arguments.algo->mode == MODE_HASH) {
-            MPI_Bcast(client_digest, EVP_MD_size(md), MPI_UNSIGNED_CHAR, 0,
+            MPI_Bcast(client_digest, digest_size, MPI_UNSIGNED_CHAR, 0,
                       MPI_COMM_WORLD);
         }
 #endif
@@ -877,7 +908,7 @@ int main(int argc, char *argv[]) {
         else if(arguments.algo->mode == MODE_HASH) {
             fprintf(stderr, "INFO: Using %s CLIENT_DIGEST: %*s",
                     arguments.algo->full_name, (int)strlen(arguments.algo->full_name) - 4, "");
-            fprint_hex(stderr, client_digest, EVP_MD_size(md));
+            fprint_hex(stderr, client_digest, digest_size);
             fprintf(stderr, "\n");
 
             if(salt_size > 0) {
@@ -944,9 +975,16 @@ int main(int argc, char *argv[]) {
             v_args = ec_validator_create(ec_group, client_ec_point);
         }
         else if(arguments.algo->mode == MODE_HASH) {
-            crypto_func = hash_crypto_func;
-            crypto_cmp = hash_crypto_cmp;
-            v_args = hash_validator_create(md, client_digest, salt, salt_size);
+            if(arguments.algo->nid == NID_kang12) {
+                crypto_func = kang12_crypto_func;
+                crypto_cmp = kang12_crypto_cmp;
+                v_args = kang12_validator_create(client_digest, KANG12_SIZE, salt, salt_size);
+            }
+            else {
+                crypto_func = hash_crypto_func;
+                crypto_cmp = hash_crypto_cmp;
+                v_args = hash_validator_create(md, client_digest, salt, salt_size);
+            }
         }
 
 #ifdef USE_MPI
@@ -1049,6 +1087,11 @@ int main(int argc, char *argv[]) {
             }
             else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
+            }
+            else if(arguments.algo->mode == MODE_HASH) {
+                if(arguments.algo->nid == NID_kang12) {
+                    kang12_validator_destroy(v_args);
+                }
             }
 #ifndef USE_MPI
         }

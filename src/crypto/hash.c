@@ -4,6 +4,8 @@
 
 #include "hash.h"
 
+#include <XKCP/KangarooTwelve.h>
+
 int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
              const unsigned char *msg, size_t msg_size) {
     EVP_MD_CTX *new_ctx = NULL;
@@ -69,4 +71,23 @@ int evp_salt_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
     EVP_MD_CTX_free(new_ctx);
 
     return 0;
+}
+
+int kang12_hash(unsigned char *digest, size_t digest_size, const unsigned char *msg, size_t msg_size,
+                const unsigned char *salt, size_t salt_size) {
+    KangarooTwelve_Instance inst;
+
+    if(KangarooTwelve_Initialize(&inst, digest_size)) {
+        return 1;
+    }
+
+    if(KangarooTwelve_Update(&inst, msg, msg_size)) {
+        return 1;
+    }
+
+    if(salt_size > 0 && KangarooTwelve_Update(&inst, salt, salt_size)) {
+        return 1;
+    }
+
+    return KangarooTwelve_Final(&inst, digest, NULL, 0);
 }

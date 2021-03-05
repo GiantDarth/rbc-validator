@@ -110,6 +110,26 @@ int hash_crypto_cmp(void *args) {
     return memcmp(v->curr_digest, v->client_digest, v->digest_size) != 0;
 }
 
+int kang12_crypto_func(const unsigned char *curr_seed, void *args) {
+    kang12_validator_t *v = (kang12_validator_t*)args;
+
+    if(v == NULL) {
+        return 1;
+    }
+
+    return kang12_hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+}
+
+int kang12_crypto_cmp(void *args) {
+    kang12_validator_t *v = (kang12_validator_t*)args;
+
+    if(v == NULL) {
+        return -1;
+    }
+
+    return memcmp(v->curr_digest, v->client_digest, v->digest_size) != 0;
+}
+
 aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
                                             size_t n) {
     aes256_validator_t *v = malloc(sizeof(*v));
@@ -288,6 +308,38 @@ void hash_validator_destroy(hash_validator_t *v) {
 
     if(v->ctx != NULL) {
         EVP_MD_CTX_free(v->ctx);
+    }
+
+    if(v->curr_digest != NULL) {
+        free(v->curr_digest);
+    }
+
+    free(v);
+}
+
+kang12_validator_t *kang12_validator_create(const unsigned char *client_digest, size_t digest_size,
+                                            const unsigned char *salt, size_t salt_size) {
+    kang12_validator_t *v = malloc(sizeof(*v));
+
+    if(v == NULL || client_digest == NULL || digest_size == 0 || (salt == NULL && salt_size != 0)
+       || (salt != NULL && salt_size == 0)) {
+        kang12_validator_destroy(v);
+
+        return NULL;
+    }
+
+    v->digest_size = digest_size;
+    v->client_digest = client_digest;
+    v->salt = salt;
+    v->salt_size = salt_size;
+    v->curr_digest = malloc(v->digest_size * sizeof(*(v->curr_digest)));
+
+    return v;
+}
+
+void kang12_validator_destroy(kang12_validator_t *v) {
+    if(v == NULL) {
+        return;
     }
 
     if(v->curr_digest != NULL) {
