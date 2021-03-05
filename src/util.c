@@ -14,13 +14,13 @@ void fprint_hex(FILE *stream, const unsigned char *array, size_t count) {
 /// \return Return 0 to 15 depending on the value of hex_char, else return -1 on an invalid character.
 int parse_hex_char(char hex_char) {
     if(hex_char >= '0' && hex_char <= '9') {
-        return hex_char - 48;
+        return hex_char - '0';
     }
     else if(hex_char >= 'A' && hex_char <= 'F') {
-        return hex_char - 55;
+        return hex_char - 'A' + 10;
     }
     else if(hex_char >= 'a' && hex_char <= 'f') {
-        return hex_char - 87;
+        return hex_char - 'a' + 10;
     }
     else {
         return -1;
