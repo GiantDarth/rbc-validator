@@ -15,6 +15,8 @@ typedef struct seed_iter {
     mp_limb_t overflow;
     mp_limb_t curr_perm[ITER_LIMB_SIZE];
     mp_limb_t last_perm[ITER_LIMB_SIZE];
+    mp_limb_t t[ITER_LIMB_SIZE];
+    mp_limb_t tmp[ITER_LIMB_SIZE];
     mp_limb_t seed_mpn[ITER_LIMB_SIZE];
     mp_limb_t corrupted_seed_mpn[ITER_LIMB_SIZE];
 } seed_iter;
