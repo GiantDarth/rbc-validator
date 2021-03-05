@@ -21,8 +21,8 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
     set(MPI_ENABLED OFF CACHE BOOL "Enable support for compiling an MPI version as well.")
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
-set(SOURCE_FILES src/gmp_seed_iter.c src/gmp_seed_iter.h
-        src/util.c src/util.h)
+set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h)
+set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
@@ -52,16 +52,16 @@ list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packa
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
         /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
 
-add_executable(aes256_test src/aes256_test.c ${AES_FILES})
-add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES})
+add_executable(aes256_test src/aes256_test.c ${AES_FILES} ${UTIL_FILES})
+add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES} ${UTIL_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 add_executable(hash_test src/hash_test.c ${HASH_FILES})
 
-add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
+add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES}
         ${CIPHER_FILES} ${AES_FILES} ${EC_FILES} ${HASH_FILES})
 
 if(MPI_ENABLED)
-    add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES}
+    add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES}
             ${CIPHER_FILES} ${AES_FILES} ${EC_FILES} ${HASH_FILES})
 endif(MPI_ENABLED)
 

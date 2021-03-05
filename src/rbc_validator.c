@@ -19,12 +19,12 @@
 #endif
 
 #include "validator.h"
-#include "util.h"
-#include "crypto/aes256-ni_enc.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
 #include "crypto/hash.h"
-#include "gmp_seed_iter.h"
+#include "seed_iter.h"
+#include "perm.h"
+#include "util.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
@@ -42,7 +42,7 @@ if(omp_pause_resource_all(omp_pause_hard)) {\
 #endif
 
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
-#define MODE_NULL 0
+#define MODE_NONE 0
 // Used with symmetric encryption
 #define MODE_CIPHER 1
 // Used with matching a public key
@@ -58,6 +58,7 @@ typedef struct algo {
 } algo;
 
 const algo supported_algos[] = {
+        {"none", "None", 0, MODE_NONE },
         // Cipher algorithms
         { "aes","AES-256-ECB", NID_aes_256_ecb, MODE_CIPHER },
         { "chacha20","ChaCha20", NID_chacha20, MODE_CIPHER },
@@ -85,16 +86,17 @@ const char *argp_program_version = "rbc_validator (OpenMP) 0.1.0";
 const char *argp_program_bug_address = "<cp723@nau.edu>";
 error_t argp_err_exit_status = ERROR_CODE_FAILURE;
 
-static char args_doc[] = "--mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]\n"
+static char args_doc[] = "--mode=none HOST_SEED\n"
+                         "--mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]\n"
                          "--mode=ecc HOST_SEED CLIENT_PUB_KEY\n"
                          "--mode=[md5,sha1,sha224,sha256,sha384,sha512,sha3-224,sha3-256,sha3-384,"
                          "sha3-512] HOST_SEED CLIENT_DIGEST [SALT]\n"
                          "--mode=* -r/--random -m/--mismatches=value";
 static char prog_desc[] = "Given an HOST_SEED and either:"
                           "\n1) an AES256 CLIENT_CIPHER and plaintext UUID;"
-                          "\n1) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;"
-                          "\n2) an ECC Secp256r1 CLIENT_PUB_KEY;"
-                          "\n3) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256,"
+                          "\n2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;"
+                          "\n3) an ECC Secp256r1 CLIENT_PUB_KEY;"
+                          "\n4) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256,"
                           " SHA3-384, or SHA3-512 CLIENT_DIGEST;"
                           "\nwhere CLIENT_* is from an unreliable source."
                           " Progressively corrupt the chosen cryptographic function by a certain"
@@ -133,9 +135,10 @@ static struct argp_option options[] = {
         "mode",
         // Use the non-printable ASCII character '\5' to always enforce long mode (--mode)
         '\5',
-        "[aes,chacha20,ecc]",
+        "[none,aes,chacha20,ecc]",
         0,
-        "REQUIRED. Choose between AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc).",
+        "REQUIRED. Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20),"
+        " and ECC Secp256r1 (ecc).",
         0},
     {"all", 'a', 0, 0, "Don't cut out early when key is found.", 0},
     {
@@ -426,7 +429,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             if(!(arguments->random) && !(arguments->benchmark)) {
                 // We don't need to check seed_hex since the first argument will always be set to it
                 // and NO_ARGS is checked above
-                if(arguments->client_crypto_hex == NULL) {
+                if(arguments->algo->mode != MODE_NONE && arguments->client_crypto_hex == NULL) {
                     argp_usage(state);
                 }
 
@@ -472,6 +475,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
+int parse_hex_handler(unsigned char *buffer, const char *hex) {
+    int status = parse_hex(buffer, hex);
+
+    if(status == 1) {
+        fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
+    }
+    else if(status == 2) {
+        fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
+    }
+
+    return status != 0;
+}
+
 /// OpenMP implementation
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
@@ -510,8 +526,6 @@ int main(int argc, char *argv[]) {
     double start_time, duration, key_rate;
     long long int validated_keys = 0;
     int found, subfound;
-
-    long long int sub_validated_keys;
 
 #ifdef USE_MPI
     mpz_t key_count;
@@ -641,17 +655,8 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->mode == MODE_CIPHER) {
                 uuid_generate(userId);
 
-                if(arguments.algo->nid == NID_aes_256_ecb) {
-                    if (aes256_ecb_encrypt(client_cipher, client_seed, userId, sizeof(uuid_t))) {
-                        fprintf(stderr, "ERROR: aes256_ecb_encrypt failed.\n");
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    }
-                }
-                else if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, userId,
-                                    sizeof(uuid_t), iv)) {
+                if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, userId,
+                               sizeof(uuid_t), iv)) {
                     fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
                             ERR_error_string(ERR_get_error(), NULL));
 
@@ -716,99 +721,46 @@ int main(int argc, char *argv[]) {
 
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
-
-        if(arguments.algo->mode == MODE_HASH) {
+        else if(arguments.algo->mode == MODE_HASH) {
             MPI_Bcast(client_digest, EVP_MD_size(md), MPI_UNSIGNED_CHAR, 0,
                       MPI_COMM_WORLD);
         }
 #endif
     }
     else {
-        switch(parse_hex(host_seed, arguments.seed_hex)) {
-            case 1:
-                fprintf(stderr, "ERROR: HOST_SEED had non-hexadecimal characters.\n");
+        int parse_status = parse_hex_handler(host_seed, arguments.seed_hex);
 
-                if(arguments.algo->mode == MODE_EC) {
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
+        if(!parse_status) {
+            if(arguments.algo->mode == MODE_CIPHER) {
+                parse_status = parse_hex_handler(client_cipher, arguments.client_crypto_hex);
+
+                if(!parse_status && uuid_parse(arguments.uuid_hex, userId) < 0) {
+                    fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+                    parse_status = 1;
                 }
 
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            case 2:
-                fprintf(stderr, "ERROR: HOST_SEED did not have even length.\n");
-
-                if(arguments.algo->mode == MODE_EC) {
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
+                if (!parse_status && arguments.iv_hex != NULL) {
+                    parse_status = parse_hex_handler(iv, arguments.iv_hex);
                 }
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            default:
-                break;
-        }
-
-        if(arguments.algo->mode == MODE_CIPHER) {
-            switch(parse_hex(client_cipher, arguments.client_crypto_hex)) {
-                case 1:
-                    fprintf(stderr, "ERROR: CIPHER had non-hexadecimal characters.\n");
-
-                    OMP_DESTROY()
-
-                    return ERROR_CODE_FAILURE;
-                case 2:
-                    fprintf(stderr, "ERROR: CIPHER did not have even length.\n");
-
-                    OMP_DESTROY()
-
-                    return ERROR_CODE_FAILURE;
-                default:
-                    break;
             }
-
-            if (uuid_parse(arguments.uuid_hex, userId) < 0) {
-                fprintf(stderr, "ERROR: UUID not in canonical form.\n");
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            }
-
-            if(arguments.iv_hex != NULL) {
-                switch(parse_hex(iv, arguments.iv_hex)) {
-                    case 1:
-                        fprintf(stderr, "ERROR: IV had non-hexadecimal characters.\n");
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    case 2:
-                        fprintf(stderr, "ERROR: IV did not have even length.\n");
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    default:
-                        break;
+            else if (arguments.algo->mode == MODE_EC) {
+                if (EC_POINT_hex2point(ec_group, arguments.client_crypto_hex,
+                                       client_ec_point, NULL) == NULL) {
+                    fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
+                            ERR_error_string(ERR_get_error(), NULL));
+                    parse_status = 1;
                 }
             }
         }
-        else if(arguments.algo->mode == MODE_EC) {
-            if(EC_POINT_hex2point(ec_group, arguments.client_crypto_hex,
-                                  client_ec_point, NULL) == NULL) {
-                fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
-                        ERR_error_string(ERR_get_error(), NULL));
 
+        if(parse_status) {
+            if(arguments.algo->mode == MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
             }
+            OMP_DESTROY()
+
+            return ERROR_CODE_FAILURE;
         }
         else if(arguments.algo->mode == MODE_HASH) {
             switch(parse_hex(client_digest, arguments.client_crypto_hex)) {
@@ -960,14 +912,15 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
             userId, ec_group, client_ec_point, md, client_digest, salt, salt_size, mismatch, arguments,\
             validated_keys)\
-            private(subfound, sub_validated_keys)
+            private(subfound)
         {
+        long long int sub_validated_keys = 0;
 #endif
 
-        int (*crypto_func)(const unsigned char*, void*);
-        int (*crypto_cmp)(void*);
+        int (*crypto_func)(const unsigned char*, void*) = NULL;
+        int (*crypto_cmp)(void*) = NULL;
 
-        void *v_args;
+        void *v_args = NULL;
 
         subfound = 0;
 
@@ -1012,12 +965,12 @@ int main(int argc, char *argv[]) {
                 max_count = mpz_get_ui(key_count);
             }
 
-            gmp_get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
+            get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
                               mismatch, arguments.subseed_length);
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
-                                          arguments.count ? &sub_validated_keys : NULL,
+                                          arguments.count ? &validated_keys : NULL,
                                           &found, arguments.verbose, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
 
@@ -1051,13 +1004,12 @@ int main(int argc, char *argv[]) {
 #else
         if(subfound >= 0) {
             mpz_t first_perm, last_perm;
-            sub_validated_keys = 0;
 
             mpz_inits(first_perm, last_perm, NULL);
 
-            gmp_get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
-                              (size_t) omp_get_num_threads(), mismatch,
-                              arguments.subseed_length);
+            get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
+                          (size_t) omp_get_num_threads(), mismatch,
+                          arguments.subseed_length);
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
@@ -1083,9 +1035,7 @@ int main(int argc, char *argv[]) {
                     found = -1;
                 }
 
-                if (arguments.count) {
-                    validated_keys += sub_validated_keys;
-                }
+                validated_keys += sub_validated_keys;
             }
 #endif
 
@@ -1097,7 +1047,7 @@ int main(int argc, char *argv[]) {
                     cipher_validator_destroy(v_args);
                 }
             }
-        else if(arguments.algo->mode == MODE_EC) {
+            else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
 #ifndef USE_MPI
@@ -1195,6 +1145,6 @@ int main(int argc, char *argv[]) {
 
     OMP_DESTROY()
 
-    return found ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
+    return found || arguments.algo->mode == MODE_NONE ? ERROR_CODE_FOUND : ERROR_CODE_NOT_FOUND;
 #endif
 }

@@ -7,12 +7,7 @@
 #include <memory.h>
 
 #include "crypto/aes256-ni_enc.h"
-
-void print_hex(const unsigned char *array, size_t count) {
-    for(size_t i = 0; i < count; i++) {
-        printf("%02x", array[i]);
-    }
-}
+#include "util.h"
 
 int main() {
     const unsigned char key[] = {
@@ -46,10 +41,10 @@ int main() {
         status = EXIT_FAILURE;
     }
 
-    print_hex(cipher, sizeof(cipher));
+    fprint_hex(stdout, cipher, sizeof(cipher));
     printf("\n");
 
-    print_hex(expected_cipher, sizeof(expected_cipher));
+    fprint_hex(stdout, expected_cipher, sizeof(expected_cipher));
     printf("\n");
 
     return status;
