@@ -7,12 +7,7 @@
 #include <memory.h>
 
 #include "crypto/cipher.h"
-
-void print_hex(const unsigned char *array, size_t count) {
-    for(size_t i = 0; i < count; i++) {
-        printf("%02x", array[i]);
-    }
-}
+#include "util.h"
 
 int generic_test(const char *name, const EVP_CIPHER *evp_cipher, const unsigned char *key,
                  const unsigned char *msg, const unsigned char *expected_cipher, size_t msg_len,
@@ -39,11 +34,11 @@ int generic_test(const char *name, const EVP_CIPHER *evp_cipher, const unsigned 
     }
 
     printf("Expected: ");
-    print_hex(expected_cipher, msg_len);
+    fprint_hex(stdout, expected_cipher, msg_len);
     printf("\n");
 
     printf("Actual:   ");
-    print_hex(cipher, msg_len);
+    fprint_hex(stdout, cipher, msg_len);
     printf("\n");
 
     free(cipher);
