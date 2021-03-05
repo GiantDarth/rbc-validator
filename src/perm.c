@@ -127,7 +127,7 @@ void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned cha
     mpz_clears(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
 }
 
-void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, size_t pair_count,
+void get_perm_pair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t pair_count,
                    int mismatches, size_t subkey_length) {
     mpz_t total_perms, starting_ordinal, ending_ordinal;
     mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
@@ -135,24 +135,24 @@ void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, si
     mpz_bin_uiui(total_perms, subkey_length, mismatches);
 
     if(pair_index == 0) {
-        assign_first_permutation(starting_perm, mismatches);
+        assign_first_permutation(first_perm, mismatches);
     }
     else {
         mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
         mpz_mul_ui(starting_ordinal, starting_ordinal, pair_index);
 
-        decode_ordinal(starting_perm, starting_ordinal, mismatches, subkey_length);
+        decode_ordinal(first_perm, starting_ordinal, mismatches, subkey_length);
     }
 
     if(pair_index == pair_count - 1) {
-        assign_last_permutation(ending_perm, mismatches, subkey_length);
+        assign_last_permutation(last_perm, mismatches, subkey_length);
     }
     else {
         mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
         mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
         mpz_sub_ui(ending_ordinal, ending_ordinal, 1);
 
-        decode_ordinal(ending_perm, ending_ordinal, mismatches, subkey_length);
+        decode_ordinal(last_perm, ending_ordinal, mismatches, subkey_length);
     }
 
     // Left shift permutations by (key_size * 8) - subkey_length bits to make them most significant bit
