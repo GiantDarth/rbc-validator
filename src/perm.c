@@ -150,6 +150,7 @@ void get_perm_pair(mpz_t starting_perm, mpz_t ending_perm, size_t pair_index, si
     else {
         mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
         mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
+        mpz_sub_ui(ending_ordinal, ending_ordinal, 1);
 
         decode_ordinal(ending_perm, ending_ordinal, mismatches, subkey_length);
     }
