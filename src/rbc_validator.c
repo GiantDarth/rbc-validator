@@ -859,7 +859,7 @@ int main(int argc, char *argv[]) {
                 max_count = mpz_get_ui(key_count);
             }
 
-            gmp_get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
+            get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
                               mismatch, arguments.subseed_length);
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
