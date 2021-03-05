@@ -248,7 +248,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
                        int (*crypto_func)(const unsigned char*, void*), int (*crypto_cmp)(void*),
                        void *crypto_args) {
     // Declaration
-    int status = 0, cmp_status;
+    int status = 0, cmp_status = 1;
     gmp_seed_iter iter;
     const unsigned char *curr_seed;
 #ifdef USE_MPI
@@ -278,13 +278,13 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
         curr_seed = gmp_seed_iter_get(&iter);
 
         // If crypto_func fails for some reason, break prematurely.
-        if(crypto_func(curr_seed, crypto_args)) {
+        if(crypto_func != NULL && crypto_func(curr_seed, crypto_args)) {
             status = -1;
             break;
         }
 
         // If crypto_cmp fails for some reason, break prematurely.
-        if((cmp_status = crypto_cmp(crypto_args)) < 0) {
+        if(crypto_cmp != NULL && (cmp_status = crypto_cmp(crypto_args)) < 0) {
             status = -1;
             break;
         }
