@@ -19,11 +19,11 @@
 #endif
 
 #include "validator.h"
-#include "util.h"
-#include "crypto/aes256-ni_enc.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
 #include "seed_iter.h"
+#include "perm.h"
+#include "util.h"
 
 #define ERROR_CODE_FOUND 0
 #define ERROR_CODE_NOT_FOUND 1
