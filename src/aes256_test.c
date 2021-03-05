@@ -7,12 +7,7 @@
 #include <memory.h>
 
 #include "crypto/aes256-ni_enc.h"
-
-void print_hex(const unsigned char *array, size_t count) {
-    for(size_t i = 0; i < count; i++) {
-        printf("%02x", array[i]);
-    }
-}
+#include "util.h"
 
 int main() {
     const unsigned char key[] = {
@@ -28,10 +23,13 @@ int main() {
             0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33, 0x1b, 0x3e
     };
 
-    unsigned char cipher[16];
+    unsigned char cipher[AES_BLOCK_SIZE];
     int status;
 
-    aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg));
+    if(aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
+        fprintf(stderr, "ERROR: evp_encrypt failed\n");
+        return EXIT_FAILURE;
+    }
 
     printf("Encryption: Test ");
     if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
@@ -43,10 +41,10 @@ int main() {
         status = EXIT_FAILURE;
     }
 
-    print_hex(cipher, sizeof(cipher));
+    fprint_hex(stdout, cipher, sizeof(cipher));
     printf("\n");
 
-    print_hex(expected_cipher, sizeof(expected_cipher));
+    fprint_hex(stdout, expected_cipher, sizeof(expected_cipher));
     printf("\n");
 
     return status;
