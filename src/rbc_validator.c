@@ -473,8 +473,6 @@ int main(int argc, char *argv[]) {
     long long int validated_keys = 0;
     int found, subfound;
 
-    long long int sub_validated_keys;
-
 #ifdef USE_MPI
     mpz_t key_count;
     size_t max_count;
@@ -806,8 +804,9 @@ int main(int argc, char *argv[]) {
 #ifndef USE_MPI
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
             userId, ec_group, client_ec_point, mismatch, arguments, validated_keys)\
-            private(subfound, sub_validated_keys)
+            private(subfound)
         {
+        long long int sub_validated_keys = 0;
 #endif
 
         int (*crypto_func)(const unsigned char*, void*) = NULL;
@@ -858,7 +857,7 @@ int main(int argc, char *argv[]) {
 
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           arguments.all,
-                                          arguments.count ? &sub_validated_keys : NULL,
+                                          arguments.count ? &validated_keys : NULL,
                                           &found, arguments.verbose, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
 
@@ -886,7 +885,6 @@ int main(int argc, char *argv[]) {
 #else
         if(subfound >= 0) {
             mpz_t first_perm, last_perm;
-            sub_validated_keys = 0;
 
             mpz_inits(first_perm, last_perm, NULL);
 
@@ -918,9 +916,7 @@ int main(int argc, char *argv[]) {
                     found = -1;
                 }
 
-                if (arguments.count) {
-                    validated_keys += sub_validated_keys;
-                }
+                validated_keys += sub_validated_keys;
             }
 #endif
 
