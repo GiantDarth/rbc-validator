@@ -27,22 +27,6 @@ set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
 set(HASH_FILES src/crypto/hash.c src/crypto/hash.h)
-set(QTESLA_FILES lib/qtesla/ref/qTesla_p_I/api.h lib/qtesla/ref/qTesla_p_I/CDT32.h
-        lib/qtesla/ref/qTesla_p_I/consts.c lib/qtesla/ref/qTesla_p_I/params.h
-        lib/qtesla/ref/qTesla_p_I/gauss.c lib/qtesla/ref/qTesla_p_I/gauss.h
-        lib/qtesla/ref/qTesla_p_I/pack.c lib/qtesla/ref/qTesla_p_I/pack.h
-        lib/qtesla/ref/qTesla_p_I/poly.c lib/qtesla/ref/qTesla_p_I/poly.h
-        lib/qtesla/ref/qTesla_p_I/sample.c lib/qtesla/ref/qTesla_p_I/sample.h
-        lib/qtesla/ref/qTesla_p_I/sign.c
-        lib/qtesla/ref/qTesla_p_I/random/random.c lib/qtesla/ref/qTesla_p_I/random/random.h
-        lib/qtesla/ref/qTesla_p_I/sha3/fips202.c lib/qtesla/ref/qTesla_p_I/sha3/fips202.h)
-set(DILITHIUM_FILES lib/dilithium/ref/api.h lib/dilithium/ref/params.h lib/dilithium/ref/sign.c
-        lib/dilithium/ref/sign.h lib/dilithium/ref/packing.c lib/dilithium/ref/packing.h
-        lib/dilithium/ref/polyvec.c lib/dilithium/ref/polyvec.h lib/dilithium/ref/poly.c
-        lib/dilithium/ref/poly.h lib/dilithium/ref/ntt.c lib/dilithium/ref/ntt.h
-        lib/dilithium/ref/reduce.c lib/dilithium/ref/reduce.h lib/dilithium/ref/rounding.c
-        lib/dilithium/ref/rounding.h lib/dilithium/ref/fips202.c lib/dilithium/ref/fips202.h
-        lib/dilithium/ref/symmetric-shake.c lib/dilithium/ref/symmetric.h)
 set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
