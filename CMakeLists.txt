@@ -21,6 +21,7 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
     set(MPI_ENABLED OFF CACHE BOOL "Enable support for compiling an MPI version as well.")
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
+set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
 set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
@@ -74,9 +75,17 @@ target_compile_definitions(hash_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COM
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
 
+if(ALWAYS_EVP_AES)
+    target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
+endif(ALWAYS_EVP_AES)
+
 if(MPI_ENABLED)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
             PUBLIC OPENSSL_NO_DEPRECATED)
+
+    if(ALWAYS_EVP_AES)
+        target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
+    endif(ALWAYS_EVP_AES)
 endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
