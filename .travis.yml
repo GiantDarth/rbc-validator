@@ -58,16 +58,6 @@ before_install:
   - eval "${MATRIX_EVAL}"
 
 script:
-  - mkdir -p ~/.local/lib
-  - mkdir -p ~/.local/include
-
-  # Build XKCP and manually copy it to ~/.local (since no make install is provided)
-  - cd lib/XKCP
-  - make generic64/libXKCP.a
-  - cp bin/generic64/libXKCP.a ~/.local/lib
-  - cp -r bin/generic64/libXKCP.a.headers ~/.local/include/XKCP
-  - cd ../..
-
   - cmake --version
   - cmake ./CMakeLists.txt
   - cmake --build .

@@ -62,12 +62,12 @@ find_package(GMP 6.0.0 MODULE REQUIRED)
 find_package(UUID MODULE REQUIRED)
 find_package(Argp MODULE REQUIRED)
 
-find_library(XKCP_LIBRARIES NAMES XKCP PATHS ~/.local/lib)
+add_subdirectory(lib/XKCP)
 
-include_directories(~/.local/include)
 include_directories(${GMP_INCLUDES})
 include_directories(${UUID_INCLUDE_DIRS})
 include_directories(${ARGP_INCLUDE_DIR})
+include_directories(${CMAKE_BINARY_DIR}/include)
 
 target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
@@ -109,13 +109,13 @@ endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
 target_link_libraries(ecc_test OpenSSL::Crypto)
-target_link_libraries(hash_test OpenSSL::Crypto ${XKCP_LIBRARIES})
+target_link_libraries(hash_test OpenSSL::Crypto XKCP)
 target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
-        ${ARGP_LIBRARIES} ${XKCP_LIBRARIES})
+        ${ARGP_LIBRARIES} XKCP)
 
 if(MPI_ENABLED)
     target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
-            ${ARGP_LIBRARIES} ${XKCP_LIBRARIES})
+            ${ARGP_LIBRARIES} XKCP)
 endif(MPI_ENABLED)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)
