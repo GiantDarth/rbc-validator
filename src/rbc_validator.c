@@ -777,6 +777,7 @@ int main(int argc, char *argv[]) {
         subfound = 0;
 
         if(arguments.algo->mode == MODE_CIPHER) {
+#ifndef ALWAYS_EVP_AES
             // Use a custom implementation for improved speed
             if(arguments.algo->nid == NID_aes_256_ecb) {
                 crypto_func = aes256_crypto_func;
@@ -784,11 +785,14 @@ int main(int argc, char *argv[]) {
                 v_args = aes256_validator_create(userId, client_cipher, sizeof(uuid_t));
             }
             else {
+#endif
                 crypto_func = cipher_crypto_func;
                 crypto_cmp = cipher_crypto_cmp;
                 v_args = cipher_validator_create(evp_cipher, client_cipher, userId, sizeof(uuid_t),
                                                  EVP_CIPHER_iv_length(evp_cipher) > 0 ? iv : NULL);
+#ifndef ALWAYS_EVP_AES
             }
+#endif
         }
         else if(arguments.algo->mode == MODE_EC) {
             crypto_func = ec_crypto_func;
