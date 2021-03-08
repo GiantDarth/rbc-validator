@@ -93,6 +93,7 @@ int hash_crypto_func(const unsigned char *curr_seed, void *args) {
     }
 
     switch(v->nid) {
+#ifndef ALWAYS_EVP_HASH
         case NID_md5:
             return md5_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha1:
@@ -105,6 +106,8 @@ int hash_crypto_func(const unsigned char *curr_seed, void *args) {
             return sha384_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha512:
             return sha512_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+#endif
+#ifndef ALWAYS_EVP_SHA3
         case NID_sha3_224:
             return sha3_224_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha3_256:
@@ -113,6 +116,7 @@ int hash_crypto_func(const unsigned char *curr_seed, void *args) {
             return sha3_384_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha3_512:
             return sha3_512_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+#endif
         default:
             return evp_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE, v->salt, v->salt_size);
     }

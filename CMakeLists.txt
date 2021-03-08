@@ -22,6 +22,9 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
+set(ALWAYS_EVP_HASH OFF CACHE BOOL "Force MD5, SHA1, and SHA2 to use OpenSSL's EVP system instead.")
+set(ALWAYS_EVP_SHA3 OFF CACHE BOOL "Force all SHA-3 algorithms to use OpenSSL's EVP over XKCP.")
+
 set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
@@ -79,6 +82,14 @@ if(ALWAYS_EVP_AES)
     target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
 endif(ALWAYS_EVP_AES)
 
+if(ALWAYS_EVP_HASH)
+    target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_HASH)
+endif(ALWAYS_EVP_HASH)
+
+if(ALWAYS_EVP_SHA3)
+    target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_SHA3)
+endif(ALWAYS_EVP_SHA3)
+
 if(MPI_ENABLED)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
             PUBLIC OPENSSL_NO_DEPRECATED)
@@ -86,6 +97,14 @@ if(MPI_ENABLED)
     if(ALWAYS_EVP_AES)
         target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
     endif(ALWAYS_EVP_AES)
+
+    if(ALWAYS_EVP_HASH)
+        target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_HASH)
+    endif(ALWAYS_EVP_HASH)
+
+    if(ALWAYS_EVP_SHA3)
+        target_compile_definitions(rbc_validator_mpi PUBLIC ALWAYS_EVP_SHA3)
+    endif(ALWAYS_EVP_SHA3)
 endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
