@@ -31,7 +31,7 @@ set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
-list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packages/openssl/1.1.1)
+list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2-aqy3gvy /packages/openssl/1.1.1i-5uny3qr)
 # Append expected search paths for Mac OS X via Homebrew
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
         /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
