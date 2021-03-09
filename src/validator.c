@@ -152,47 +152,6 @@ int kang12_crypto_cmp(void *args) {
     return memcmp(v->curr_digest, v->client_digest, v->digest_size) != 0;
 }
 
-aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
-                                            size_t n) {
-    aes256_validator_t *v = malloc(sizeof(*v));
-
-    if(v == NULL || msg == NULL || client_cipher == NULL) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    v->n = n;
-    v->msg = msg;
-    v->client_cipher = client_cipher;
-
-    if(n % AES_BLOCK_SIZE != 0) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    if((v->curr_cipher = malloc(n * sizeof(*(v->curr_cipher)))) == NULL) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    return v;
-}
-
-void aes256_validator_destroy(aes256_validator_t *v) {
-    if(v == NULL) {
-        return;
-    }
-
-    if(v->curr_cipher != NULL) {
-        free(v->curr_cipher);
-    }
-
-    free(v);
-}
-
 cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
                                             const unsigned char *client_cipher, const unsigned char *msg,
                                             size_t msg_size, const unsigned char *iv) {
