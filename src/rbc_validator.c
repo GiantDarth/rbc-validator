@@ -961,17 +961,17 @@ int main(int argc, char *argv[]) {
             if(arguments.algo->nid == NID_aes_256_ecb) {
                 crypto_func = aes256_crypto_func;
                 crypto_cmp = aes256_crypto_cmp;
-                v_args = aes256_validator_create(userId, client_cipher, sizeof(uuid_t));
             }
             else {
 #endif
                 crypto_func = cipher_crypto_func;
                 crypto_cmp = cipher_crypto_cmp;
-                v_args = cipher_validator_create(evp_cipher, client_cipher, userId, sizeof(uuid_t),
-                                                 EVP_CIPHER_iv_length(evp_cipher) > 0 ? iv : NULL);
 #ifndef ALWAYS_EVP_AES
             }
 #endif
+
+            v_args = cipher_validator_create(evp_cipher, client_cipher, userId, sizeof(uuid_t),
+                                             EVP_CIPHER_iv_length(evp_cipher) > 0 ? iv : NULL);
         }
         else if(arguments.algo->mode == MODE_EC) {
             crypto_func = ec_crypto_func;
@@ -1082,12 +1082,7 @@ int main(int argc, char *argv[]) {
 #endif
 
             if(arguments.algo->mode == MODE_CIPHER) {
-                if(arguments.algo->nid == NID_aes_256_ecb) {
-                    aes256_validator_destroy(v_args);
-                }
-                else {
-                    cipher_validator_destroy(v_args);
-                }
+                cipher_validator_destroy(v_args);
             }
             else if(arguments.algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);

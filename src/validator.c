@@ -16,23 +16,23 @@
 #include "crypto/hash.h"
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
-    aes256_validator_t *v = (aes256_validator_t*)args;
+    cipher_validator_t *v = (struct cipher_validator_t*)args;
 
     if(v == NULL) {
         return -1;
     }
 
-    return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->n);
+    return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->msg_size);
 }
 
 int aes256_crypto_cmp(void *args) {
-    aes256_validator_t *v = (aes256_validator_t*)args;
+    struct cipher_validator_t *v = (struct cipher_validator_t*)args;
 
     if(v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
         return -1;
     }
 
-    return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
+    return memcmp(v->curr_cipher, v->client_cipher, v->msg_size) != 0;
 }
 
 int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
