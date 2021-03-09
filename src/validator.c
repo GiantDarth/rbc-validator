@@ -16,7 +16,7 @@
 #include "crypto/hash.h"
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
-    cipher_validator_t *v = (struct cipher_validator_t*)args;
+    cipher_validator_t *v = (cipher_validator_t*)args;
 
     if(v == NULL) {
         return -1;
@@ -26,7 +26,7 @@ int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
 }
 
 int aes256_crypto_cmp(void *args) {
-    struct cipher_validator_t *v = (struct cipher_validator_t*)args;
+    cipher_validator_t *v = (cipher_validator_t*)args;
 
     if(v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
         return -1;
