@@ -80,14 +80,33 @@ const algo *find_algo(const char* abbr_name, const algo *algos) {
     return NULL;
 }
 
-int validate_args(int argc, const struct gengetopt_args_info *args_info) {
-    const algo *algo = &(supported_algos[args_info->mode_arg]);
+int check_usage(int argc, const struct gengetopt_args_info *args_info) {
+
 
     if(args_info->usage_given || argc < 2) {
         fprintf(stderr, "%s\n", gengetopt_args_info_usage);
         return 1;
     }
 
+    if(args_info->inputs_num == 0) {
+        if(!args_info->random_flag && !args_info->benchmark_flag) {
+            fprintf(stderr, "%s\n", gengetopt_args_info_usage);
+            return 1;
+        }
+    }
+    else if (args_info->mode_given) {
+        const algo *algo = &(supported_algos[args_info->mode_arg]);
+
+        if(algo->mode == MODE_NONE || args_info->random_flag || args_info->benchmark_flag) {
+            fprintf(stderr, "%s\n", gengetopt_args_info_usage);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int validate_args(const struct gengetopt_args_info *args_info) {
     // Manually enforce requirement since built-in required not used with --usage
     if(!args_info->mode_given) {
         fprintf(stderr, "%s: --mode option is required\n", CMDLINE_PARSER_PACKAGE);
@@ -114,17 +133,6 @@ int validate_args(int argc, const struct gengetopt_args_info *args_info) {
         return 1;
     }
 #endif
-
-    if(args_info->inputs_num == 0) {
-        if(!args_info->random_flag && !args_info->benchmark_flag) {
-            fprintf(stderr, "%s\n", gengetopt_args_info_usage);
-            return 1;
-        }
-    }
-    else if(algo->mode == MODE_NONE || args_info->random_flag || args_info->benchmark_flag) {
-        fprintf(stderr, "%s\n", gengetopt_args_info_usage);
-        return 1;
-    }
 
     if(args_info->mismatches_arg < 0) {
         if(args_info->random_flag) {
@@ -293,8 +301,27 @@ int main(int argc, char *argv[]) {
     memset(&params, 0, sizeof(params));
 
     // Parse arguments
-    if(cmdline_parser(argc, argv, &args_info) || validate_args(argc, &args_info) || \
-            parse_params(&params, &args_info)) {
+    if(cmdline_parser(argc, argv, &args_info)) {
+#ifdef USE_MPI
+        MPI_Finalize();
+#else
+        OMP_DESTROY()
+#endif
+
+        return ERROR_CODE_FAILURE;
+    }
+
+    if(check_usage(argc, &args_info)) {
+#ifdef USE_MPI
+        MPI_Finalize();
+#else
+        OMP_DESTROY()
+#endif
+
+        return EXIT_SUCCESS;
+    }
+
+    if(validate_args(&args_info) || parse_params(&params, &args_info)) {
 #ifdef USE_MPI
         MPI_Finalize();
 #else
