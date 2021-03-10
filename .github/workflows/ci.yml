@@ -59,10 +59,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
-          echo "CC=clang" >> $GITHUB_ENV
           which cmake
           cmake --version
-          cmake ./CMakeLists.txt
+          CC=clang cmake ./CMakeLists.txt
       - name: Build
         run: cmake --build .
       - name: Test AES
