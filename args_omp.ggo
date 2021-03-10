@@ -1,20 +1,23 @@
 package "rbc_validator"
 version "v0.1.0"
 
-purpose "Given an HOST_SEED and either:
+purpose "\nGiven an HOST_SEED and either:
 1) an AES256 CLIENT_CIPHER and plaintext UUID;
 2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;
 3) an ECC Secp256r1 CLIENT_PUB_KEY;
 where CLIENT_* is from an unreliable source. \
 Progressively corrupt the chosen cryptographic function by a certain \
 number of bits until a matching client seed is found. The matching \
-HOST_* will be sent to stdout, depending on the cryptographic function."
+HOST_* will be sent to stdout, depending on the cryptographic function.
 
-usage "--mode=none HOST_SEED
-  or : --mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]
-  or : --mode=ecc HOST_SEED CLIENT_PUB_KEY
-  or : --mode=* -r/--random -m/--mismatches=value
-  or : --mode=* -b/--benchmark -m/--mismatches=value"
+This implementation uses OpenMP."
+
+usage "rbc_validator [OPTIONS...] --mode=none HOST_SEED
+  or : rbc_validator [OPTIONS...] --mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]
+  or : rbc_validator [OPTIONS...] --mode=ecc HOST_SEED CLIENT_PUB_KEY
+  or : rbc_validator [OPTIONS...] --mode=* -r/--random -m/--mismatches=value
+  or : rbc_validator [OPTIONS...] --mode=* -b/--benchmark -m/--mismatches=value"
+
 description "If the client seed is found then the program will have an exit code \
 0. If not found, e.g. when providing --mismatches and \
 especially --exact, then the program will have an exit code \
@@ -28,9 +31,13 @@ characters."
 
 versiontext "Christopher Robert Philabaum <cp723@nau.edu>"
 
-args "--output-dir=src --default-optional --unnamed-opts"
+args "--output-dir=src/cmdline --default-optional --unnamed-opts --file-name cmdline_omp \
+--show-required=(MANDATORY)"
 
-option "mode" - "REQUIRED. Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), \
+defmode "Random"
+defmode "Benchmark"
+
+option "mode" - "Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), \
 and ECC Secp256r1 (ecc)."
     enum values="none","aes","chacha20","ecc"
     required
@@ -46,16 +53,16 @@ option "subkey" s "How many of the first bits to corrupt and iterate over. Must 
 Defaults to 256."
     int typestr="value" default="256"
 
-option "random" r "Instead of using arguments, randomly generate HOST_SEED and CLIENT_*. This must be \
+modeoption "random" r "Instead of using arguments, randomly generate HOST_SEED and CLIENT_*. This must be \
 accompanied by --mismatches, since it is used to corrupt the random key by the same # of \
 bits. --random and --benchmark cannot be used together."
-    flag off
+    flag off mode="Random"
 
-option "benchmark" b "Instead of using arguments, strategically generate HOST_SEED and CLIENT_*. \
+modeoption "benchmark" b "Instead of using arguments, strategically generate HOST_SEED and CLIENT_*. \
 Specifically, generates a client seed that's always 50% of the way through a rank's \
 workload, but randomly chooses the thread. --random and --benchmark cannot be used \
 together."
-    flag off
+    flag off mode="Benchmark"
 
 option "all" a "Don't cut out early when key is found."
     flag off

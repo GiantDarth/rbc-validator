@@ -22,7 +22,7 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
-set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h src/cmdline.c src/cmdline.h
+set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h
         src/uuid.c src/uuid.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
@@ -41,12 +41,12 @@ add_executable(aes256_test src/aes256_test.c ${AES_FILES} ${UTIL_FILES})
 add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES} ${UTIL_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 
-add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES}
-        ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+add_executable(rbc_validator src/rbc_validator.c src/cmdline/cmdline_omp.c src/cmdline/cmdline_omp.h
+        ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 
 if(MPI_ENABLED)
-    add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES}
-            ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+    add_executable(rbc_validator_mpi src/rbc_validator.c src/cmdline/cmdline_mpi.c src/cmdline/cmdline_mpi.h
+            ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 endif(MPI_ENABLED)
 
 find_package(OpenSSL 1.1.1 REQUIRED)

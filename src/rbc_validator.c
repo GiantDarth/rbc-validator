@@ -12,11 +12,12 @@
 
 #if defined(USE_MPI)
 #include <mpi.h>
+#include "cmdline/cmdline_mpi.h"
 #else
 #include <omp.h>
+#include "cmdline/cmdline_omp.h"
 #endif
 
-#include "cmdline.h"
 #include "validator.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
@@ -111,11 +112,6 @@ int validate_args(const struct gengetopt_args_info *args_info) {
     }
     else if(algo->mode == MODE_NONE || args_info->random_flag || args_info->benchmark_flag) {
         fprintf(stderr, "%s\n", gengetopt_args_info_usage);
-        return 1;
-    }
-
-    if(args_info->random_flag && args_info->benchmark_flag) {
-        fprintf(stderr, "--random and --benchmark cannot be both set simultaneously.\n");
         return 1;
     }
 
