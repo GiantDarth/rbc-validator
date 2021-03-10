@@ -80,8 +80,19 @@ const algo *find_algo(const char* abbr_name, const algo *algos) {
     return NULL;
 }
 
-int validate_args(const struct gengetopt_args_info *args_info) {
+int validate_args(int argc, const struct gengetopt_args_info *args_info) {
     const algo *algo = &(supported_algos[args_info->mode_arg]);
+
+    if(args_info->usage_given || argc < 2) {
+        fprintf(stderr, "%s\n", gengetopt_args_info_usage);
+        return 1;
+    }
+
+    // Manually enforce requirement since built-in required not used with --usage
+    if(!args_info->mode_given) {
+        fprintf(stderr, "%s: --mode option is required\n", CMDLINE_PARSER_PACKAGE);
+        return 1;
+    }
 
     if (args_info->mismatches_arg > SEED_SIZE * 8) {
         fprintf(stderr, "--mismatches cannot exceed the seed size of 256-bits.\n");
@@ -282,7 +293,7 @@ int main(int argc, char *argv[]) {
     memset(&params, 0, sizeof(params));
 
     // Parse arguments
-    if(cmdline_parser(argc, argv, &args_info) || validate_args(&args_info) || \
+    if(cmdline_parser(argc, argv, &args_info) || validate_args(argc, &args_info) || \
             parse_params(&params, &args_info)) {
 #ifdef USE_MPI
         MPI_Finalize();

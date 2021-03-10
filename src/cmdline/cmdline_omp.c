@@ -36,7 +36,8 @@ const char *gengetopt_args_info_description = "If the client seed is found then 
 const char *gengetopt_args_info_help[] = {
   "  -h, --help              Print help and exit",
   "  -V, --version           Print version and exit",
-  "      --mode=ENUM         Choose between only seed iteration (none), AES256\n                            (aes), ChaCha20 (chacha20), and ECC Secp256r1\n                            (ecc).  (possible values=\"none\", \"aes\",\n                            \"chacha20\", \"ecc\") (MANDATORY)",
+  "      --usage             Give a short usage message",
+  "      --mode=ENUM         (REQUIRED) Choose between only seed iteration (none),\n                            AES256 (aes), ChaCha20 (chacha20), and ECC\n                            Secp256r1 (ecc).  (possible values=\"none\",\n                            \"aes\", \"chacha20\", \"ecc\")",
   "  -m, --mismatches=value  The largest # of bits of corruption to test against,\n                            inclusively. Defaults to -1. If negative, then the\n                            size of key in bits will be the limit. If in random\n                            or benchmark mode, then this will also be used to\n                            corrupt the random key by the same # of bits; for\n                            this reason, it must be set and non-negative when\n                            in random or benchmark mode. Cannot be larger than\n                            what --subkey-size is set to.  (default=`-1')",
   "  -s, --subkey=value      How many of the first bits to corrupt and iterate\n                            over. Must be between 1 and 256. Defaults to 256.\n                            (default=`256')",
   "\n Mode: Random",
@@ -66,8 +67,6 @@ static int
 cmdline_parser_internal (int argc, char **argv, struct gengetopt_args_info *args_info,
                         struct cmdline_parser_params *params, const char *additional_error);
 
-static int
-cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *prog_name, const char *additional_error);
 
 const char *cmdline_parser_mode_values[] = {"none", "aes", "chacha20", "ecc", 0}; /*< Possible values for mode. */
 
@@ -79,6 +78,7 @@ void clear_given (struct gengetopt_args_info *args_info)
 {
   args_info->help_given = 0 ;
   args_info->version_given = 0 ;
+  args_info->usage_given = 0 ;
   args_info->mode_given = 0 ;
   args_info->mismatches_given = 0 ;
   args_info->subkey_given = 0 ;
@@ -121,16 +121,17 @@ void init_args_info(struct gengetopt_args_info *args_info)
 
   args_info->help_help = gengetopt_args_info_help[0] ;
   args_info->version_help = gengetopt_args_info_help[1] ;
-  args_info->mode_help = gengetopt_args_info_help[2] ;
-  args_info->mismatches_help = gengetopt_args_info_help[3] ;
-  args_info->subkey_help = gengetopt_args_info_help[4] ;
-  args_info->random_help = gengetopt_args_info_help[6] ;
-  args_info->benchmark_help = gengetopt_args_info_help[8] ;
-  args_info->all_help = gengetopt_args_info_help[9] ;
-  args_info->count_help = gengetopt_args_info_help[10] ;
-  args_info->fixed_help = gengetopt_args_info_help[11] ;
-  args_info->verbose_help = gengetopt_args_info_help[12] ;
-  args_info->threads_help = gengetopt_args_info_help[13] ;
+  args_info->usage_help = gengetopt_args_info_help[2] ;
+  args_info->mode_help = gengetopt_args_info_help[3] ;
+  args_info->mismatches_help = gengetopt_args_info_help[4] ;
+  args_info->subkey_help = gengetopt_args_info_help[5] ;
+  args_info->random_help = gengetopt_args_info_help[7] ;
+  args_info->benchmark_help = gengetopt_args_info_help[9] ;
+  args_info->all_help = gengetopt_args_info_help[10] ;
+  args_info->count_help = gengetopt_args_info_help[11] ;
+  args_info->fixed_help = gengetopt_args_info_help[12] ;
+  args_info->verbose_help = gengetopt_args_info_help[13] ;
+  args_info->threads_help = gengetopt_args_info_help[14] ;
   
 }
 
@@ -307,6 +308,8 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "help", 0, 0 );
   if (args_info->version_given)
     write_into_file(outfile, "version", 0, 0 );
+  if (args_info->usage_given)
+    write_into_file(outfile, "usage", 0, 0 );
   if (args_info->mode_given)
     write_into_file(outfile, "mode", args_info->mode_orig, cmdline_parser_mode_values);
   if (args_info->mismatches_given)
@@ -410,31 +413,9 @@ cmdline_parser2 (int argc, char **argv, struct gengetopt_args_info *args_info, i
 int
 cmdline_parser_required (struct gengetopt_args_info *args_info, const char *prog_name)
 {
-  int result = EXIT_SUCCESS;
-
-  if (cmdline_parser_required2(args_info, prog_name, 0) > 0)
-    result = EXIT_FAILURE;
-
-  return result;
-}
-
-int
-cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *prog_name, const char *additional_error)
-{
-  int error_occurred = 0;
-  FIX_UNUSED (additional_error);
-
-  /* checks for required options */
-  if (! args_info->mode_given)
-    {
-      fprintf (stderr, "%s: '--mode' option required%s\n", prog_name, (additional_error ? additional_error : ""));
-      error_occurred = 1;
-    }
-  
-  
-  /* checks for dependences among options */
-
-  return error_occurred;
+  FIX_UNUSED (args_info);
+  FIX_UNUSED (prog_name);
+  return EXIT_SUCCESS;
 }
 
 
@@ -627,6 +608,7 @@ cmdline_parser_internal (
       static struct option long_options[] = {
         { "help",	0, NULL, 'h' },
         { "version",	0, NULL, 'V' },
+        { "usage",	0, NULL, 0 },
         { "mode",	1, NULL, 0 },
         { "mismatches",	1, NULL, 'm' },
         { "subkey",	1, NULL, 's' },
@@ -756,8 +738,22 @@ cmdline_parser_internal (
           break;
 
         case 0:	/* Long option with no short option */
-          /* Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc)..  */
-          if (strcmp (long_options[option_index].name, "mode") == 0)
+          /* Give a short usage message.  */
+          if (strcmp (long_options[option_index].name, "usage") == 0)
+          {
+          
+          
+            if (update_arg( 0 , 
+                 0 , &(args_info->usage_given),
+                &(local_args_info.usage_given), optarg, 0, 0, ARG_NO,
+                check_ambiguity, override, 0, 0,
+                "usage", '-',
+                additional_error))
+              goto failure;
+          
+          }
+          /* (REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc)..  */
+          else if (strcmp (long_options[option_index].name, "mode") == 0)
           {
           
           
@@ -792,10 +788,7 @@ cmdline_parser_internal (
     error_occurred += check_modes(Benchmark_given, Benchmark_desc, Random_given, Random_desc);
   }
   
-  if (check_required)
-    {
-      error_occurred += cmdline_parser_required2 (args_info, argv[0], additional_error);
-    }
+	FIX_UNUSED(check_required);
 
   cmdline_parser_release (&local_args_info);
 

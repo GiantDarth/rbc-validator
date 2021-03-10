@@ -38,10 +38,11 @@ args "--output-dir=src/cmdline --default-optional --unnamed-opts --file-name cmd
 defmode "Random"
 defmode "Benchmark"
 
-option "mode" - "Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), \
+option "usage" - "Give a short usage message"
+
+option "mode" - "(REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), \
 and ECC Secp256r1 (ecc)."
     enum values="none","aes","chacha20","ecc"
-    required
 
 option "mismatches" m "The largest # of bits of corruption to test against, inclusively. \
 Defaults to -1. If negative, then the size of key in bits will be the limit. If in random or \
