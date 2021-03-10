@@ -38,7 +38,7 @@ jobs:
           ./.github/scripts/test_chacha20_mpi.sh
       - name: Test ECC
         run: |
-          ./ecc256_test
+          ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
           ./.github/scripts/test_ecc_mpi.sh
   ubuntu-clang:
@@ -78,7 +78,7 @@ jobs:
           ./.github/scripts/test_chacha20_mpi.sh
       - name: Test ECC
         run: |
-          ./ecc256_test
+          ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
           ./.github/scripts/test_ecc_mpi.sh
   macosx:
@@ -112,7 +112,7 @@ jobs:
           ./.github/scripts/test_chacha20_omp.sh
       - name: Test ECC
         run: |
-          ./ecc256_test
+          ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
   windows:
     name: Windows (Cygwin)
@@ -162,5 +162,5 @@ jobs:
       - name: Test ECC
         shell: bash
         run: |
-          ./ecc256_test
+          ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
