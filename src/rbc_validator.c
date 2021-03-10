@@ -22,6 +22,7 @@
 #include "crypto/ec.h"
 #include "seed_iter.h"
 #include "perm.h"
+#include "uuid.h"
 #include "util.h"
 
 #define ERROR_CODE_FOUND 0
@@ -178,9 +179,8 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
 
         params->client_crypto_hex = args_info->inputs[1];
 
-        size_t uuid_hex_len = (16 * 2) + 4;
-        if(strlen(args_info->inputs[2]) != uuid_hex_len) {
-            fprintf(stderr, "UUID not %zu characters long.\n", uuid_hex_len);
+        if(strlen(args_info->inputs[2]) != UUID_STR_LEN) {
+            fprintf(stderr, "UUID not %d characters long.\n", UUID_STR_LEN);
             return 1;
         }
 
@@ -254,20 +254,16 @@ int main(int argc, char *argv[]) {
 #else
     int numcores;
 #endif
+
     struct params params;
-//    static struct argp argp = {options, parse_opt, args_doc, prog_desc, 0, 0,
-//            0};
-
     struct gengetopt_args_info args_info;
-
-    unsigned char msg[AES_BLOCK_SIZE];
-    char uuid_str[37];
 
     unsigned char host_seed[SEED_SIZE];
     unsigned char client_seed[SEED_SIZE];
 
     const EVP_CIPHER *evp_cipher;
     unsigned char client_cipher[EVP_MAX_BLOCK_LENGTH];
+    unsigned char uuid[UUID_SIZE];
     unsigned char iv[EVP_MAX_IV_LENGTH];
     EC_GROUP *ec_group;
     EC_POINT *client_ec_point;
@@ -384,9 +380,9 @@ int main(int argc, char *argv[]) {
             }
 
             if(algo->mode == MODE_CIPHER) {
-                get_random_seed(msg, AES_BLOCK_SIZE, randstate);
+                get_random_seed(uuid, AES_BLOCK_SIZE, randstate);
 
-                if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, msg, AES_BLOCK_SIZE,
+                if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, uuid, UUID_SIZE,
                                iv)) {
                     fprintf(stderr, "ERROR: Initial encryption failed.\nOpenSSL Error: %s\n",
                             ERR_error_string(ERR_get_error(), NULL));
@@ -418,7 +414,7 @@ int main(int argc, char *argv[]) {
 
         if(algo->mode == MODE_CIPHER) {
             MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-            MPI_Bcast(msg, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+            MPI_Bcast(uuid, UUID_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         }
         else if(algo->mode == MODE_EC) {
             unsigned char client_public_key[100];
@@ -450,16 +446,16 @@ int main(int argc, char *argv[]) {
 
         if(!parse_status) {
             if(algo->mode == MODE_CIPHER) {
-//                parse_status = parse_hex_handler(client_cipher, params.client_crypto_hex);
-//
-//                if(!parse_status && uuid_parse(params.uuid_hex, userId) < 0) {
-//                    fprintf(stderr, "ERROR: UUID not in canonical form.\n");
-//                    parse_status = 1;
-//                }
-//
-//                if (!parse_status && params.iv_hex != NULL) {
-//                    parse_status = parse_hex_handler(iv, params.iv_hex);
-//                }
+                parse_status = parse_hex_handler(client_cipher, params.client_crypto_hex);
+
+                if(!parse_status && uuid_parse(uuid, params.uuid_hex)) {
+                    fprintf(stderr, "ERROR: UUID not in canonical form.\n");
+                    parse_status = 1;
+                }
+
+                if (!parse_status && params.iv_hex != NULL) {
+                    parse_status = parse_hex_handler(iv, params.iv_hex);
+                }
             }
             else if (algo->mode == MODE_EC) {
                 if (EC_POINT_hex2point(ec_group, params.client_crypto_hex,
@@ -499,6 +495,8 @@ int main(int argc, char *argv[]) {
         }
 
         if(algo->mode == MODE_CIPHER) {
+            char uuid_str[UUID_STR_LEN + 1];
+
             fprintf(stderr, "INFO: Using %s CLIENT_CIPHER: %*s", algo->full_name,
                     (int)strlen(algo->full_name) - 4, "");
             fprint_hex(stderr, client_cipher, AES_BLOCK_SIZE);
@@ -506,8 +504,8 @@ int main(int argc, char *argv[]) {
 
             // Convert the uuid to a string for printing
             fprintf(stderr, "INFO: Using UUID:                       ");
-            fprint_hex(stderr, msg, AES_BLOCK_SIZE);
-            fprintf(stderr, "\n");
+            uuid_unparse(uuid_str, uuid);
+            fprintf(stderr, "%s\n", uuid_str);
 
             if(EVP_CIPHER_iv_length(evp_cipher) > 0) {
                 fprintf(stderr, "INFO: Using IV:                         ");
@@ -574,7 +572,7 @@ int main(int argc, char *argv[]) {
 
 #ifndef USE_MPI
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
-            msg, ec_group, client_ec_point, mismatch, validated_keys, algo, subseed_length,\
+            uuid, ec_group, client_ec_point, mismatch, validated_keys, algo, subseed_length,\
             all_flag, count_flag, verbose_flag)\
             private(subfound)
         {
@@ -603,7 +601,7 @@ int main(int argc, char *argv[]) {
             }
 #endif
 
-            v_args = cipher_validator_create(evp_cipher, client_cipher, msg, AES_BLOCK_SIZE,
+            v_args = cipher_validator_create(evp_cipher, client_cipher, uuid, UUID_SIZE,
                                              EVP_CIPHER_iv_length(evp_cipher) > 0 ? iv : NULL);
         }
         else if(algo->mode == MODE_EC) {

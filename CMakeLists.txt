@@ -22,7 +22,8 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
-set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h src/cmdline.c src/cmdline.h)
+set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h src/cmdline.c src/cmdline.h
+        src/uuid.c src/uuid.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
