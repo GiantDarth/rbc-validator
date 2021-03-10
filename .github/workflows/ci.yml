@@ -90,7 +90,6 @@ jobs:
           echo "HOMEBREW_NO_AUTO_UPDATE=1" >> $GITHUB_ENV
           brew install \
             libomp \
-            open-mpi \
             gmp \
             ossp-uuid \
             argp-standalone
@@ -106,18 +105,15 @@ jobs:
         run: |
           ./aes256_test
           ./.github/scripts/test_aes_omp.sh
-          ./.github/scripts/test_aes_mpi.sh
       - name: Test Cipher
         run: ./cipher_test
       - name: Test ChaCha20
         run: |
           ./.github/scripts/test_chacha20_omp.sh
-          ./.github/scripts/test_chacha20_mpi.sh
       - name: Test ECC
         run: |
           ./ecc256_test
           ./.github/scripts/test_ecc_omp.sh
-          ./.github/scripts/test_ecc_mpi.sh
   windows:
     name: Windows (Cygwin)
     runs-on: windows-latest
