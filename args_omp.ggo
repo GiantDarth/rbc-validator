@@ -32,7 +32,7 @@ characters."
 versiontext "Christopher Robert Philabaum <cp723@nau.edu>"
 
 args "--output-dir=src/cmdline --default-optional --unnamed-opts --file-name cmdline_omp \
---show-required=(MANDATORY)"
+--show-required=(MANDATORY) --no-handle-error"
 
 defmode "Random"
 defmode "Benchmark"

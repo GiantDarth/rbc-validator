@@ -285,12 +285,12 @@ int main(int argc, char *argv[]) {
     if(cmdline_parser(argc, argv, &args_info) || validate_args(&args_info) || \
             parse_params(&params, &args_info)) {
 #ifdef USE_MPI
-        MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
+        MPI_Finalize();
 #else
         OMP_DESTROY()
-
-        return EXIT_FAILURE;
 #endif
+
+        return ERROR_CODE_FAILURE;
     }
 
     algo = find_algo(args_info.mode_orig, supported_algos);
