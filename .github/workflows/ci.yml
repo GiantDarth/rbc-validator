@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
-          export CC=clang
+          echo "CC=clang" >> $GITHUB_ENV
           which cmake
           cmake --version
           cmake ./CMakeLists.txt
@@ -87,7 +87,7 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          export HOMEBREW_NO_AUTO_UPDATE=1
+          echo "HOMEBREW_NO_AUTO_UPDATE=1" >> $GITHUB_ENV
           brew install \
             libomp \
             open-mpi \
@@ -140,8 +140,8 @@ jobs:
             -upgrade -arch x86_64
       - name: Set PATH
         run: |
-          echo "::add-path::C:/tools/cygwin/bin"
-          echo "::add-path::C:/tools/cygwin/usr/bin"
+          echo "C:/tools/cygwin/bin" >> $GITHUB_PATH
+          echo "C:/tools/cygwin/usr/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
       - name: CMake Configure
         shell: bash
