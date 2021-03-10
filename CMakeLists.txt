@@ -22,7 +22,7 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
-set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h)
+set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h src/cmdline.c src/cmdline.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
@@ -54,12 +54,8 @@ if(MPI_ENABLED)
     find_package(MPI REQUIRED)
 endif(MPI_ENABLED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
-find_package(UUID MODULE REQUIRED)
-find_package(Argp MODULE REQUIRED)
 
 include_directories(${GMP_INCLUDES})
-include_directories(${UUID_INCLUDE_DIRS})
-include_directories(${ARGP_INCLUDE_DIR})
 
 target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
@@ -83,12 +79,10 @@ endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
 target_link_libraries(ecc_test OpenSSL::Crypto)
-target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
-        ${ARGP_LIBRARIES})
+target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${GMP_LIBRARIES})
 
 if(MPI_ENABLED)
-    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
-            ${ARGP_LIBRARIES})
+    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${GMP_LIBRARIES})
 endif(MPI_ENABLED)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)
