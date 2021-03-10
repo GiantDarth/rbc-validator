@@ -21,7 +21,8 @@ int uuid_parse(unsigned char *uuid, const char *uuid_str) {
         c = uuid_str[i];
 
         if((value = parse_hex_char(c)) >= 0) {
-            if(i % 2 == 0) {
+            value &= 0x0f;
+            if(j % 2 == 0) {
                 value <<= 4;
             }
             uuid[j++ / 2] |= value;
