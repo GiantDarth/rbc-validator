@@ -16,7 +16,8 @@ usage "rbc_validator [OPTIONS...] --mode=none HOST_SEED
   or : rbc_validator [OPTIONS...] --mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]
   or : rbc_validator [OPTIONS...] --mode=ecc HOST_SEED CLIENT_PUB_KEY
   or : rbc_validator [OPTIONS...] --mode=* -r/--random -m/--mismatches=value
-  or : rbc_validator [OPTIONS...] --mode=* -b/--benchmark -m/--mismatches=value"
+  or : rbc_validator [OPTIONS...] --mode=* -b/--benchmark -m/--mismatches=value
+Try `rbc_validator_mpi --help' for more information."
 
 description "If the client seed is found then the program will have an exit code \
 0. If not found, e.g. when providing --mismatches and \
