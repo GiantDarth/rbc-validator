@@ -3,14 +3,11 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <memory.h>
-#include "aes256-ni.h"
 
-void print_hex(const unsigned char *array, size_t count) {
-    for(size_t i = 0; i < count; i++) {
-        printf("%02x", array[i]);
-    }
-}
+#include "crypto/aes256-ni_enc.h"
+#include "util.h"
 
 int main() {
     const unsigned char key[] = {
@@ -26,15 +23,29 @@ int main() {
             0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33, 0x1b, 0x3e
     };
 
-    unsigned char cipher[16];
+    unsigned char cipher[AES_BLOCK_SIZE];
+    int status;
 
-    aes256_enc_key_scheduler *key_scheduler = aes256_enc_key_scheduler_create();
-    aes256_enc_key_scheduler_update(key_scheduler, key);
+    if(aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
+        fprintf(stderr, "ERROR: evp_encrypt failed\n");
+        return EXIT_FAILURE;
+    }
 
-    aes256_ecb_encrypt(cipher, key_scheduler, (const unsigned char*)msg, strlen(msg));
+    printf("Encryption: Test ");
+    if(!memcmp(cipher, expected_cipher, sizeof(cipher))) {
+        printf("Passed\n");
+        status = EXIT_SUCCESS;
+    }
+    else {
+        printf("Failed\n");
+        status = EXIT_FAILURE;
+    }
 
-    print_hex(cipher, sizeof(cipher));
+    fprint_hex(stdout, cipher, sizeof(cipher));
     printf("\n");
 
-    return memcmp(cipher, expected_cipher, sizeof(cipher)) ? EXIT_FAILURE : EXIT_SUCCESS;
+    fprint_hex(stdout, expected_cipher, sizeof(expected_cipher));
+    printf("\n");
+
+    return status;
 }
