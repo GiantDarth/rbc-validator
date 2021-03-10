@@ -9,9 +9,6 @@ void fprint_hex(FILE *stream, const unsigned char *array, size_t count) {
     }
 }
 
-/// Parse an individual hexadecimal character to an integer 0 to 15.
-/// \param hex_char An individual hexadecimal character.
-/// \return Return 0 to 15 depending on the value of hex_char, else return -1 on an invalid character.
 int parse_hex_char(char hex_char) {
     if(hex_char >= '0' && hex_char <= '9') {
         return hex_char - '0';
@@ -21,6 +18,25 @@ int parse_hex_char(char hex_char) {
     }
     else if(hex_char >= 'a' && hex_char <= 'f') {
         return hex_char - 'a' + 10;
+    }
+    else {
+        return -1;
+    }
+}
+
+int unparse_hex_char(unsigned char value, int lower) {
+    if(value < 16) {
+        if(value < 10) {
+            return value + '0';
+        }
+        else {
+            if(lower) {
+                return value + 'a' - 10;
+            }
+            else {
+                return value + 'A' - 10;
+            }
+        }
     }
     else {
         return -1;
