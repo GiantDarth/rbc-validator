@@ -139,7 +139,7 @@ jobs:
         run: |
           which cmake
           cmake --version
-          CC=x86_64-w64-mingw32-gcc cmake -G "MSYS Makefiles" ./CMakeLists.txt
+          CC=/mingw64/bin/gcc cmake -G "MSYS Makefiles" ./CMakeLists.txt
       - name: Build
         run: cmake --build .
       - name: Test AES
