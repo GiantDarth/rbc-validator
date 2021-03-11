@@ -63,7 +63,7 @@ This can be replicated by using the following commands:
 First install [MSYS2](https://www.msys2.org/#installation) following the guide _verbatim_.
 Then, open in MSYS MinGW 64-bit:
 ```bash
-pacman -S --needed mingw-w64-x86_64-cmake gmp-devel openssl-devel`
+pacman -S --needed mingw-w64-x86_64-cmake gmp-devel openssl-devel
 ```
 
 ## Install
