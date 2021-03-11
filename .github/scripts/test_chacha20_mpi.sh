@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 mpirun ./rbc_validator_mpi --mode=chacha20 -rv -m2
 mpirun ./rbc_validator_mpi --mode=chacha20 -bv -m2
 [[ $(./rbc_validator_mpi --mode=chacha20 -v -m3 \

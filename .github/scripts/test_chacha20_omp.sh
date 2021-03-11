@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 ./rbc_validator --mode=chacha20 -rv -m2
 ./rbc_validator --mode=chacha20 -bv -m2
 [[ $(./rbc_validator --mode=chacha20 -v -m3 \

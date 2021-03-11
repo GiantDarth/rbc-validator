@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 ./rbc_validator --mode=aes -rv -m3
 ./rbc_validator --mode=aes -bv -m3
 [[ $(./rbc_validator --mode=aes -v -m3 \

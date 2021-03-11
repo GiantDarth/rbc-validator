@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 mpirun ./rbc_validator_mpi --mode=ecc -rv -m2
 mpirun ./rbc_validator_mpi --mode=ecc -bv -m2
 

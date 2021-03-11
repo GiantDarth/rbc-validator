@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 mpirun ./rbc_validator_mpi --mode=aes -rv -m3
 mpirun ./rbc_validator_mpi --mode=aes -bv -m3
 [[ $(mpirun ./rbc_validator_mpi --mode=aes -v -m3 \

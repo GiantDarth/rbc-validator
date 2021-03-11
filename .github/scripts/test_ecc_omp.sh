@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 ./rbc_validator --mode=ecc -rv -m2
 ./rbc_validator --mode=ecc -bv -m2
 
