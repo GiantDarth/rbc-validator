@@ -1,0 +1,149 @@
+name: CI
+# This workflow is triggered on pushes to the repository.
+on: [push, pull_request]
+
+jobs:
+  ubuntu:
+    name: Ubuntu (GCC)
+    # This job runs on Linux
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libomp-dev \
+            libopenmpi-dev \
+            openmpi-bin \
+            libgmp-dev
+      - uses: actions/checkout@v2
+      - name: CMake Configure
+        run: |
+          which cmake
+          cmake --version
+          cmake ./CMakeLists.txt
+      - name: Build
+        run: cmake --build .
+      - name: Test AES
+        run: |
+          ./aes256_test
+          ./.github/scripts/test_aes_omp.sh
+          ./.github/scripts/test_aes_mpi.sh
+      - name: Test Cipher
+        run: ./cipher_test
+      - name: Test ChaCha20
+        run: |
+          ./.github/scripts/test_chacha20_omp.sh
+          ./.github/scripts/test_chacha20_mpi.sh
+      - name: Test ECC
+        run: |
+          ./ecc_test
+          ./.github/scripts/test_ecc_omp.sh
+          ./.github/scripts/test_ecc_mpi.sh
+  ubuntu-clang:
+    name: Ubuntu (Clang)
+    # This job runs on Linux
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            libomp-dev \
+            libopenmpi-dev \
+            openmpi-bin \
+            libgmp-dev
+      - uses: actions/checkout@v2
+      - name: CMake Configure
+        run: |
+          which cmake
+          cmake --version
+          CC=clang cmake ./CMakeLists.txt
+      - name: Build
+        run: cmake --build .
+      - name: Test AES
+        run: |
+          ./aes256_test
+          ./.github/scripts/test_aes_omp.sh
+          ./.github/scripts/test_aes_mpi.sh
+      - name: Test Cipher
+        run: ./cipher_test
+      - name: Test ChaCha20
+        run: |
+          ./.github/scripts/test_chacha20_omp.sh
+          ./.github/scripts/test_chacha20_mpi.sh
+      - name: Test ECC
+        run: |
+          ./ecc_test
+          ./.github/scripts/test_ecc_omp.sh
+          ./.github/scripts/test_ecc_mpi.sh
+  macosx:
+    name: Mac OS X (Latest)
+    runs-on: macos-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          echo "HOMEBREW_NO_AUTO_UPDATE=1" >> $GITHUB_ENV
+          brew install \
+            libomp \
+            gmp
+      - uses: actions/checkout@v2
+      - name: CMake Configure
+        run: |
+          which cmake
+          cmake --version
+          cmake ./CMakeLists.txt
+      - name: Build
+        run: cmake --build .
+      - name: Test AES
+        run: |
+          ./aes256_test
+          ./.github/scripts/test_aes_omp.sh
+      - name: Test Cipher
+        run: ./cipher_test
+      - name: Test ChaCha20
+        run: |
+          ./.github/scripts/test_chacha20_omp.sh
+      - name: Test ECC
+        run: |
+          ./ecc_test
+          ./.github/scripts/test_ecc_omp.sh
+  windows:
+    name: Windows (MSYS2)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Install Dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            git
+            gmp-devel
+            openssl-devel
+      - uses: actions/checkout@v2
+      - name: CMake Configure
+        run: |
+          which cmake
+          cmake --version
+          cmake -G "MSYS Makefiles" ./CMakeLists.txt
+      - name: Build
+        run: cmake --build .
+      - name: Test AES
+        run: |
+          ./aes256_test
+          ./.github/scripts/test_aes_omp.sh
+      - name: Test Cipher
+        run: ./cipher_test
+      - name: Test ChaCha20
+        run: ./.github/scripts/test_chacha20_omp.sh
+      - name: Test ECC
+        run: |
+          ./ecc_test
+          ./.github/scripts/test_ecc_omp.sh
