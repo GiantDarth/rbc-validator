@@ -7,6 +7,12 @@
 
 #include <stdio.h>
 
+/// Parse an individual hexadecimal character to an integer 0 to 15.
+/// \param hex_char An individual hexadecimal character.
+/// \return Return 0 to 15 depending on the value of hex_char, else return -1 on an invalid character.
+int parse_hex_char(char hex_char);
+int unparse_hex_char(unsigned char value, int lower);
+
 /// Print out a raw byte array as hexadecimal.
 /// \param stream An IO stream to output to.
 /// \param array An allocated byte array to print.

@@ -48,9 +48,9 @@ int aes256_crypto_cmp(void *args);
 int cipher_crypto_func(const unsigned char *curr_seed, void *args);
 int cipher_crypto_cmp(void *args);
 
-cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher, const unsigned char *msg,
-                                            const unsigned char *client_cipher, size_t msg_size,
-                                            const unsigned char *iv);
+cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
+                                            const unsigned char *client_cipher, const unsigned char *msg,
+                                            size_t msg_size, const unsigned char *iv);
 void cipher_validator_destroy(cipher_validator_t *v);
 
 int ec_crypto_func(const unsigned char *curr_seed, void *args);

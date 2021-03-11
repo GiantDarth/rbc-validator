@@ -42,7 +42,6 @@ addons:
       - libopenmpi-dev
       - openmpi-bin
       - libgmp-dev
-      - uuid-dev
       - libssl-dev
       - xsltproc
   homebrew:
@@ -50,8 +49,6 @@ addons:
     packages:
       - libomp
       - gmp
-      - ossp-uuid
-      - argp-standalone
       - openssl@1.1
 
 before_install:

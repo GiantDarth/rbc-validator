@@ -1,3 +1,6 @@
+[![CI](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/GiantDarth/rbc_validator)](https://opensource.org/licenses/Apache-2.0)
+
 # rbc_validator
 
 Primary and Auxiliary Authors:
@@ -17,13 +20,14 @@ of a core or rank's workload.
 
 ### Hardware
 
-The codebase relies on **SSE**, **AVX**, and support for _x86 Intrinsics_ `<x86intrin.h>`
+The codebase relies on **SSE**, **AES-NI**, and support for _x86 Intrinsics_ `<x86intrin.h>`
 (i.e., GCC 4.5+).
 
 ### Supported OSes
 
 * Linux (64-bit)
 * MacOS X Mojave or Later
+* Windows 10 x64 (MSYS2 MinGW-w64)
 
 ### Dependencies
 
@@ -31,49 +35,72 @@ The codebase relies on **SSE**, **AVX**, and support for _x86 Intrinsics_ `<x86i
 
 If on Debian-based distributions, the following command can be used to install all the requirements:
 ```bash
-sudo apt-get install libomp-dev libopenmpi-dev openmpi-bin libgmp-dev uuid-dev
+sudo apt-get install libomp-dev libopenmpi-dev openmpi-bin libgmp-dev libssl-dev
 ```
 
-For other distributions, equivalents for _OpenMP (dev)_, _OpenMPI (bin, dev)_, _GMP (dev)_, _UUID (dev)_,
-and _Argp (dev)_ should be installed.
+For other distributions, equivalents for _OpenMP (dev)_, _OpenMPI (bin, dev)_, _GMP (dev)_, and
+_OpenSSL (dev)_ should be installed.
 
-#### MacOS X
+#### macOS
 
-MacOS X implementations have been compiled and tested using Travis CI. This was done using Homebrew,
-alongside Xcode.
+macOS implementations have been compiled and tested using Github Actions. This was done using Homebrew,
+alongside Xcode. By default, MPI support is disabled on macoS, but can be manually enabled through
+`-D MPI_ENABLED=On` in CMake and installing `open-mpi` in Homebrew.
 
 This can be replicated by using the following command:
 ```zsh
-brew install libomp open-mpi gmp ossp-uuid argp-standalone
+brew install libomp gmp openssl@1.1
+```
+
+#### Windows 10 x64 (MSYS2 MinGW-w64)
+
+Windows 10 x64 (MSYS MinGW-w64) implementations have been compiled and tested using Github Actions. This
+was done using MSYS2. By default, MPI support is disabled on Windows and there's no clear path to get it
+working.
+
+This can be replicated by using the following commands:
+
+First install [MSYS2](https://www.msys2.org/#installation) following the guide _verbatim_.
+Then, open in MSYS MinGW 64-bit:
+```bash
+pacman -S --needed mingw-w64-x86_64-cmake gmp-devel openssl-devel
 ```
 
 ## Install
 
-_rbc_validator_ uses CMake to best support cross-platform toolchains as much as possible.
-However, at the time of this writing Windows is near-impossible to compile to without Cygwin or WSL.
+_rbc_validator_ uses CMake to best support cross-platform toolchains as much as possible. Windows is only
+officially supported through MSYS2.
 
 1. `mkdir build`
 2. `cd build`
-3. Either `ccmake ..` or `cmake ..` without curses.
+3. Either `ccmake ..` or `cmake ..` without curses (or `cmake -G "MSYS Makefiles" ..` for MSYS2).
 4. `make`
-5. `make install` (if you want to install to `/usr/local`)
+5.
+    1. Linux, macOS: `make install` (if you want to install to `/usr/local`)
+    2. Windows: `./scripts/deploy_msys.sh` copies `rbc_validator` and the relevant DLL's to `dist/win_x64`
 
 ## Commands
 
-Currently, both AES256 and ECC-Secp256r1 are separated as separated commands, with each in turn split
-between OpenMP and OpenMPI implementations. The _OpenMP_ implementations are designed for **desktop**
-use, whereas the _OpenMPI_ ones target HPC platforms.
+All cryptographic algorithms are selected at runtime using the `--mode=` option, with the program being
+split between an OpenMP implementation and an OpenMPI implementations. The _OpenMP_ implementations are
+designed for **single machine** use, whereas the _OpenMPI_ ones target HPC platforms.
 
-1. `rbc_validator --mode=aes` (AES, OpenMP)
-2. `rbc_validator_mpi --mode=aes` (AES, MPI)
-3. `rbc_validator --mode=ecc` (ECC, OpenMP)
-4. `rbc_validator_mpi --mode=ecc` (ECC, MPI)
+* `rbc_validator ...` (OpenMP)
+* `mpirun rbc_validator_mpi ...` (MPI)
 
-Some auxiliary commands also exist for testing the AES-256 and ECC-Secp256r1 implementations against
-target keys and their associated ciphers:
+There are currently 4 algorithms supported:
 
-1. `aes256_test`
-2. `ecc_test`
+* `rbc_validator --mode=none` (None, Key iteration only)
+* `rbc_validator --mode=aes` (AES256)
+* `rbc_validator --mode=chacha20` (ChaCha20)
+* `rbc_validator --mode=ecc` (ECC Secp256r1)
+
+Some auxiliary commands also exist for testing the AES-256, ChaCha20, and ECC-Secp256r1 implementations
+against target keys and their associated ciphers:
+
+* `aes256_test`
+* `cipher_test`
+* `ecc_test`
 
 Finally, there exists a few Python scripts to generate some test data, as well as utility
 functions.
@@ -87,14 +114,23 @@ functions.
 This is the default behavior of the main commands. Rather than as a tool for benchmarking,
 "direct" mode requires that:
 
+**None:**
+1. The original server key
+
 **AES:**
-* The original server key
-* The (potentially) corrupted client cipher
-* A shared message, in this case a 16 byte UUID
+1. The original server key
+2. The (potentially) corrupted client cipher
+3. A shared message, in this case a 16 byte UUID
+
+**ChaCha20:**
+1. The original server key
+2. The (potentially) corrupted client cipher
+3. A shared message, in this case a 16 byte UUID
+4. A 16 byte IV (a 12 byte nonce prepended with 4 bytes of 0's)
 
 **ECC:**
-* The original server private key
-* The (potentially) corrupted client public key
+1. The original server private key
+2. The (potentially) corrupted client public key
 
 #### Random
 
@@ -123,7 +159,8 @@ All the main commands have (mostly) the same arguments:
 invalid argument is is used.
 * `-?, --help`: The main source of information on how to use each command, the arguments list,
 their use, default values, and their ranges.
-* `--mode=[aes,ecc]`: The only required option; necessary to decide which cryptographic function to use.
+* `--mode=[none,aes,chacha20,ecc]`: The only required option; necessary to decide which cryptographic
+  function to use.
 * `-m, --mismatches=value`: Give the maximum range of hamming distance / errors to test up to
 and including. If not given, then the maximum range is the size of the key in bits.
 * `-a, --all`: Ignore any early exit method and have each core / rank carry on through its
