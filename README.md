@@ -1,4 +1,5 @@
 [![CI](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml?branch=feature-1)
+[![License](https://img.shields.io/github/license/GiantDarth/rbc_validator)](https://opensource.org/licenses/Apache-2.0)
 
 # rbc_validator
 
