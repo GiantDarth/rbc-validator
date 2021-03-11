@@ -40,8 +40,8 @@ defmode "Benchmark"
 
 option "usage" - "Give a short usage message"
 
-option "mode" - "(REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), \
-and ECC Secp256r1 (ecc)."
+option "mode" - "(REQUIRED) The cryptographic function to iterate against. If `none', then only perform
+seed iteration."
     enum values="none","aes","chacha20","ecc"
 
 option "mismatches" m "The largest # of bits of corruption to test against, inclusively. \

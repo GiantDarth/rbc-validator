@@ -37,7 +37,7 @@ const char *gengetopt_args_info_help[] = {
   "  -h, --help              Print help and exit",
   "  -V, --version           Print version and exit",
   "      --usage             Give a short usage message",
-  "      --mode=ENUM         (REQUIRED) Choose between only seed iteration (none),\n                            AES256 (aes), ChaCha20 (chacha20), and ECC\n                            Secp256r1 (ecc).  (possible values=\"none\",\n                            \"aes\", \"chacha20\", \"ecc\")",
+  "      --mode=ENUM         (REQUIRED) The cryptographic function to iterate\n                            against. If `none', then only perform\n                            seed iteration.  (possible values=\"none\",\n                            \"aes\", \"chacha20\", \"ecc\")",
   "  -m, --mismatches=value  The largest # of bits of corruption to test against,\n                            inclusively. Defaults to -1. If negative, then the\n                            size of key in bits will be the limit. If in random\n                            or benchmark mode, then this will also be used to\n                            corrupt the random key by the same # of bits; for\n                            this reason, it must be set and non-negative when\n                            in random or benchmark mode. Cannot be larger than\n                            what --subkey-size is set to.  (default=`-1')",
   "  -s, --subkey=value      How many of the first bits to corrupt and iterate\n                            over. Must be between 1 and 256. Defaults to 256.\n                            (default=`256')",
   "\n Mode: Random",
@@ -731,7 +731,8 @@ cmdline_parser_internal (
               goto failure;
           
           }
-          /* (REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc)..  */
+          /* (REQUIRED) The cryptographic function to iterate against. If `none', then only perform
+          seed iteration..  */
           else if (strcmp (long_options[option_index].name, "mode") == 0)
           {
           
