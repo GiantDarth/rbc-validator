@@ -127,9 +127,9 @@ jobs:
           install: >-
             base-devel
             git
-            libgmp-devel
-            libssl-devel
-            cmake
+            gmp-devel
+            openssl-devel
+            mingw-w64-x86_64-cmake
       - name: Set PATH
         run: |
           echo "C:/tools/cygwin/bin" >> $GITHUB_PATH
@@ -139,7 +139,7 @@ jobs:
         run: |
           which cmake
           cmake --version
-          cmake -G "Unix Makefiles" ./CMakeLists.txt
+          cmake -G "MSYS Makefiles" ./CMakeLists.txt
       - name: Build
         run: cmake --build .
       - name: Test AES
