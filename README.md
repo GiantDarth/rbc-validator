@@ -1,3 +1,5 @@
+[![CI](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml?branch=feature-1)
+
 # rbc_validator
 
 Primary and Auxiliary Authors:
