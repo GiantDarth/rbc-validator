@@ -126,18 +126,17 @@ jobs:
           update: true
           install: >-
             base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
             git
             gmp-devel
             openssl-devel
-            mingw-w64-x86_64-cmake
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
-          echo "CC=/mingw64/bin/mingw-w64-x86_64-gcc.exe" >> $GITHUB_ENV
           which cmake
           cmake --version
-          ls /mingw64/bin
-          cmake -D CMAKE_C_COMPILER="/mingw64/bin/mingw-w64-x86_64-gcc" -G "MSYS Makefiles" ./CMakeLists.txt
+          cmake -G "MSYS Makefiles" ./CMakeLists.txt
       - name: Build
         run: cmake --build .
       - name: Test AES
