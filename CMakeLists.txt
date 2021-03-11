@@ -21,7 +21,9 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
     set(MPI_ENABLED OFF CACHE BOOL "Enable support for compiling an MPI version as well.")
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
-set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h)
+set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
+set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h
+        src/uuid.c src/uuid.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
@@ -30,7 +32,7 @@ set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # Append expected search paths for Monsoon
-list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2 /packages/sqlite/3.27.1 /packages/openssl/1.1.1)
+list(APPEND CMAKE_PREFIX_PATH /packages/gmp/6.1.2-aqy3gvy /packages/openssl/1.1.1i-5uny3qr)
 # Append expected search paths for Mac OS X via Homebrew
 list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr/local/opt/ossp-uuid
         /usr/local/opt/gmp /usr/local/opt/openssl@1.1)
@@ -39,12 +41,12 @@ add_executable(aes256_test src/aes256_test.c ${AES_FILES} ${UTIL_FILES})
 add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES} ${UTIL_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
 
-add_executable(rbc_validator src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES}
-        ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+add_executable(rbc_validator src/rbc_validator.c src/cmdline/cmdline_omp.c src/cmdline/cmdline_omp.h
+        ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 
 if(MPI_ENABLED)
-    add_executable(rbc_validator_mpi src/rbc_validator.c ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES}
-            ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+    add_executable(rbc_validator_mpi src/rbc_validator.c src/cmdline/cmdline_mpi.c src/cmdline/cmdline_mpi.h
+            ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
 endif(MPI_ENABLED)
 
 find_package(OpenSSL 1.1.1 REQUIRED)
@@ -53,12 +55,8 @@ if(MPI_ENABLED)
     find_package(MPI REQUIRED)
 endif(MPI_ENABLED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
-find_package(UUID MODULE REQUIRED)
-find_package(Argp MODULE REQUIRED)
 
 include_directories(${GMP_INCLUDES})
-include_directories(${UUID_INCLUDE_DIRS})
-include_directories(${ARGP_INCLUDE_DIR})
 
 target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
@@ -67,19 +65,25 @@ target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMP
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
 
+if(ALWAYS_EVP_AES)
+    target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
+endif(ALWAYS_EVP_AES)
+
 if(MPI_ENABLED)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
             PUBLIC OPENSSL_NO_DEPRECATED)
+
+    if(ALWAYS_EVP_AES)
+        target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
+    endif(ALWAYS_EVP_AES)
 endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
 target_link_libraries(ecc_test OpenSSL::Crypto)
-target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
-        ${ARGP_LIBRARIES})
+target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${GMP_LIBRARIES})
 
 if(MPI_ENABLED)
-    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${UUID_LIBRARIES} ${GMP_LIBRARIES}
-            ${ARGP_LIBRARIES})
+    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${GMP_LIBRARIES})
 endif(MPI_ENABLED)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)

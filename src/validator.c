@@ -16,23 +16,23 @@
 #include "crypto/ec.h"
 
 int aes256_crypto_func(const unsigned char *curr_seed, void *args) {
-    aes256_validator_t *v = (aes256_validator_t*)args;
+    cipher_validator_t *v = (cipher_validator_t*)args;
 
     if(v == NULL) {
         return -1;
     }
 
-    return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->n);
+    return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->msg_size);
 }
 
 int aes256_crypto_cmp(void *args) {
-    aes256_validator_t *v = (aes256_validator_t*)args;
+    cipher_validator_t *v = (cipher_validator_t*)args;
 
     if(v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
         return -1;
     }
 
-    return memcmp(v->curr_cipher, v->client_cipher, v->n) != 0;
+    return memcmp(v->curr_cipher, v->client_cipher, v->msg_size) != 0;
 }
 
 int cipher_crypto_func(const unsigned char *curr_seed, void *args) {
@@ -84,48 +84,6 @@ int ec_crypto_cmp(void *args) {
 
     return EC_POINT_cmp(v->group, v->curr_point, v->client_point, v->ctx);
 }
-
-aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
-                                            size_t n) {
-    aes256_validator_t *v = OPENSSL_malloc(sizeof(*v));
-
-    if(v == NULL || msg == NULL || client_cipher == NULL) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    v->n = n;
-    v->msg = msg;
-    v->client_cipher = client_cipher;
-
-    if(n % AES_BLOCK_SIZE != 0) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    if((v->curr_cipher = OPENSSL_malloc(n * sizeof(*(v->curr_cipher)))) == NULL) {
-        aes256_validator_destroy(v);
-
-        return NULL;
-    }
-
-    return v;
-}
-
-void aes256_validator_destroy(aes256_validator_t *v) {
-    if(v == NULL) {
-        return;
-    }
-
-    if(v->curr_cipher != NULL) {
-        OPENSSL_clear_free(v->curr_cipher, v->n * sizeof(*(v->curr_cipher)));
-    }
-
-    OPENSSL_clear_free(v, sizeof(*v));
-}
-
 cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
                                             const unsigned char *client_cipher, const unsigned char *msg,
                                             size_t msg_size, const unsigned char *iv) {

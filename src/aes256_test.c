@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <memory.h>
+#include <string.h>
 
 #include "crypto/aes256-ni_enc.h"
 #include "util.h"

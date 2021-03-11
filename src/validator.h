@@ -12,12 +12,6 @@
 
 #include "crypto/aes256-ni_enc.h"
 
-typedef struct aes256_validator_t {
-    size_t n;
-    unsigned char *curr_cipher;
-    const unsigned char *msg, *client_cipher;
-} aes256_validator_t;
-
 typedef struct cipher_validator_t {
     const EVP_CIPHER *evp_cipher;
     EVP_CIPHER_CTX *ctx;
@@ -36,16 +30,12 @@ typedef struct ec_validator_t {
 int aes256_crypto_func(const unsigned char *curr_seed, void *args);
 int aes256_crypto_cmp(void *args);
 
-aes256_validator_t *aes256_validator_create(const unsigned char *msg, const unsigned char *client_cipher,
-                                            size_t n);
-void aes256_validator_destroy(aes256_validator_t *v);
-
 int cipher_crypto_func(const unsigned char *curr_seed, void *args);
 int cipher_crypto_cmp(void *args);
 
-cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher, const unsigned char *msg,
-                                            const unsigned char *client_cipher, size_t msg_size,
-                                            const unsigned char *iv);
+cipher_validator_t *cipher_validator_create(const EVP_CIPHER *evp_cipher,
+                                            const unsigned char *client_cipher, const unsigned char *msg,
+                                            size_t msg_size, const unsigned char *iv);
 void cipher_validator_destroy(cipher_validator_t *v);
 
 int ec_crypto_func(const unsigned char *curr_seed, void *args);
