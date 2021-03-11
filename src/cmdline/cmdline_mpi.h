@@ -42,9 +42,12 @@ struct gengetopt_args_info
   const char *help_help; /**< @brief Print help and exit help description.  */
   const char *version_help; /**< @brief Print version and exit help description.  */
   const char *usage_help; /**< @brief Give a short usage message help description.  */
-  enum enum_mode mode_arg;	/**< @brief (REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc)..  */
-  char * mode_orig;	/**< @brief (REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc). original value given at command line.  */
-  const char *mode_help; /**< @brief (REQUIRED) Choose between only seed iteration (none), AES256 (aes), ChaCha20 (chacha20), and ECC Secp256r1 (ecc). help description.  */
+  enum enum_mode mode_arg;	/**< @brief (REQUIRED) The cryptographic function to iterate against. If `none', then only perform
+  seed iteration..  */
+  char * mode_orig;	/**< @brief (REQUIRED) The cryptographic function to iterate against. If `none', then only perform
+  seed iteration. original value given at command line.  */
+  const char *mode_help; /**< @brief (REQUIRED) The cryptographic function to iterate against. If `none', then only perform
+  seed iteration. help description.  */
   int mismatches_arg;	/**< @brief The largest # of bits of corruption to test against, inclusively. Defaults to -1. If negative, then the size of key in bits will be the limit. If in random or benchmark mode, then this will also be used to corrupt the random key by the same # of bits; for this reason, it must be set and non-negative when in random or benchmark mode. Cannot be larger than what --subkey-size is set to. (default='-1').  */
   char * mismatches_orig;	/**< @brief The largest # of bits of corruption to test against, inclusively. Defaults to -1. If negative, then the size of key in bits will be the limit. If in random or benchmark mode, then this will also be used to corrupt the random key by the same # of bits; for this reason, it must be set and non-negative when in random or benchmark mode. Cannot be larger than what --subkey-size is set to. original value given at command line.  */
   const char *mismatches_help; /**< @brief The largest # of bits of corruption to test against, inclusively. Defaults to -1. If negative, then the size of key in bits will be the limit. If in random or benchmark mode, then this will also be used to corrupt the random key by the same # of bits; for this reason, it must be set and non-negative when in random or benchmark mode. Cannot be larger than what --subkey-size is set to. help description.  */
