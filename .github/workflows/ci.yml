@@ -135,8 +135,8 @@ jobs:
         run: |
           echo "CC=/mingw64/bin/mingw-w64-x86_64-gcc.exe" >> $GITHUB_ENV
           which cmake
-          cmake --version
-          cmake -G "MSYS Makefiles" ./CMakeLists.txt
+          mingw-w64-x86_64-cmake --version
+          mingw-w64-x86_64-cmake -G "MSYS Makefiles" ./CMakeLists.txt
       - name: Build
         run: cmake --build .
       - name: Test AES
