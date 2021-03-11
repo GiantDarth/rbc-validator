@@ -77,7 +77,7 @@ officially supported through MSYS2.
 4. `make`
 5.
     1. Linux, macOS: `make install` (if you want to install to `/usr/local`)
-    2. Windows: `./scripts/deploy_win.sh` copies `rbc_validator` and the relevant DLL's to `dist/win`
+    2. Windows: `./scripts/deploy_msys.sh` copies `rbc_validator` and the relevant DLL's to `dist/win_x64`
 
 ## Commands
 
