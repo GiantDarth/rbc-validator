@@ -136,6 +136,7 @@ jobs:
           echo "CC=/mingw64/bin/mingw-w64-x86_64-gcc.exe" >> $GITHUB_ENV
           which cmake
           cmake --version
+          ls /mingw64/bin
           cmake -D CMAKE_C_COMPILER="/mingw64/bin/mingw-w64-x86_64-gcc" -G "MSYS Makefiles" ./CMakeLists.txt
       - name: Build
         run: cmake --build .
