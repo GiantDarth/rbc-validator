@@ -40,6 +40,16 @@ jobs:
           ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
           ./.github/scripts/test_ecc_mpi.sh
+      - name: Test Hash
+        run: ./hash_test
+      - name: Test SHA1
+        run: |
+          ./.github/scripts/test_sha1_omp.sh
+          ./.github/scripts/test_sha1_mpi.sh
+      - name: Test SHA3-384
+        run: |
+          ./.github/scripts/test_sha3-384_omp.sh
+          ./.github/scripts/test_sha3-384_mpi.sh
   ubuntu-clang:
     name: Ubuntu (Clang)
     # This job runs on Linux
@@ -78,6 +88,16 @@ jobs:
           ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
           ./.github/scripts/test_ecc_mpi.sh
+      - name: Test Hash
+        run: ./hash_test
+      - name: Test SHA1
+        run: |
+          ./.github/scripts/test_sha1_omp.sh
+          ./.github/scripts/test_sha1_mpi.sh
+      - name: Test SHA3-384
+        run: |
+          ./.github/scripts/test_sha3-384_omp.sh
+          ./.github/scripts/test_sha3-384_mpi.sh
   macosx:
     name: Mac OS X (Latest)
     runs-on: macos-latest
@@ -109,6 +129,12 @@ jobs:
         run: |
           ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
+      - name: Test Hash
+        run: ./hash_test
+      - name: Test SHA1
+        run: ./.github/scripts/test_sha1_omp.sh
+      - name: Test SHA3-384
+        run: ./.github/scripts/test_sha3-384_omp.sh
   windows:
     name: Windows (MSYS2)
     runs-on: windows-latest
@@ -147,3 +173,9 @@ jobs:
         run: |
           ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
+      - name: Test Hash
+        run: ./hash_test
+      - name: Test SHA1
+        run: ./.github/scripts/test_sha1_omp.sh
+      - name: Test SHA3-384
+        run: ./.github/scripts/test_sha3-384_omp.sh

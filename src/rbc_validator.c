@@ -258,6 +258,11 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
         params->client_crypto_hex = args_info->inputs[1];
     }
     else if(algo->mode == MODE_HASH) {
+        if(args_info->inputs_num < 2 || args_info->inputs_num > 3) {
+            fprintf(stderr, "%s\n", gengetopt_args_info_usage);
+            return 1;
+        }
+
         size_t digest_size = KANG12_SIZE;
         if(algo->nid != KANG12_SIZE) {
             const EVP_MD *md = EVP_get_digestbynid(algo->nid);
@@ -274,7 +279,10 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
         }
 
         params->client_crypto_hex = args_info->inputs[1];
-        params->salt_hex = args_info->inputs[1];
+
+        if(args_info->inputs_num > 2) {
+            params->salt_hex = args_info->inputs[2];
+        }
     }
 
     return 0;
