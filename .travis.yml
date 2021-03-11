@@ -42,15 +42,12 @@ addons:
       - libopenmpi-dev
       - openmpi-bin
       - libgmp-dev
-      - uuid-dev
       - libssl-dev
   homebrew:
     update: false
     packages:
       - libomp
       - gmp
-      - ossp-uuid
-      - argp-standalone
       - openssl@1.1
 
 before_install:
