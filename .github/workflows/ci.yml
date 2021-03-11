@@ -157,7 +157,7 @@ jobs:
         run: ./cipher_test
       - name: Test ChaCha20
         shell: bash
-        run: .github/test_chacha20_omp.sh
+        run: ./.github/test_chacha20_omp.sh
       - name: Test ECC
         shell: bash
         run: |
