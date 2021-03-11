@@ -114,52 +114,43 @@ jobs:
           ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
   windows:
-    name: Windows (Cygwin)
+    name: Windows (MSYS2)
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
       - name: Install Dependencies
-        run: |
-          where bash
-          choco install --no-progress cygwin cyg-get -y
-          cyg-get default -upgrade -arch x86_64
-          cyg-get gcc-core `
-            gcc-g++ `
-            libargp-devel `
-            libgmp-devel `
-            libuuid-devel `
-            libssl-devel `
-            make `
-            libgomp1 `
-            gdb `
-            cmake `
-            -upgrade -arch x86_64
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            base-devel
+            git
+            libgmp-devel
+            libssl-devel
+            cmake
       - name: Set PATH
         run: |
           echo "C:/tools/cygwin/bin" >> $GITHUB_PATH
           echo "C:/tools/cygwin/usr/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
       - name: CMake Configure
-        shell: bash
         run: |
           which cmake
           cmake --version
           cmake -G "Unix Makefiles" ./CMakeLists.txt
       - name: Build
-        shell: C:\tools\cygwin\bin\bash.exe --noprofile --norc -eo pipefail {0}
         run: cmake --build .
       - name: Test AES
-        shell: bash
         run: |
           ./aes256_test
           ./.github/scripts/test_aes_omp.sh
       - name: Test Cipher
-        shell: bash
         run: ./cipher_test
       - name: Test ChaCha20
-        shell: bash
         run: ./.github/test_chacha20_omp.sh
       - name: Test ECC
-        shell: bash
         run: |
           ./ecc_test
           ./.github/scripts/test_ecc_omp.sh
