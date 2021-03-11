@@ -15,8 +15,7 @@ jobs:
             libomp-dev \
             libopenmpi-dev \
             openmpi-bin \
-            libgmp-dev \
-            uuid-dev
+            libgmp-dev
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
@@ -54,8 +53,7 @@ jobs:
             libomp-dev \
             libopenmpi-dev \
             openmpi-bin \
-            libgmp-dev \
-            uuid-dev
+            libgmp-dev
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
@@ -89,9 +87,7 @@ jobs:
           echo "HOMEBREW_NO_AUTO_UPDATE=1" >> $GITHUB_ENV
           brew install \
             libomp \
-            gmp \
-            ossp-uuid \
-            argp-standalone
+            gmp
       - uses: actions/checkout@v2
       - name: CMake Configure
         run: |
