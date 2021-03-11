@@ -146,7 +146,7 @@ jobs:
       - name: Test Cipher
         run: ./cipher_test
       - name: Test ChaCha20
-        run: ./.github/test_chacha20_omp.sh
+        run: ./.github/scripts/test_chacha20_omp.sh
       - name: Test ECC
         run: |
           ./ecc_test
