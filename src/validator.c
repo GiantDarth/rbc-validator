@@ -282,6 +282,7 @@ int find_matching_seed(unsigned char *client_seed, const unsigned char *host_see
             // keys
 #pragma omp critical
             memcpy(client_seed, curr_seed, SEED_SIZE);
+            break;
 #endif
         }
 
