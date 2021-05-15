@@ -12,8 +12,8 @@ set -x
     0000000092e26c1446222ecd8d2fe2ac) == \
   "54b93e74f84544b592b1909f4f44386c20cea701d01d44da567f336b7893ea80" ]]
 
-[[ $(./rbc_validator --mode=chacha20 -rvca -m3 -t1 |& grep searched | cut -d' ' -f4) == 2763520 ]]
+[[ $(./rbc_validator --mode=chacha20 -rvca -m3 -t1 |& grep searched | cut -d' ' -f4) == 2796417 ]]
 [[ $(./rbc_validator --mode=chacha20 -rvcaf -m3 -t1 |& grep searched | cut -d' ' -f4) == 2763520 ]]
 
-[[ $(./rbc_validator --mode=chacha20 -rvca -m3 |& grep searched | cut -d' ' -f4) == 2763520 ]]
+[[ $(./rbc_validator --mode=chacha20 -rvca -m3 |& grep searched | cut -d' ' -f4) == 2796417 ]]
 [[ $(./rbc_validator --mode=chacha20 -rvcaf -m3 |& grep searched | cut -d' ' -f4) == 2763520 ]]
