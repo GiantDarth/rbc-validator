@@ -22,3 +22,9 @@ mpirun ./rbc_validator_mpi --mode=ecc -bv -m2
     000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
     06d253229db92099808ace5668aa3c1b182a3857ebacbee5e67eeb0f5e422a1ce90f1f52b9ba6ea8242d469c6208f8ba304056181a85406542bf3a89b5badb1cee) == \
   "100102030405060718090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" ]]
+
+[[ $(./rbc_validator_mpi --mode=ecc -rvca -m3 |& grep searched | cut -d' ' -f4) == 2763520 ]]
+[[ $(./rbc_validator_mpi --mode=ecc -rvcaf -m3 |& grep searched | cut -d' ' -f4) == 2763520 ]]
+
+[[ $(mpirun ./rbc_validator_mpi --mode=ecc -rvca -m3 |& grep searched | cut -d' ' -f4) == 2763520 ]]
+[[ $(mpirun ./rbc_validator_mpi --mode=ecc -rvcaf -m3 |& grep searched | cut -d' ' -f4) == 2763520 ]]
