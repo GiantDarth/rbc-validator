@@ -1,6 +1,10 @@
 from Crypto.Cipher import AES
 
+SEED_SIZE = 32
 # AES256
 AES_KEY_SIZE = AES.key_size[2]
+
+CHACHA20_OPENSSL_NONCE_SIZE = 16
+CHACHA20_NONCE_SIZE = 12
 
 EC_CURVE = "secp256r1"
