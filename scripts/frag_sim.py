@@ -49,7 +49,7 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
             client_priv_key = ECC.construct(curve=EC_CURVE, d=int.from_bytes(client_subkey, "big"))
             subargs = [get_ec_public_key_bytes(client_priv_key, compress=False).hex()]
         else:
-            ValueError(f"Error: Mode '{mode}' is not recognized.")
+            print(f"Error: Mode '{mode}' is not recognized.", file=sys.stderr)
             sys.exit(1)
 
         args.append(subargs)
@@ -103,16 +103,6 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
         # Get only the decimal output (in seconds) and increment duration by its value
         duration += float(clock_line.split(" ")[3])
         key_count += int(count_line.split(" ")[3])
-
-        print(env_args)
-
-        print(subkey.hex())
-        for subarg in subargs:
-            print(subarg)
-        print()
-        print(clock_line)
-        print(count_line)
-        print()
 
     return duration, key_count
 
