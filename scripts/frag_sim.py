@@ -49,7 +49,7 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
             client_priv_key = ECC.construct(curve=EC_CURVE, d=int.from_bytes(client_subkey, "big"))
             subargs = [get_ec_public_key_bytes(client_priv_key, compress=False).hex()]
         else:
-            ValueError(f"Error: Mode '{mode}' is not recognized.")
+            print(f"Error: Mode '{mode}' is not recognized.", file=sys.stderr)
             sys.exit(1)
 
         args.append(subargs)
