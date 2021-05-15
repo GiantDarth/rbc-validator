@@ -69,7 +69,7 @@ const algo supported_algos[] = {
         // EC algorithms
         { "ecc","Secp256r1", NID_X9_62_prime256v1, MODE_EC },
         // Hashing algorithms
-        { "md5", "MD5", NID_sha1, MODE_HASH },
+        { "md5", "MD5", NID_md5, MODE_HASH },
         { "sha1", "SHA1", NID_sha1, MODE_HASH },
         { "sha224", "SHA2-224", NID_sha224, MODE_HASH },
         { "sha256", "SHA2-256", NID_sha256, MODE_HASH },
