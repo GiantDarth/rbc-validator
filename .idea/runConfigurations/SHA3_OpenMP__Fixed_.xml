@@ -1,7 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="SHA3 OpenMP (Fixed)" type="CMakeRunConfiguration" factoryName="Application" folderName="SHA3" PROGRAM_PARAMS="--mode=sha3-384 -vcf -m2 c4f7d50bff2fac84c872f267a3238539bbee6d11243985747a4e82083c30e293 6cb82e3ecb1a0e49dce795b90ee04fd6587a06b94a1cdea037698b80a42b932304796c586994979581f8cf49b3ba4ddf" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rbc_validator" TARGET_NAME="rbc_validator_mpi" CONFIG_NAME="Debug (gcc)" RUN_TARGET_PROJECT_NAME="rbc_validator" RUN_TARGET_NAME="rbc_validator_mpi">
-    <method v="2">
-      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-    </method>
-  </configuration>
-</component>
