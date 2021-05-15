@@ -104,16 +104,6 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
         duration += float(clock_line.split(" ")[3])
         key_count += int(count_line.split(" ")[3])
 
-        print(env_args)
-
-        print(subkey.hex())
-        for subarg in subargs:
-            print(subarg)
-        print()
-        print(clock_line)
-        print(count_line)
-        print()
-
     return duration, key_count
 
 
