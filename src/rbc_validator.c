@@ -693,9 +693,6 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
             }
-            else if(algo->mode == MODE_EC) {
-                ec_validator_destroy(v_args);
-            }
         }
 #else
 #pragma omp critical
