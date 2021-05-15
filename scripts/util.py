@@ -1,22 +1,24 @@
 import math
 import random
+from typing import ByteString
 
 from bitarray import bitarray
 from Crypto.PublicKey.ECC import EccKey
 
 
-def choose(n, k):
-    return math.factorial(n) // (math.factorial(k) * math.factorial(n - k))
+def decode_ordinal(ordinal: int, mismatches: int, bits_len: int) -> bitarray:
+    perm = bitarray(bits_len)
+    perm.setall(False)
 
-
-def decode_ordinal(ordinal, mismatches, key_size):
-    perm = 0
-    for bit in range(key_size * 8 - 1, 0, -1):
-        binom = choose(bit, mismatches)
+    bit = bits_len - 1
+    while mismatches > 0:
+        binom = math.comb(bit, mismatches)
         if ordinal >= binom:
             ordinal -= binom
-            perm |= 0b1 << bit
+            perm[bit] = True
             mismatches -= 1
+
+        bit -= 1
 
     return perm
 
@@ -28,24 +30,22 @@ def encode_ordinal(errors: bitarray):
     print(bit_positions)
 
     for index, bit_pos in enumerate(bit_positions, 1):
-        print("{} choose {} = {}".format(bit_pos, index, choose(bit_pos, index)))
-        ordinal += choose(bit_pos, index)
+        print("{} choose {} = {}".format(bit_pos, index, math.comb(bit_pos, index)))
+        ordinal += math.comb(bit_pos, index)
 
     return ordinal
 
 
-def corrupt_key(key, mismatches):
-    binom = choose(len(key) * 8, mismatches)
+def corrupt_key(key: ByteString, mismatches: int) -> bytes:
+    binom = math.comb(len(key) * 8, mismatches)
     ordinal = random.randrange(binom)
 
-    perm = decode_ordinal(ordinal, mismatches, len(key))
-    perm_bits = bitarray()
-    perm_bits.frombytes(perm.to_bytes(length=len(key), byteorder="big"))
+    perm = decode_ordinal(ordinal, mismatches, len(key) * 8)
 
     key_bits = bitarray()
     key_bits.frombytes(key)
 
-    corrupted_key_bits = key_bits ^ perm_bits
+    corrupted_key_bits = key_bits ^ perm
 
     return corrupted_key_bits.tobytes()
 
