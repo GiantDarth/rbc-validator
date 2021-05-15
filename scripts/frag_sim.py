@@ -27,19 +27,22 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
     host_seed = secrets.token_bytes(seed_size)
     client_seed = corrupt_key(host_seed, mismatches)
 
-    host_subseeds = [bytearray(host_seed[index:index + subseed_size])
+    host_subseeds = [bytes(host_seed[index:index + subseed_size])
                      for index in range(0, len(host_seed), subseed_size)]
-    client_subseeds = [bytearray(client_seed[index:index + subseed_size])
+    client_subseeds = [bytes(client_seed[index:index + subseed_size])
                        for index in range(0, len(client_seed), subseed_size)]
     args = []
 
-    for client_subseed in client_subseeds:
+    for host_subseed, client_subseed in zip(host_subseeds, client_subseeds):
         nonce = secrets.token_bytes(len(host_seed) - subseed_size)
+        host_subkey = host_subseed + nonce
         client_subkey = client_subseed + nonce
+
+        subargs = [host_subkey.hex()]
 
         if mode == "aes":
             aes = AES.new(client_subkey, AES.MODE_ECB)
-            subargs = [aes.encrypt(user_id.bytes).hex(), str(user_id)]
+            subargs += [aes.encrypt(user_id.bytes).hex(), str(user_id)]
         elif mode == "chacha20":
             chacha20_nonce = secrets.token_bytes(CHACHA20_NONCE_SIZE)
             chacha20 = ChaCha20.new(key=client_subkey, nonce=chacha20_nonce)
@@ -48,16 +51,15 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
             iv = chacha20.nonce
             iv = bytes(CHACHA20_OPENSSL_NONCE_SIZE - len(iv)) + iv
 
-            subargs = [client_key.hex(), user_id.hex, iv.hex()]
+            subargs += [client_key.hex(), user_id.hex, iv.hex()]
         elif mode == "ecc":
             client_priv_key = ECC.construct(curve=EC_CURVE, d=int.from_bytes(client_subkey, "big"))
-            subargs = [get_ec_public_key_bytes(client_priv_key, compress=False).hex()]
+            subargs += [get_ec_public_key_bytes(client_priv_key, compress=False).hex()]
         elif mode in hash_modes:
-            h = hashlib.new(mode.replace('-', '_'))
-            h.update(client_subseed)
-            subargs = [h.hexdigest()]
+            h = hashlib.new(mode.replace('-', '_'), client_subkey)
+            subargs += [h.hexdigest()]
         elif mode == "kang12":
-            subargs = [KangarooTwelve(client_subseed, b'', KANG12_SIZE).hex()]
+            subargs += [KangarooTwelve(client_subkey, b'', KANG12_SIZE).hex()]
         else:
             print(f"Error: Mode '{mode}' is not recognized.", file=sys.stderr)
             sys.exit(1)
@@ -67,7 +69,7 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
     duration = 0
     key_count = 0
 
-    for subkey, subargs in zip(host_subseeds, args):
+    for subargs in args:
         # Call rbc_validator over wsl with the UUID, the full server subkey, the client cipher, and only
         # the necessary subkey size set
         # Only extract the stderr output in verbose mode to get the actual time taken searching in text
@@ -93,10 +95,7 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
         if not cutoff:
             env_args.append("-a")
 
-        env_args += [
-            subkey.hex(),
-            *subargs
-        ]
+        env_args += subargs
 
         try:
             validator_proc = subprocess.run(env_args,
