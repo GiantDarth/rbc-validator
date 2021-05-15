@@ -260,8 +260,10 @@ int parse_hex_handler(unsigned char *buffer, const char *hex) {
 /// \return Returns a 0 on successfully finding a match, a 1 when unable to find a match,
 /// and a 2 when a general error has occurred.
 int main(int argc, char *argv[]) {
+    int my_rank;
+
 #ifdef USE_MPI
-    int my_rank, nprocs;
+    int nprocs;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
@@ -292,11 +294,6 @@ int main(int argc, char *argv[]) {
     double start_time, duration, key_rate;
     long long int validated_keys = 0;
     int found, subfound;
-
-#ifdef USE_MPI
-    mpz_t key_count;
-    size_t max_count;
-#endif
 
     memset(&params, 0, sizeof(params));
 
@@ -587,8 +584,6 @@ int main(int argc, char *argv[]) {
     found = 0;
 
 #ifdef USE_MPI
-    mpz_init(key_count);
-
     start_time = MPI_Wtime();
 #else
     start_time = omp_get_wtime();
@@ -608,10 +603,14 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
             uuid, ec_group, client_ec_point, mismatch, validated_keys, algo, subseed_length,\
             all_flag, count_flag, verbose_flag)\
-            private(subfound)
+            private(subfound, my_rank)
         {
         long long int sub_validated_keys = 0;
+        my_rank = (size_t)omp_get_thread_num();
 #endif
+
+        size_t max_count;
+        mpz_t key_count, first_perm, last_perm;
 
         int (*crypto_func)(const unsigned char*, void*) = NULL;
         int (*crypto_cmp)(void*) = NULL;
@@ -644,97 +643,79 @@ int main(int argc, char *argv[]) {
             v_args = ec_validator_create(ec_group, client_ec_point);
         }
 
-#ifdef USE_MPI
+        mpz_inits(key_count, first_perm, last_perm, NULL);
+
         mpz_bin_uiui(key_count, subseed_length, mismatch);
 
         // Only have this rank run if it's within range of possible keys
-        if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0) {
-            mpz_t first_perm, last_perm;
-
-            mpz_inits(first_perm, last_perm, NULL);
-
-            max_count = nprocs;
+        if(mpz_cmp_ui(key_count, (unsigned long)my_rank) > 0 && subfound >= 0) {
             // Set the count of pairs to the range of possible keys if there are more ranks
             // than possible keys
-            if(mpz_cmp_ui(key_count, nprocs) < 0) {
+#ifdef USE_MPI
+            max_count = nprocs;
+            if (mpz_cmp_ui(key_count, nprocs) < 0) {
+#else
+            max_count = omp_get_num_threads();
+            if (mpz_cmp_ui(key_count, omp_get_num_threads()) < 0) {
+#endif
                 max_count = mpz_get_ui(key_count);
             }
 
-            get_perm_pair(first_perm, last_perm, (size_t)my_rank, max_count,
-                              mismatch, subseed_length);
+            get_perm_pair(first_perm, last_perm, (size_t) my_rank, max_count,
+                          mismatch, subseed_length);
 
+#ifdef USE_MPI
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           all_flag,
                                           count_flag ? &validated_keys : NULL,
                                           &found, verbose_flag, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
-
-            mpz_clears(first_perm, last_perm, NULL);
-
-            if (subfound < 0) {
-                // Cleanup
-                mpz_clear(key_count);
-
-                if(algo->mode == MODE_CIPHER) {
-                    if(algo->nid != NID_aes_256_ecb) {
-                        cipher_validator_destroy(v_args);
-                    }
-                }
-                else if(algo->mode == MODE_EC) {
-                    ec_validator_destroy(v_args);
-
-                    EC_POINT_free(client_ec_point);
-                    EC_GROUP_free(ec_group);
-                }
-
-                MPI_Abort(MPI_COMM_WORLD, ERROR_CODE_FAILURE);
-            }
-        }
 #else
-        if(subfound >= 0) {
-            mpz_t first_perm, last_perm;
-
-            mpz_inits(first_perm, last_perm, NULL);
-
-            get_perm_pair(first_perm, last_perm, (size_t) omp_get_thread_num(),
-                          (size_t) omp_get_num_threads(), mismatch,
-                          subseed_length);
-
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           all_flag,
                                           count_flag ? &sub_validated_keys : NULL,
                                           &found, crypto_func, crypto_cmp, v_args);
-
-            mpz_clears(first_perm, last_perm, NULL);
+#endif
         }
 
-#pragma omp critical
-            {
-                // If the result is positive set the "global" found to 1. Will cause the other
-                // threads to prematurely stop.
-                if (subfound > 0) {
-                    // If it isn't already found nor is there an error found,
-                    if (!found) {
-                        found = 1;
-                    }
-                }
-                // If the result is negative, set a flag that an error has occurred, and stop the other
-                // threads. Will cause the other threads to prematurely stop.
-                else if (subfound < 0) {
-                    found = -1;
-                }
+        mpz_clears(key_count, first_perm, last_perm, NULL);
+        if(algo->mode == MODE_CIPHER) {
+            cipher_validator_destroy(v_args);
+        }
+        else if(algo->mode == MODE_EC) {
+            ec_validator_destroy(v_args);
+        }
 
-                validated_keys += sub_validated_keys;
-            }
-#endif
-
-            if(algo->mode == MODE_CIPHER) {
-                cipher_validator_destroy(v_args);
+#ifdef USE_MPI
+        if (subfound < 0) {
+            // Cleanup
+            if(algo->mode == MODE_EC) {
+                EC_POINT_free(client_ec_point);
+                EC_GROUP_free(ec_group);
             }
             else if(algo->mode == MODE_EC) {
                 ec_validator_destroy(v_args);
             }
-#ifndef USE_MPI
+        }
+#else
+#pragma omp critical
+        {
+            // If the result is positive set the "global" found to 1. Will cause the other
+            // threads to prematurely stop.
+            if (subfound > 0) {
+                // If it isn't already found nor is there an error found,
+                if (!found) {
+                    found = 1;
+                }
+            }
+            // If the result is negative, set a flag that an error has occurred, and stop the other
+            // threads. Will cause the other threads to prematurely stop.
+            else if (subfound < 0) {
+                found = -1;
+            }
+
+            validated_keys += sub_validated_keys;
+        }
         }
 #endif
     }
@@ -788,8 +769,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Cleanup
-    mpz_clear(key_count);
-
     MPI_Finalize();
 
     return EXIT_SUCCESS;
