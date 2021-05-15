@@ -860,12 +860,6 @@ int main(int argc, char *argv[]) {
                                           count_flag ? &validated_keys : NULL,
                                           &found, verbose_flag, my_rank, max_count,
                                           crypto_func, crypto_cmp, v_args);
-                else if(algo->mode == MODE_HASH) {
-                    if(salt_size > 0) {
-                        free(salt);
-                    }
-                    free(client_digest);
-                }
 #else
             subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
                                           all_flag,
@@ -888,6 +882,12 @@ int main(int argc, char *argv[]) {
             if(algo->mode == MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
+            }
+            else if(algo->mode == MODE_HASH) {
+                if(salt_size > 0) {
+                    free(salt);
+                }
+                free(client_digest);
             }
         }
 #else
