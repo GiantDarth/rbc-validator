@@ -269,6 +269,7 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
             if(md == NULL) {
                 fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
                                   "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                return 1;
             }
             digest_size = EVP_MD_size(md);
         }
@@ -276,6 +277,7 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
         if(strlen(args_info->inputs[1]) != digest_size * 2) {
             fprintf(stderr, "CLIENT_DIGEST not equivalent to %zu bytes for %s\n",
                     digest_size, algo->full_name);
+            return 1;
         }
 
         params->client_crypto_hex = args_info->inputs[1];
