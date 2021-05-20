@@ -264,7 +264,7 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
         }
 
         size_t digest_size = KANG12_SIZE;
-        if(algo->nid != KANG12_SIZE) {
+        if(algo->nid != NID_kang12) {
             const EVP_MD *md = EVP_get_digestbynid(algo->nid);
             if(md == NULL) {
                 fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
