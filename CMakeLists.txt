@@ -92,7 +92,7 @@ if(MPI_ENABLED)
             PUBLIC OPENSSL_NO_DEPRECATED)
 
     if(ALWAYS_EVP_AES)
-        target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
+        target_compile_definitions(rbc_validator_mpi PUBLIC ALWAYS_EVP_AES)
     endif(ALWAYS_EVP_AES)
 
     if(ALWAYS_EVP_HASH)
