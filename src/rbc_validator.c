@@ -99,8 +99,6 @@ const algo *find_algo(const char* abbr_name, const algo *algos) {
 }
 
 int check_usage(int argc, const struct gengetopt_args_info *args_info) {
-
-
     if(args_info->usage_given || argc < 2) {
         fprintf(stderr, "%s\n", gengetopt_args_info_usage);
         return 1;
