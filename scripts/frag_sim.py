@@ -11,9 +11,13 @@ from typing import Tuple, Optional
 
 from Crypto.Cipher import AES, ChaCha20
 from Crypto.PublicKey import ECC
+from K12 import KangarooTwelve
 
-from config import SEED_SIZE, CHACHA20_OPENSSL_NONCE_SIZE, CHACHA20_NONCE_SIZE, EC_CURVE
+from config import (SEED_SIZE, CHACHA20_OPENSSL_NONCE_SIZE, CHACHA20_NONCE_SIZE, EC_CURVE, KANG12_SIZE)
 from util import corrupt_key, get_ec_public_key_bytes
+
+hash_modes = {"md5", "sha1", "sha224", "sha256", "sha384", "sha512", "sha3-224", "sha3-256", "sha3-384",
+              "sha3-512"}
 
 
 def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subseed_size: int,
@@ -51,6 +55,11 @@ def simulate_fragmentation(rbc_path: Path, mismatches: int, seed_size: int, subs
         elif mode == "ecc":
             client_priv_key = ECC.construct(curve=EC_CURVE, d=int.from_bytes(client_subkey, "big"))
             subargs += [get_ec_public_key_bytes(client_priv_key, compress=False).hex()]
+        elif mode in hash_modes:
+            h = hashlib.new(mode.replace('-', '_'), client_subkey)
+            subargs += [h.hexdigest()]
+        elif mode == "kang12":
+            subargs += [KangarooTwelve(client_subkey, b'', KANG12_SIZE).hex()]
         else:
             print(f"Error: Mode '{mode}' is not recognized.", file=sys.stderr)
             sys.exit(1)

@@ -1,12 +1,15 @@
-[![CI](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/GiantDarth/rbc_validator)](https://opensource.org/licenses/Apache-2.0)
+[![CI](https://github.com/GiantDarth/rbc_validator_restricted/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator_restricted/actions/workflows/ci.yml?branch=hash)
 
-# rbc_validator
+# rbc_validator (RESTRICTED ACCESS ONLY)
+
+| :warning: RESTRICTED ACCESS ONLY :warning: |
+|:---------------------------:|
+| This repository is for **RESTRICTED ACCESS** _only_ and includes work-in-progress cryptographic algorithms. If you're not meant to be here, [https://github.com/GiantDarth/rbc_validator]() is the open source variant! |
 
 Primary and Auxiliary Authors:
 * Christopher R. Philabaum  
 * Christopher B. Coffey  
-* Duane Booher 
+* Duane Booher
 
 `rbc_validator` is a tool suite written as real-world implementations demonstrating
 ***RBC (Response-based Cryptography)***, both as a drop-in tool and as a benchmark set.

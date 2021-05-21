@@ -27,6 +27,21 @@ typedef struct ec_validator_t {
     BN_CTX *ctx;
 } ec_validator_t;
 
+typedef struct hash_validator_t {
+    const EVP_MD *md;
+    int nid;
+    size_t digest_size, salt_size;
+    EVP_MD_CTX *ctx;
+    const unsigned char *client_digest, *salt;
+    unsigned char *curr_digest;
+} hash_validator_t;
+
+typedef struct kang12_validator_t {
+    size_t digest_size, salt_size;
+    const unsigned char *client_digest, *salt;
+    unsigned char *curr_digest;
+} kang12_validator_t;
+
 int aes256_crypto_func(const unsigned char *curr_seed, void *args);
 int aes256_crypto_cmp(void *args);
 
@@ -45,6 +60,20 @@ int ec_crypto_cmp(void *args);
 /// \param EC_POINT The client EC public key
 ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *client_point);
 void ec_validator_destroy(ec_validator_t *v);
+
+hash_validator_t *hash_validator_create(const EVP_MD *md, const unsigned char *client_digest,
+                                        const unsigned char *salt, size_t salt_size);
+void hash_validator_destroy(hash_validator_t *v);
+
+int hash_crypto_func(const unsigned char *curr_seed, void *args);
+int hash_crypto_cmp(void *args);
+
+kang12_validator_t *kang12_validator_create(const unsigned char *client_digest, size_t digest_size,
+                                            const unsigned char *salt, size_t salt_size);
+void kang12_validator_destroy(kang12_validator_t *v);
+
+int kang12_crypto_func(const unsigned char *curr_seed, void *args);
+int kang12_crypto_cmp(void *args);
 
 /// Given a starting permutation, iterate forward through every possible permutation until one that's
 /// matching last_perm is found, or until a matching cipher is found.

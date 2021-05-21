@@ -22,12 +22,16 @@ else(UNIX AND NOT CYGWIN AND NOT APPLE)
 endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
+set(ALWAYS_EVP_HASH OFF CACHE BOOL "Force MD5, SHA1, and SHA2 to use OpenSSL's EVP system instead.")
+set(ALWAYS_EVP_SHA3 ON CACHE BOOL "Force all SHA-3 algorithms to use OpenSSL's EVP over XKCP.")
+
 set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h
         src/uuid.c src/uuid.h)
 set(UTIL_FILES src/util.c src/util.h)
 set(AES_FILES src/crypto/aes256-ni_enc.c src/crypto/aes256-ni_enc.h)
 set(CIPHER_FILES src/crypto/cipher.c src/crypto/cipher.h)
 set(EC_FILES src/crypto/ec.c src/crypto/ec.h)
+set(HASH_FILES src/crypto/hash.c src/crypto/hash.h)
 set(VALIDATOR_FILES src/validator.c src/validator.h)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -40,13 +44,14 @@ list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libomp /usr/local/opt/open-mpi /usr
 add_executable(aes256_test src/aes256_test.c ${AES_FILES} ${UTIL_FILES})
 add_executable(cipher_test src/cipher_test.c ${CIPHER_FILES} ${UTIL_FILES})
 add_executable(ecc_test src/ecc_test.c ${EC_FILES})
+add_executable(hash_test src/hash_test.c ${HASH_FILES})
 
 add_executable(rbc_validator src/rbc_validator.c src/cmdline/cmdline_omp.c src/cmdline/cmdline_omp.h
-        ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+        ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES} ${HASH_FILES})
 
 if(MPI_ENABLED)
     add_executable(rbc_validator_mpi src/rbc_validator.c src/cmdline/cmdline_mpi.c src/cmdline/cmdline_mpi.h
-            ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES})
+            ${VALIDATOR_FILES} ${SOURCE_FILES} ${UTIL_FILES} ${CIPHER_FILES} ${AES_FILES} ${EC_FILES} ${HASH_FILES})
 endif(MPI_ENABLED)
 
 find_package(OpenSSL 1.1.1 REQUIRED)
@@ -56,11 +61,16 @@ if(MPI_ENABLED)
 endif(MPI_ENABLED)
 find_package(GMP 6.0.0 MODULE REQUIRED)
 
+add_subdirectory(lib/XKCP)
+
 include_directories(${GMP_INCLUDES})
+include_directories(${CMAKE_BINARY_DIR}/include)
 
 target_compile_definitions(cipher_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         OPENSSL_NO_DEPRECATED)
 target_compile_definitions(ecc_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
+        PUBLIC OPENSSL_NO_DEPRECATED)
+target_compile_definitions(hash_test PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
 target_compile_definitions(rbc_validator PUBLIC OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
         PUBLIC OPENSSL_NO_DEPRECATED)
@@ -69,6 +79,14 @@ if(ALWAYS_EVP_AES)
     target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
 endif(ALWAYS_EVP_AES)
 
+if(ALWAYS_EVP_HASH)
+    target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_HASH)
+endif(ALWAYS_EVP_HASH)
+
+if(ALWAYS_EVP_SHA3)
+    target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_SHA3)
+endif(ALWAYS_EVP_SHA3)
+
 if(MPI_ENABLED)
     target_compile_definitions(rbc_validator_mpi PUBLIC USE_MPI OPENSSL_API_COMPAT=${OPENSSL_API_COMPAT}
             PUBLIC OPENSSL_NO_DEPRECATED)
@@ -76,14 +94,23 @@ if(MPI_ENABLED)
     if(ALWAYS_EVP_AES)
         target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_AES)
     endif(ALWAYS_EVP_AES)
+
+    if(ALWAYS_EVP_HASH)
+        target_compile_definitions(rbc_validator_mpi PUBLIC ALWAYS_EVP_HASH)
+    endif(ALWAYS_EVP_HASH)
+
+    if(ALWAYS_EVP_SHA3)
+        target_compile_definitions(rbc_validator_mpi PUBLIC ALWAYS_EVP_SHA3)
+    endif(ALWAYS_EVP_SHA3)
 endif(MPI_ENABLED)
 
 target_link_libraries(cipher_test OpenSSL::Crypto)
 target_link_libraries(ecc_test OpenSSL::Crypto)
-target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${GMP_LIBRARIES})
+target_link_libraries(hash_test OpenSSL::Crypto XKCP)
+target_link_libraries(rbc_validator OpenMP::OpenMP_C OpenSSL::Crypto ${GMP_LIBRARIES} XKCP)
 
 if(MPI_ENABLED)
-    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${GMP_LIBRARIES})
+    target_link_libraries(rbc_validator_mpi MPI::MPI_C OpenSSL::Crypto ${GMP_LIBRARIES} XKCP)
 endif(MPI_ENABLED)
 
 install(TARGETS rbc_validator RUNTIME DESTINATION bin)

@@ -21,6 +21,7 @@
 #include "validator.h"
 #include "crypto/cipher.h"
 #include "crypto/ec.h"
+#include "crypto/hash.h"
 #include "seed_iter.h"
 #include "perm.h"
 #include "uuid.h"
@@ -47,6 +48,11 @@ if(omp_pause_resource_all(omp_pause_hard)) {\
 #define MODE_CIPHER 1
 // Used with matching a public key
 #define MODE_EC 2
+// Used with matching a digest
+#define MODE_HASH 3
+
+#define NID_kang12 -1
+#define KANG12_SIZE 32
 
 typedef struct algo {
     const char *abbr_name;
@@ -62,11 +68,23 @@ const algo supported_algos[] = {
         { "chacha20","ChaCha20", NID_chacha20, MODE_CIPHER },
         // EC algorithms
         { "ecc","Secp256r1", NID_X9_62_prime256v1, MODE_EC },
+        // Hashing algorithms
+        { "md5", "MD5", NID_md5, MODE_HASH },
+        { "sha1", "SHA1", NID_sha1, MODE_HASH },
+        { "sha224", "SHA2-224", NID_sha224, MODE_HASH },
+        { "sha256", "SHA2-256", NID_sha256, MODE_HASH },
+        { "sha384", "SHA2-384", NID_sha384, MODE_HASH },
+        { "sha512", "SHA2-512", NID_sha512, MODE_HASH },
+        { "sha3-224", "SHA3-224", NID_sha3_224, MODE_HASH },
+        { "sha3-256", "SHA3-256", NID_sha3_256, MODE_HASH },
+        { "sha3-384", "SHA3-384", NID_sha3_384, MODE_HASH },
+        { "sha3-512", "SHA3-512", NID_sha3_512, MODE_HASH },
+        { "kang12", "KangarooTwelve", NID_kang12, MODE_HASH },
         { 0 }
 };
 
 struct params {
-    char *seed_hex, *client_crypto_hex, *uuid_hex, *iv_hex;
+    char *seed_hex, *client_crypto_hex, *uuid_hex, *iv_hex, *salt_hex;
 };
 
 const algo *find_algo(const char* abbr_name, const algo *algos) {
@@ -232,12 +250,41 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
         if(strlen(args_info->inputs[1]) != comp_len * 2 && \
                 strlen(args_info->inputs[1]) != uncomp_len * 2) {
             fprintf(stderr, "CLIENT_PUB_KEY not %zu nor %zu bytes for %s\n",
-                       comp_len, uncomp_len, algo->full_name);
+                    comp_len, uncomp_len, algo->full_name);
             return 1;
         }
         EC_GROUP_free(group);
 
         params->client_crypto_hex = args_info->inputs[1];
+    }
+    else if(algo->mode == MODE_HASH) {
+        if(args_info->inputs_num < 2 || args_info->inputs_num > 3) {
+            fprintf(stderr, "%s\n", gengetopt_args_info_usage);
+            return 1;
+        }
+
+        size_t digest_size = KANG12_SIZE;
+        if(algo->nid != NID_kang12) {
+            const EVP_MD *md = EVP_get_digestbynid(algo->nid);
+            if(md == NULL) {
+                fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
+                                  "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                return 1;
+            }
+            digest_size = EVP_MD_size(md);
+        }
+
+        if(strlen(args_info->inputs[1]) != digest_size * 2) {
+            fprintf(stderr, "CLIENT_DIGEST not equivalent to %zu bytes for %s\n",
+                    digest_size, algo->full_name);
+            return 1;
+        }
+
+        params->client_crypto_hex = args_info->inputs[1];
+
+        if(args_info->inputs_num > 2) {
+            params->salt_hex = args_info->inputs[2];
+        }
     }
 
     return 0;
@@ -284,6 +331,11 @@ int main(int argc, char *argv[]) {
     unsigned char iv[EVP_MAX_IV_LENGTH];
     EC_GROUP *ec_group;
     EC_POINT *client_ec_point;
+    unsigned char *client_digest;
+    size_t digest_size;
+    const EVP_MD *md;
+    unsigned char *salt = NULL;
+    size_t salt_size = 0;
 
     int mismatch, ending_mismatch;
     int random_flag, benchmark_flag;
@@ -386,6 +438,45 @@ int main(int argc, char *argv[]) {
             return ERROR_CODE_FAILURE;
         }
     }
+    else if(algo->mode == MODE_HASH) {
+        if(algo->nid == NID_kang12) {
+            digest_size = KANG12_SIZE;
+        }
+        else {
+            // No need to deallocate an EVP_MD
+            if ((md = EVP_get_digestbynid(algo->nid)) == NULL) {
+                fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error: %s\n",
+                        ERR_error_string(ERR_get_error(), NULL));
+
+                OMP_DESTROY()
+
+                return ERROR_CODE_FAILURE;
+            }
+
+            digest_size = EVP_MD_size(md);
+        }
+
+        if ((client_digest = malloc(digest_size)) == NULL) {
+            perror("ERROR");
+
+            OMP_DESTROY()
+
+            return ERROR_CODE_FAILURE;
+        }
+
+        if (params.salt_hex != NULL) {
+            salt_size = (strlen(params.salt_hex) + 1) / 2;
+
+            if ((salt = malloc(salt_size)) == NULL) {
+                perror("ERROR");
+
+                free(client_digest);
+                OMP_DESTROY()
+
+                return ERROR_CODE_FAILURE;
+            }
+        }
+    }
 
     if (random_flag || benchmark_flag) {
 #ifdef USE_MPI
@@ -433,6 +524,33 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             }
+            else if(algo->mode == MODE_HASH) {
+                if(algo->nid == NID_kang12) {
+                    if(kang12_hash(client_digest, KANG12_SIZE, client_seed, SEED_SIZE, NULL,
+                                   0)) {
+                        if(salt_size > 0) {
+                            free(salt);
+                        }
+                        free(client_digest);
+
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
+                    }
+                }
+                else {
+                    if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE, NULL,
+                                0)) {
+                        if(salt_size > 0) {
+                            free(salt);
+                        }
+                        free(client_digest);
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
+                    }
+                }
+            }
 
             // Clear GMP PRNG
             gmp_randclear(randstate);
@@ -470,6 +588,10 @@ int main(int argc, char *argv[]) {
 
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
+        else if(algo->mode == MODE_HASH) {
+            MPI_Bcast(client_digest, digest_size, MPI_UNSIGNED_CHAR, 0,
+                      MPI_COMM_WORLD);
+        }
 #endif
     }
     else {
@@ -506,6 +628,51 @@ int main(int argc, char *argv[]) {
             OMP_DESTROY()
 
             return ERROR_CODE_FAILURE;
+        }
+        else if(algo->mode == MODE_HASH) {
+            switch(parse_hex(client_digest, params.client_crypto_hex)) {
+                case 1:
+                    fprintf(stderr, "ERROR: CLIENT_DIGEST had non-hexadecimal characters.\n");
+
+                    free(salt);
+                    free(client_digest);
+                    OMP_DESTROY()
+
+                    return ERROR_CODE_FAILURE;
+                case 2:
+                    fprintf(stderr, "ERROR: CLIENT_DIGEST did not have even length.\n");
+
+                    free(salt);
+                    free(client_digest);
+                    OMP_DESTROY()
+
+                    return ERROR_CODE_FAILURE;
+                default:
+                    break;
+            }
+
+            if(params.salt_hex != NULL) {
+                switch(parse_hex(salt, params.salt_hex)) {
+                    case 1:
+                        fprintf(stderr, "ERROR: SALT had non-hexadecimal characters.\n");
+
+                        free(salt);
+                        free(client_digest);
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
+                    case 2:
+                        fprintf(stderr, "ERROR: SALT did not have even length.\n");
+
+                        free(salt);
+                        free(client_digest);
+                        OMP_DESTROY()
+
+                        return ERROR_CODE_FAILURE;
+                    default:
+                        break;
+                }
+            }
         }
     }
 
@@ -577,6 +744,19 @@ int main(int argc, char *argv[]) {
             }
             fprintf(stderr, "\n");
         }
+        else if(algo->mode == MODE_HASH) {
+            fprintf(stderr, "INFO: Using %s CLIENT_DIGEST: %*s",
+                    algo->full_name, (int)strlen(algo->full_name) - 4, "");
+            fprint_hex(stderr, client_digest, digest_size);
+            fprintf(stderr, "\n");
+
+            if(salt_size > 0) {
+                fprintf(stderr, "INFO: Using %s SALT:      %*s",
+                        algo->full_name, (int)strlen(algo->full_name), "");
+                fprint_hex(stderr, salt, salt_size);
+                fprintf(stderr, "\n");
+            }
+        }
 
         fflush(stderr);
     }
@@ -601,8 +781,8 @@ int main(int argc, char *argv[]) {
 
 #ifndef USE_MPI
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
-            uuid, ec_group, client_ec_point, mismatch, validated_keys, algo, subseed_length,\
-            all_flag, count_flag, verbose_flag)\
+            uuid, ec_group, client_ec_point, md, client_digest, salt, salt_size, mismatch,\
+            validated_keys, algo, subseed_length, all_flag, count_flag, verbose_flag)\
             private(subfound, my_rank)
         {
         long long int sub_validated_keys = 0;
@@ -641,6 +821,18 @@ int main(int argc, char *argv[]) {
             crypto_func = ec_crypto_func;
             crypto_cmp = ec_crypto_cmp;
             v_args = ec_validator_create(ec_group, client_ec_point);
+        }
+        else if(algo->mode == MODE_HASH) {
+            if(algo->nid == NID_kang12) {
+                crypto_func = kang12_crypto_func;
+                crypto_cmp = kang12_crypto_cmp;
+                v_args = kang12_validator_create(client_digest, KANG12_SIZE, salt, salt_size);
+            }
+            else {
+                crypto_func = hash_crypto_func;
+                crypto_cmp = hash_crypto_cmp;
+                v_args = hash_validator_create(md, client_digest, salt, salt_size);
+            }
         }
 
         mpz_inits(key_count, first_perm, last_perm, NULL);
@@ -693,6 +885,12 @@ int main(int argc, char *argv[]) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
             }
+            else if(algo->mode == MODE_HASH) {
+                if(salt_size > 0) {
+                    free(salt);
+                }
+                free(client_digest);
+            }
         }
 #else
 #pragma omp critical
@@ -720,6 +918,12 @@ int main(int argc, char *argv[]) {
     if(algo->mode == MODE_EC) {
         EC_POINT_free(client_ec_point);
         EC_GROUP_free(ec_group);
+    }
+    else if(algo->mode == MODE_HASH) {
+        if(salt_size > 0) {
+            free(salt);
+        }
+        free(client_digest);
     }
 
 #ifdef USE_MPI

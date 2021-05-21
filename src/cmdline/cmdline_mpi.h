@@ -34,7 +34,7 @@ extern "C" {
 #define CMDLINE_PARSER_VERSION "v0.1.0"
 #endif
 
-enum enum_mode { mode__NULL = -1, mode_arg_none = 0, mode_arg_aes, mode_arg_chacha20, mode_arg_ecc };
+enum enum_mode { mode__NULL = -1, mode_arg_none = 0, mode_arg_aes, mode_arg_chacha20, mode_arg_ecc, mode_arg_md5, mode_arg_sha1, mode_arg_sha224, mode_arg_sha256, mode_arg_sha384, mode_arg_sha512, mode_arg_sha3MINUS_224, mode_arg_sha3MINUS_256, mode_arg_sha3MINUS_384, mode_arg_sha3MINUS_512, mode_arg_kang12 };
 
 /** @brief Where the command line options are stored */
 struct gengetopt_args_info
