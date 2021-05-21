@@ -13,6 +13,42 @@ int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
                 const unsigned char *msg, size_t msg_size,
                 const unsigned char *salt, size_t salt_size);
 
+int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
+             const unsigned char *msg, size_t msg_size,
+             const unsigned char *salt, size_t salt_size) {
+    EVP_MD_CTX *new_ctx = NULL;
+
+    if(msg == NULL) {
+        return 1;
+    }
+
+    if(ctx == NULL) {
+        if(md == NULL || (ctx = new_ctx = EVP_MD_CTX_new()) == NULL) {
+            return 1;
+        }
+    }
+
+    if(!EVP_DigestInit_ex(ctx, md, NULL)) {
+        return 1;
+    }
+
+    if(!EVP_DigestUpdate(ctx, msg, msg_size)) {
+        return 1;
+    }
+
+    if(salt_size > 0 && !EVP_DigestUpdate(ctx, salt, salt_size)) {
+        return 1;
+    }
+
+    if(!EVP_DigestFinal_ex(ctx, digest, NULL)) {
+        return 1;
+    }
+
+    EVP_MD_CTX_free(new_ctx);
+
+    return 0;
+}
+
 int md5_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
              const unsigned char *salt, size_t salt_size) {
     MD5_CTX ctx;
@@ -246,42 +282,6 @@ int sha3_512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_si
     }
 
     return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
-}
-
-int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
-             const unsigned char *msg, size_t msg_size,
-             const unsigned char *salt, size_t salt_size) {
-    EVP_MD_CTX *new_ctx = NULL;
-
-    if(msg == NULL) {
-        return 1;
-    }
-
-    if(ctx == NULL) {
-        if(md == NULL || (ctx = new_ctx = EVP_MD_CTX_new()) == NULL) {
-            return 1;
-        }
-    }
-
-    if(!EVP_DigestInit_ex(ctx, md, NULL)) {
-        return 1;
-    }
-
-    if(!EVP_DigestUpdate(ctx, msg, msg_size)) {
-        return 1;
-    }
-
-    if(salt_size > 0 && !EVP_DigestUpdate(ctx, salt, salt_size)) {
-        return 1;
-    }
-
-    if(!EVP_DigestFinal_ex(ctx, digest, NULL)) {
-        return 1;
-    }
-
-    EVP_MD_CTX_free(new_ctx);
-
-    return 0;
 }
 
 int kang12_hash(unsigned char *digest, size_t digest_size, const unsigned char *msg, size_t msg_size,
