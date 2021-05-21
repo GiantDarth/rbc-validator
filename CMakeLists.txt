@@ -96,7 +96,7 @@ if(MPI_ENABLED)
     endif(ALWAYS_EVP_AES)
 
     if(ALWAYS_EVP_HASH)
-        target_compile_definitions(rbc_validator PUBLIC ALWAYS_EVP_HASH)
+        target_compile_definitions(rbc_validator_mpi PUBLIC ALWAYS_EVP_HASH)
     endif(ALWAYS_EVP_HASH)
 
     if(ALWAYS_EVP_SHA3)
