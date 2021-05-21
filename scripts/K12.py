@@ -1,1 +1,1 @@
-lib/XKCP/Standalone/KangarooTwelve/Python/K12.py
+../lib/XKCP/Standalone/KangarooTwelve/Python/K12.py
