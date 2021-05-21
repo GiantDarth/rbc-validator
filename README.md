@@ -195,7 +195,7 @@ The main commands have required parameters when not in `--random` nor `--benchma
   * `--mode=sha3-512`: _n_ = 64 bytes
   * `--mode=kang12`: _n_ = 32 bytes
 
-All the main commands have (mostly) the same arguments:
+All the main commands have (mostly) the same options:
 
 * `--usage`: An auto-generated simple usage message made by Argp, which is the same if an
   invalid argument is used.
