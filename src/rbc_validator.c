@@ -786,7 +786,7 @@ int main(int argc, char *argv[]) {
             private(subfound, my_rank)
         {
         long long int sub_validated_keys = 0;
-        my_rank = (size_t)omp_get_thread_num();
+        my_rank = omp_get_thread_num();
 #endif
 
         size_t max_count;
