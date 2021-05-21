@@ -1,11 +1,7 @@
-[![CI](https://github.com/GiantDarth/rbc_validator_restricted/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator_restricted/actions/workflows/ci.yml?branch=hash)
+[![CI](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml/badge.svg)](https://github.com/GiantDarth/rbc_validator/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/GiantDarth/rbc_validator)](https://opensource.org/licenses/Apache-2.0)
 
-# rbc_validator (RESTRICTED ACCESS ONLY)
-
-| :warning: RESTRICTED ACCESS ONLY :warning: |
-|:---------------------------:|
-| This repository is for **RESTRICTED ACCESS** _only_ and includes work-in-progress cryptographic algorithms. If you're not meant to be here, [https://github.com/GiantDarth/rbc_validator]() is the open source variant! |
-
+# rbc_validator
 Primary and Auxiliary Authors:
 * Christopher R. Philabaum  
 * Christopher B. Coffey  
