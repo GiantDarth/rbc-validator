@@ -23,7 +23,7 @@ endif(UNIX AND NOT CYGWIN AND NOT APPLE)
 
 set(ALWAYS_EVP_AES OFF CACHE BOOL "Force AES to use OpenSSL's EVP system instead of a custom implementation.")
 set(ALWAYS_EVP_HASH OFF CACHE BOOL "Force MD5, SHA1, and SHA2 to use OpenSSL's EVP system instead.")
-set(ALWAYS_EVP_SHA3 OFF CACHE BOOL "Force all SHA-3 algorithms to use OpenSSL's EVP over XKCP.")
+set(ALWAYS_EVP_SHA3 ON CACHE BOOL "Force all SHA-3 algorithms to use OpenSSL's EVP over XKCP.")
 
 set(SOURCE_FILES src/seed_iter.c src/seed_iter.h src/perm.c src/perm.h
         src/uuid.c src/uuid.h)
