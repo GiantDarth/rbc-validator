@@ -5,8 +5,8 @@ purpose "\nGiven an HOST_SEED and either:
 1) an AES256 CLIENT_CIPHER and plaintext UUID;
 2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;
 3) an ECC Secp256r1 CLIENT_PUB_KEY;
-4) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256, SHA3-384, SHA3-512, or \
-KangarooTwelve CLIENT_DIGEST;
+4) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256, SHA3-384, SHA3-512, \
+SHAKE128, SHAKE256, or KangarooTwelve CLIENT_DIGEST;
 where CLIENT_* is from an unreliable source. \
 Progressively corrupt the chosen cryptographic function by a certain \
 number of bits until a matching client seed is found. The matching \
@@ -18,7 +18,7 @@ usage "rbc_validator_mpi [OPTIONS...] --mode=none HOST_SEED
   or : rbc_validator_mpi [OPTIONS...] --mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER UUID [IV]
   or : rbc_validator_mpi [OPTIONS...] --mode=ecc HOST_SEED CLIENT_PUB_KEY
   or : rbc_validator_mpi [OPTIONS...] --mode=[md5,sha1,sha224,sha256,sha384,sha512,sha3-224,sha3-256,\
-sha3-384,sha3-512,kang12] HOST_SEED CLIENT_DIGEST [SALT]
+sha3-384,sha3-512,shake128,shake256,kang12] HOST_SEED CLIENT_DIGEST [SALT]
   or : rbc_validator_mpi [OPTIONS...] --mode=* -r/--random -m/--mismatches=value
   or : rbc_validator_mpi [OPTIONS...] --mode=* -b/--benchmark -m/--mismatches=value
 Try `rbc_validator_mpi --help' for more information."
@@ -47,7 +47,7 @@ option "usage" - "Give a short usage message"
 option "mode" - "(REQUIRED) The cryptographic function to iterate against. If `none', then only perform
 seed iteration."
     enum values="none","aes","chacha20","ecc","md5","sha1","sha224","sha256","sha384","sha512",
-"sha3-224","sha3-256","sha3-384","sha3-512","kang12"
+"sha3-224","sha3-256","sha3-384","sha3-512","shake128","shake256","kang12"
 
 option "mismatches" m "The largest # of bits of corruption to test against, inclusively. \
 Defaults to -1. If negative, then the size of key in bits will be the limit. If in random or \

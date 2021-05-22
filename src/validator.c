@@ -116,9 +116,19 @@ int hash_crypto_func(const unsigned char *curr_seed, void *args) {
             return sha3_384_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha3_512:
             return sha3_512_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+        case NID_shake128:
+            return shake128_hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE,
+                                 v->salt, v->salt_size);
+        case NID_shake256:
+            return shake256_hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE,
+                                 v->salt, v->salt_size);
 #endif
+        case NID_kang12:
+            return kang12_hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE,
+                               v->salt, v->salt_size);
         default:
-            return evp_hash(v->curr_digest, v->ctx, v->md, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return evp_hash(v->curr_digest, v->is_xof ? &(v->digest_size) : NULL, v->ctx,
+                            v->md, curr_seed, SEED_SIZE, v->salt, v->salt_size);
     }
 }
 
@@ -251,6 +261,7 @@ void ec_validator_destroy(ec_validator_t *v) {
 }
 
 hash_validator_t *hash_validator_create(const EVP_MD *md, const unsigned char *client_digest,
+                                        size_t digest_size,
                                         const unsigned char *salt, size_t salt_size) {
     hash_validator_t *v = malloc(sizeof(*v));
 
@@ -263,7 +274,8 @@ hash_validator_t *hash_validator_create(const EVP_MD *md, const unsigned char *c
 
     v->md = md;
     v->nid = EVP_MD_nid(md);
-    v->digest_size = EVP_MD_size(md);
+    v->is_xof = md == EVP_shake128() || md == EVP_shake256();
+    v->digest_size = v->is_xof ? EVP_MD_size(md) : digest_size;
     v->client_digest = client_digest;
     v->salt = salt;
     v->salt_size = salt_size;
