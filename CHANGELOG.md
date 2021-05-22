@@ -1,6 +1,6 @@
 # rbc_validator Changelog
 
-## v1.0 (May 21, 2021)
+## 1.0.0 (May 21, 2021)
 
 ### Features
 
