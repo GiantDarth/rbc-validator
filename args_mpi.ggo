@@ -1,5 +1,5 @@
 package "rbc_validator_mpi"
-version "v0.1.0"
+version "1.0.0"
 
 purpose "\nGiven an HOST_SEED and either:
 1) an AES256 CLIENT_CIPHER and plaintext UUID;
