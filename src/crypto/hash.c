@@ -36,7 +36,7 @@ int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
         return 1;
     }
 
-    if(salt_size > 0 && !EVP_DigestUpdate(ctx, salt, salt_size)) {
+    if(salt != NULL && !EVP_DigestUpdate(ctx, salt, salt_size)) {
         return 1;
     }
 
@@ -62,7 +62,7 @@ int md5_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
         return 1;
     }
 
-    if(salt_size > 0 && !MD5_Update(&ctx, salt, salt_size)) {
+    if(salt != NULL && !MD5_Update(&ctx, salt, salt_size)) {
         OPENSSL_cleanse(&ctx, sizeof(ctx));
         return 1;
     }
@@ -90,7 +90,7 @@ int sha1_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
         return 1;
     }
 
-    if(salt_size > 0 && !SHA1_Update(&ctx, salt, salt_size)) {
+    if(salt != NULL && !SHA1_Update(&ctx, salt, salt_size)) {
         OPENSSL_cleanse(&ctx, sizeof(ctx));
         return 1;
     }
@@ -118,7 +118,7 @@ int sha224_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size
         return 1;
     }
 
-    if(salt_size > 0 && !SHA224_Update(&ctx, salt, salt_size)) {
+    if(salt != NULL && !SHA224_Update(&ctx, salt, salt_size)) {
         OPENSSL_cleanse(&ctx, sizeof(ctx));
         return 1;
     }
@@ -146,7 +146,7 @@ int sha256_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size
         return 1;
     }
 
-    if(salt_size > 0 && !SHA256_Update(&ctx, salt, salt_size)) {
+    if(salt != NULL && !SHA256_Update(&ctx, salt, salt_size)) {
         OPENSSL_cleanse(&ctx, sizeof(ctx));
         return 1;
     }
@@ -174,7 +174,7 @@ int sha384_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size
         return 1;
     }
 
-    if(salt_size > 0 && !SHA384_Update(&ctx, salt, salt_size)) {
+    if(salt != NULL && !SHA384_Update(&ctx, salt, salt_size)) {
         OPENSSL_cleanse(&ctx, sizeof(ctx));
         return 1;
     }
@@ -202,7 +202,7 @@ int sha512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size
         return 1;
     }
 
-    if(salt_size > 0 && !SHA512_Update(&ctx, salt, salt_size)) {
+    if(salt != NULL && !SHA512_Update(&ctx, salt, salt_size)) {
         OPENSSL_cleanse(&ctx, sizeof(ctx));
         return 1;
     }
@@ -225,7 +225,7 @@ int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
         return 1;
     }
 
-    if(salt_size > 0 && Keccak_HashUpdate(inst, salt, salt_size * 8) == KECCAK_FAIL) {
+    if(salt != NULL && Keccak_HashUpdate(inst, salt, salt_size * 8) == KECCAK_FAIL) {
         OPENSSL_cleanse(inst, sizeof(*inst));
         return 1;
     }
@@ -297,7 +297,7 @@ int kang12_hash(unsigned char *digest, size_t digest_size, const unsigned char *
         return 1;
     }
 
-    if(salt_size > 0 && KangarooTwelve_Update(&inst, salt, salt_size)) {
+    if(salt != NULL && KangarooTwelve_Update(&inst, salt, salt_size)) {
         OPENSSL_cleanse(&inst, sizeof(inst));
         return 1;
     }
