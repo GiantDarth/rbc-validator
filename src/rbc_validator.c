@@ -875,6 +875,14 @@ int main(int argc, char *argv[]) {
         else if(algo->mode == MODE_EC) {
             ec_validator_destroy(v_args);
         }
+        else if(algo->mode == MODE_HASH) {
+            if(algo->nid == NID_kang12) {
+                kang12_validator_destroy(v_args);
+            }
+            else {
+                hash_validator_destroy(v_args);
+            }
+        }
 
 #ifdef USE_MPI
         if (subfound < 0) {
