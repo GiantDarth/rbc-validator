@@ -29,6 +29,7 @@ typedef struct ec_validator_t {
 
 typedef struct hash_validator_t {
     const EVP_MD *md;
+    int is_xof;
     int nid;
     size_t digest_size, salt_size;
     EVP_MD_CTX *ctx;
@@ -62,7 +63,7 @@ ec_validator_t *ec_validator_create(const EC_GROUP *group, const EC_POINT *clien
 void ec_validator_destroy(ec_validator_t *v);
 
 hash_validator_t *hash_validator_create(const EVP_MD *md, const unsigned char *client_digest,
-                                        const unsigned char *salt, size_t salt_size);
+                                        size_t digest_size, const unsigned char *salt, size_t salt_size);
 void hash_validator_destroy(hash_validator_t *v);
 
 int hash_crypto_func(const unsigned char *curr_seed, void *args);

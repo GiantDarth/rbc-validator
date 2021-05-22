@@ -9,12 +9,12 @@
 #include <XKCP/KeccakHash.h>
 #include <XKCP/KangarooTwelve.h>
 
-int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
+int keccak_hash(unsigned char *digest, const size_t *digest_size, Keccak_HashInstance *inst,
                 const unsigned char *msg, size_t msg_size,
                 const unsigned char *salt, size_t salt_size);
 
-int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
-             const unsigned char *msg, size_t msg_size,
+int evp_hash(unsigned char *digest, const size_t *digest_size, EVP_MD_CTX *ctx,
+             const EVP_MD *md, const unsigned char *msg, size_t msg_size,
              const unsigned char *salt, size_t salt_size) {
     EVP_MD_CTX *new_ctx = NULL;
 
@@ -40,8 +40,15 @@ int evp_hash(unsigned char *digest, EVP_MD_CTX *ctx, const EVP_MD *md,
         return 1;
     }
 
-    if(!EVP_DigestFinal_ex(ctx, digest, NULL)) {
-        return 1;
+    if(digest_size == NULL) {
+        if(!EVP_DigestFinal_ex(ctx, digest, NULL)) {
+            return 1;
+        }
+    }
+    else {
+        if(!EVP_DigestFinalXOF(ctx, digest, *digest_size)) {
+            return 1;
+        }
     }
 
     EVP_MD_CTX_free(new_ctx);
@@ -217,7 +224,7 @@ int sha512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size
     return 0;
 }
 
-int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
+int keccak_hash(unsigned char *digest, const size_t *digest_size, Keccak_HashInstance *inst,
                 const unsigned char *msg, size_t msg_size,
                 const unsigned char *salt, size_t salt_size) {
     if(Keccak_HashUpdate(inst, msg, msg_size * 8) == KECCAK_FAIL) {
@@ -235,6 +242,12 @@ int keccak_hash(unsigned char *digest, Keccak_HashInstance *inst,
         return 1;
     }
 
+    // Perform an XOF
+    if(digest_size != NULL && Keccak_HashSqueeze(inst, digest, *digest_size) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
     OPENSSL_cleanse(inst, sizeof(*inst));
 
     return 0;
@@ -248,7 +261,7 @@ int sha3_224_hash(unsigned char *digest, const unsigned char *msg, size_t msg_si
         return 1;
     }
 
-    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
 int sha3_256_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
@@ -259,7 +272,7 @@ int sha3_256_hash(unsigned char *digest, const unsigned char *msg, size_t msg_si
         return 1;
     }
 
-    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
 int sha3_384_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
@@ -270,7 +283,7 @@ int sha3_384_hash(unsigned char *digest, const unsigned char *msg, size_t msg_si
         return 1;
     }
 
-    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
 int sha3_512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_size,
@@ -281,7 +294,31 @@ int sha3_512_hash(unsigned char *digest, const unsigned char *msg, size_t msg_si
         return 1;
     }
 
-    return keccak_hash(digest, &inst, msg, msg_size, salt, salt_size);
+    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
+}
+
+int shake128_hash(unsigned char *digest, size_t digest_size,
+                  const unsigned char *msg, size_t msg_size,
+                  const unsigned char *salt, size_t salt_size) {
+    Keccak_HashInstance inst;
+
+    if(Keccak_HashInitialize_SHAKE128(&inst) == KECCAK_FAIL) {
+        return 1;
+    }
+
+    return keccak_hash(digest, &digest_size, &inst, msg, msg_size, salt, salt_size);
+}
+
+int shake256_hash(unsigned char *digest, size_t digest_size,
+                  const unsigned char *msg, size_t msg_size,
+                  const unsigned char *salt, size_t salt_size) {
+    Keccak_HashInstance inst;
+
+    if(Keccak_HashInitialize_SHAKE128(&inst) == KECCAK_FAIL) {
+        return 1;
+    }
+
+    return keccak_hash(digest, &digest_size, &inst, msg, msg_size, salt, salt_size);
 }
 
 int kang12_hash(unsigned char *digest, size_t digest_size, const unsigned char *msg, size_t msg_size,

@@ -25,9 +25,9 @@
 
 #include "cmdline_omp.h"
 
-const char *gengetopt_args_info_purpose = "\nGiven an HOST_SEED and either:\n1) an AES256 CLIENT_CIPHER and plaintext UUID;\n2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;\n3) an ECC Secp256r1 CLIENT_PUB_KEY;\n4) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256,\nSHA3-384, SHA3-512, or KangarooTwelve CLIENT_DIGEST;\nwhere CLIENT_* is from an unreliable source. Progressively corrupt the chosen\ncryptographic function by a certain number of bits until a matching client seed\nis found. The matching HOST_* will be sent to stdout, depending on the\ncryptographic function.\n\nThis implementation uses OpenMP.";
+const char *gengetopt_args_info_purpose = "\nGiven an HOST_SEED and either:\n1) an AES256 CLIENT_CIPHER and plaintext UUID;\n2) a ChaCha20 CLIENT_CIPHER, plaintext UUID, and IV;\n3) an ECC Secp256r1 CLIENT_PUB_KEY;\n4) a MD5, SHA1, SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256,\nSHA3-384, SHA3-512, SHAKE128, SHAKE256, or KangarooTwelve CLIENT_DIGEST;\nwhere CLIENT_* is from an unreliable source. Progressively corrupt the chosen\ncryptographic function by a certain number of bits until a matching client seed\nis found. The matching HOST_* will be sent to stdout, depending on the\ncryptographic function.\n\nThis implementation uses OpenMP.";
 
-const char *gengetopt_args_info_usage = "Usage: rbc_validator [OPTIONS...] --mode=none HOST_SEED\n  or : rbc_validator [OPTIONS...] --mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER\nUUID [IV]\n  or : rbc_validator [OPTIONS...] --mode=ecc HOST_SEED CLIENT_PUB_KEY\n  or : rbc_validator [OPTIONS...]\n--mode=[md5,sha1,sha224,sha256,sha384,sha512,sha3-224,sha3-256,sha3-384,sha3-512,kang12]\nHOST_SEED CLIENT_DIGEST [SALT]\n  or : rbc_validator [OPTIONS...] --mode=* -r/--random -m/--mismatches=value\n  or : rbc_validator [OPTIONS...] --mode=* -b/--benchmark -m/--mismatches=value\nTry `rbc_validator_mpi --help' for more information.";
+const char *gengetopt_args_info_usage = "Usage: rbc_validator [OPTIONS...] --mode=none HOST_SEED\n  or : rbc_validator [OPTIONS...] --mode=[aes,chacha20] HOST_SEED CLIENT_CIPHER\nUUID [IV]\n  or : rbc_validator [OPTIONS...] --mode=ecc HOST_SEED CLIENT_PUB_KEY\n  or : rbc_validator [OPTIONS...]\n--mode=[md5,sha1,sha224,sha256,sha384,sha512,sha3-224,sha3-256,sha3-384,sha3-512,shake128,shake256,kang12]\nHOST_SEED CLIENT_DIGEST [SALT]\n  or : rbc_validator [OPTIONS...] --mode=* -r/--random -m/--mismatches=value\n  or : rbc_validator [OPTIONS...] --mode=* -b/--benchmark -m/--mismatches=value\nTry `rbc_validator_mpi --help' for more information.";
 
 const char *gengetopt_args_info_versiontext = "Christopher Robert Philabaum <cp723@nau.edu>";
 
@@ -37,7 +37,7 @@ const char *gengetopt_args_info_help[] = {
   "  -h, --help              Print help and exit",
   "  -V, --version           Print version and exit",
   "      --usage             Give a short usage message",
-  "      --mode=ENUM         (REQUIRED) The cryptographic function to iterate\n                            against. If `none', then only perform\n                            seed iteration.  (possible values=\"none\",\n                            \"aes\", \"chacha20\", \"ecc\", \"md5\", \"sha1\",\n                            \"sha224\", \"sha256\", \"sha384\", \"sha512\",\n                            \"sha3-224\", \"sha3-256\", \"sha3-384\",\n                            \"sha3-512\", \"kang12\")",
+  "      --mode=ENUM         (REQUIRED) The cryptographic function to iterate\n                            against. If `none', then only perform\n                            seed iteration.  (possible values=\"none\",\n                            \"aes\", \"chacha20\", \"ecc\", \"md5\", \"sha1\",\n                            \"sha224\", \"sha256\", \"sha384\", \"sha512\",\n                            \"sha3-224\", \"sha3-256\", \"sha3-384\",\n                            \"sha3-512\", \"shake128\", \"shake256\",\n                            \"kang12\")",
   "  -m, --mismatches=value  The largest # of bits of corruption to test against,\n                            inclusively. Defaults to -1. If negative, then the\n                            size of key in bits will be the limit. If in random\n                            or benchmark mode, then this will also be used to\n                            corrupt the random key by the same # of bits; for\n                            this reason, it must be set and non-negative when\n                            in random or benchmark mode. Cannot be larger than\n                            what --subkey-size is set to.  (default=`-1')",
   "  -s, --subkey=value      How many of the first bits to corrupt and iterate\n                            over. Must be between 1 and 256. Defaults to 256.\n                            (default=`256')",
   "\n Mode: Random",
@@ -68,7 +68,7 @@ cmdline_parser_internal (int argc, char **argv, struct gengetopt_args_info *args
                         struct cmdline_parser_params *params, const char *additional_error);
 
 
-const char *cmdline_parser_mode_values[] = {"none", "aes", "chacha20", "ecc", "md5", "sha1", "sha224", "sha256", "sha384", "sha512", "sha3-224", "sha3-256", "sha3-384", "sha3-512", "kang12", 0}; /*< Possible values for mode. */
+const char *cmdline_parser_mode_values[] = {"none", "aes", "chacha20", "ecc", "md5", "sha1", "sha224", "sha256", "sha384", "sha512", "sha3-224", "sha3-256", "sha3-384", "sha3-512", "shake128", "shake256", "kang12", 0}; /*< Possible values for mode. */
 
 static char *
 gengetopt_strdup (const char *s);

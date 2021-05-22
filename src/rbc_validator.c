@@ -45,14 +45,15 @@ if(omp_pause_resource_all(omp_pause_hard)) {\
 // By setting it to 0, we're assuming it'll be zeroified when arguments are first created
 #define MODE_NONE 0
 // Used with symmetric encryption
-#define MODE_CIPHER 1
+#define MODE_CIPHER 0b1
 // Used with matching a public key
-#define MODE_EC 2
+#define MODE_EC 0b10
 // Used with matching a digest
-#define MODE_HASH 3
+#define MODE_HASH 0b100
+// Used alongside MODE_HASH for a custom digest_size
+#define MODE_XOF 0b1000
 
-#define NID_kang12 -1
-#define KANG12_SIZE 32
+#define DEFAULT_XOF_SIZE 32
 
 typedef struct algo {
     const char *abbr_name;
@@ -79,7 +80,9 @@ const algo supported_algos[] = {
         { "sha3-256", "SHA3-256", NID_sha3_256, MODE_HASH },
         { "sha3-384", "SHA3-384", NID_sha3_384, MODE_HASH },
         { "sha3-512", "SHA3-512", NID_sha3_512, MODE_HASH },
-        { "kang12", "KangarooTwelve", NID_kang12, MODE_HASH },
+        { "shake128", "SHAKE128", NID_shake128, MODE_HASH | MODE_XOF },
+        { "shake256", "SHAKE256", NID_shake256, MODE_HASH | MODE_XOF },
+        { "kang12", "KangarooTwelve", NID_kang12, MODE_HASH | MODE_XOF },
         { 0 }
 };
 
@@ -186,11 +189,7 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
 
     const algo *algo = find_algo(args_info->mode_orig, supported_algos);
 
-    if(algo->mode == MODE_NONE && args_info->inputs_num != 1) {
-        fprintf(stderr, "%s\n", gengetopt_args_info_usage);
-        return 1;
-    }
-    else if(algo->mode == MODE_CIPHER) {
+    if(algo->mode & MODE_CIPHER) {
         if(args_info->inputs_num < 3 || args_info->inputs_num > 4) {
             fprintf(stderr, "%s\n", gengetopt_args_info_usage);
             return 1;
@@ -231,7 +230,7 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
             params->iv_hex = args_info->inputs[3];
         }
     }
-    else if(algo->mode == MODE_EC) {
+    else if(algo->mode & MODE_EC) {
         if(args_info->inputs_num != 2) {
             fprintf(stderr, "%s\n", gengetopt_args_info_usage);
             return 1;
@@ -255,27 +254,26 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
 
         params->client_crypto_hex = args_info->inputs[1];
     }
-    else if(algo->mode == MODE_HASH) {
+    else if(algo->mode & MODE_HASH) {
         if(args_info->inputs_num < 2 || args_info->inputs_num > 3) {
             fprintf(stderr, "%s\n", gengetopt_args_info_usage);
             return 1;
         }
 
-        size_t digest_size = KANG12_SIZE;
-        if(algo->nid != NID_kang12) {
+        if(!(algo->mode & MODE_XOF)) {
             const EVP_MD *md = EVP_get_digestbynid(algo->nid);
             if(md == NULL) {
                 fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error:"
-                                  "%s\n", ERR_error_string(ERR_get_error(), NULL));
+                                "%s\n", ERR_error_string(ERR_get_error(), NULL));
                 return 1;
             }
-            digest_size = EVP_MD_size(md);
-        }
+            size_t digest_size = EVP_MD_size(md);
 
-        if(strlen(args_info->inputs[1]) != digest_size * 2) {
-            fprintf(stderr, "CLIENT_DIGEST not equivalent to %zu bytes for %s\n",
-                    digest_size, algo->full_name);
-            return 1;
+            if(strlen(args_info->inputs[1]) != digest_size * 2) {
+                fprintf(stderr, "CLIENT_DIGEST not equivalent to %zu bytes for %s\n",
+                        digest_size, algo->full_name);
+                return 1;
+            }
         }
 
         params->client_crypto_hex = args_info->inputs[1];
@@ -283,6 +281,11 @@ int parse_params(struct params *params, const struct gengetopt_args_info *args_i
         if(args_info->inputs_num > 2) {
             params->salt_hex = args_info->inputs[2];
         }
+    }
+    // MODE_NONE
+    else if(args_info->inputs_num != 1) {
+        fprintf(stderr, "%s\n", gengetopt_args_info_usage);
+        return 1;
     }
 
     return 0;
@@ -412,10 +415,10 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Memory alloc/init
-    if(algo->mode == MODE_CIPHER) {
+    if(algo->mode & MODE_CIPHER) {
         evp_cipher = EVP_get_cipherbynid(algo->nid);
     }
-    else if(algo->mode == MODE_EC) {
+    else if(algo->mode & MODE_EC) {
         if((ec_group = EC_GROUP_new_by_curve_name(algo->nid)) == NULL) {
             fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                     ERR_error_string(ERR_get_error(), NULL));
@@ -436,21 +439,27 @@ int main(int argc, char *argv[]) {
             return ERROR_CODE_FAILURE;
         }
     }
-    else if(algo->mode == MODE_HASH) {
-        if(algo->nid == NID_kang12) {
-            digest_size = KANG12_SIZE;
+    else if(algo->mode & MODE_HASH) {
+        if(algo->nid != NID_kang12 && (md = EVP_get_digestbynid(algo->nid)) == NULL) {
+            fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error: %s\n",
+                    ERR_error_string(ERR_get_error(), NULL));
+
+            // No need to deallocate an EVP_MD
+
+            OMP_DESTROY()
+
+            return ERROR_CODE_FAILURE;
+        }
+
+        if(algo->mode & MODE_XOF) {
+            if(random_flag || benchmark_flag) {
+                digest_size = DEFAULT_XOF_SIZE;
+            }
+            else {
+                digest_size = (strlen(params.client_crypto_hex) + 1) / 2;
+            }
         }
         else {
-            // No need to deallocate an EVP_MD
-            if ((md = EVP_get_digestbynid(algo->nid)) == NULL) {
-                fprintf(stderr, "ERROR: EVP_get_digestbynid failed.\nOpenSSL Error: %s\n",
-                        ERR_error_string(ERR_get_error(), NULL));
-
-                OMP_DESTROY()
-
-                return ERROR_CODE_FAILURE;
-            }
-
             digest_size = EVP_MD_size(md);
         }
 
@@ -495,11 +504,13 @@ int main(int argc, char *argv[]) {
                                       numcores);
 #endif
 
-            if(algo->mode == MODE_CIPHER && EVP_CIPHER_iv_length(evp_cipher) > 0) {
-                get_random_seed(iv, EVP_CIPHER_iv_length(evp_cipher), randstate);
-            }
+            if(algo->mode & MODE_CIPHER) {
+                size_t iv_length = EVP_CIPHER_iv_length(evp_cipher);
 
-            if(algo->mode == MODE_CIPHER) {
+                if(iv_length > 0) {
+                    get_random_seed(iv, iv_length, randstate);
+                }
+
                 get_random_seed(uuid, AES_BLOCK_SIZE, randstate);
 
                 if(evp_encrypt(client_cipher, NULL, evp_cipher, client_seed, uuid, UUID_SIZE,
@@ -512,7 +523,7 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             }
-            else if (algo->mode == MODE_EC) {
+            else if (algo->mode & MODE_EC) {
                 if(get_ec_public_key(client_ec_point, NULL, ec_group, client_seed, SEED_SIZE)) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
@@ -522,31 +533,30 @@ int main(int argc, char *argv[]) {
                     return ERROR_CODE_FAILURE;
                 }
             }
-            else if(algo->mode == MODE_HASH) {
+            else if(algo->mode & MODE_HASH) {
+                int hash_status;
+
+                // No EVP variant exists for KangarooTwelve
                 if(algo->nid == NID_kang12) {
-                    if(kang12_hash(client_digest, KANG12_SIZE, client_seed, SEED_SIZE, NULL,
-                                   0)) {
-                        if(salt_size > 0) {
-                            free(salt);
-                        }
-                        free(client_digest);
-
-                        OMP_DESTROY()
-
-                        return ERROR_CODE_FAILURE;
-                    }
+                    hash_status = kang12_hash(client_digest, digest_size, client_seed, SEED_SIZE,
+                                              NULL, 0);
                 }
+                // No need to use the faster variants since this isn't a time critical step
                 else {
-                    if(evp_hash(client_digest, NULL, md, client_seed, SEED_SIZE, NULL,
-                                0)) {
-                        if(salt_size > 0) {
-                            free(salt);
-                        }
-                        free(client_digest);
-                        OMP_DESTROY()
+                    hash_status = evp_hash(client_digest,
+                                           algo->mode & MODE_XOF ? &digest_size : NULL,
+                                           NULL, md, client_seed, SEED_SIZE, NULL,0);
+                }
 
-                        return ERROR_CODE_FAILURE;
+                if(hash_status) {
+                    if(salt_size > 0) {
+                        free(salt);
                     }
+                    free(client_digest);
+
+                    OMP_DESTROY()
+
+                    return ERROR_CODE_FAILURE;
                 }
             }
 
@@ -559,11 +569,11 @@ int main(int argc, char *argv[]) {
         MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
-        if(algo->mode == MODE_CIPHER) {
+        if(algo->mode & MODE_CIPHER) {
             MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
             MPI_Bcast(uuid, UUID_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         }
-        else if(algo->mode == MODE_EC) {
+        else if(algo->mode & MODE_EC) {
             unsigned char client_public_key[100];
             int len;
 
@@ -586,7 +596,7 @@ int main(int argc, char *argv[]) {
 
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
         }
-        else if(algo->mode == MODE_HASH) {
+        else if(algo->mode & MODE_HASH) {
             MPI_Bcast(client_digest, digest_size, MPI_UNSIGNED_CHAR, 0,
                       MPI_COMM_WORLD);
         }
@@ -596,7 +606,7 @@ int main(int argc, char *argv[]) {
         int parse_status = parse_hex_handler(host_seed, params.seed_hex);
 
         if(!parse_status) {
-            if(algo->mode == MODE_CIPHER) {
+            if(algo->mode & MODE_CIPHER) {
                 parse_status = parse_hex_handler(client_cipher, params.client_crypto_hex);
 
                 if(!parse_status && uuid_parse(uuid, params.uuid_hex)) {
@@ -608,7 +618,7 @@ int main(int argc, char *argv[]) {
                     parse_status = parse_hex_handler(iv, params.iv_hex);
                 }
             }
-            else if (algo->mode == MODE_EC) {
+            else if (algo->mode & MODE_EC) {
                 if (EC_POINT_hex2point(ec_group, params.client_crypto_hex,
                                        client_ec_point, NULL) == NULL) {
                     fprintf(stderr, "ERROR: EC_POINT_hex2point failed.\nOpenSSL Error: %s\n",
@@ -619,7 +629,7 @@ int main(int argc, char *argv[]) {
         }
 
         if(parse_status) {
-            if(algo->mode == MODE_EC) {
+            if(algo->mode & MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
             }
@@ -627,7 +637,7 @@ int main(int argc, char *argv[]) {
 
             return ERROR_CODE_FAILURE;
         }
-        else if(algo->mode == MODE_HASH) {
+        else if(algo->mode & MODE_HASH) {
             switch(parse_hex(client_digest, params.client_crypto_hex)) {
                 case 1:
                     fprintf(stderr, "ERROR: CLIENT_DIGEST had non-hexadecimal characters.\n");
@@ -690,7 +700,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "\n");
         }
 
-        if(algo->mode == MODE_CIPHER) {
+        if(algo->mode & MODE_CIPHER) {
             char uuid_str[UUID_STR_LEN + 1];
 
             fprintf(stderr, "INFO: Using %s CLIENT_CIPHER: %*s", algo->full_name,
@@ -709,7 +719,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "\n");
             }
         }
-        else if(algo->mode == MODE_EC) {
+        else if(algo->mode & MODE_EC) {
             if(random_flag || benchmark_flag) {
                 fprintf(stderr, "INFO: Using %s HOST_PUB_KEY:%*s",
                         algo->full_name, (int)strlen(algo->full_name) - 4, "");
@@ -742,9 +752,12 @@ int main(int argc, char *argv[]) {
             }
             fprintf(stderr, "\n");
         }
-        else if(algo->mode == MODE_HASH) {
-            fprintf(stderr, "INFO: Using %s CLIENT_DIGEST: %*s",
-                    algo->full_name, (int)strlen(algo->full_name) - 4, "");
+        else if(algo->mode & MODE_HASH) {
+            fprintf(stderr, "INFO: Using %s ", algo->full_name);
+            if(algo->mode & MODE_XOF) {
+                fprintf(stderr, "(%zu bytes) ", digest_size);
+            }
+            fprintf(stderr, "CLIENT_DIGEST: ");
             fprint_hex(stderr, client_digest, digest_size);
             fprintf(stderr, "\n");
 
@@ -779,7 +792,7 @@ int main(int argc, char *argv[]) {
 
 #ifndef USE_MPI
 #pragma omp parallel default(none) shared(found, host_seed, client_seed, evp_cipher, client_cipher, iv,\
-            uuid, ec_group, client_ec_point, md, client_digest, salt, salt_size, mismatch,\
+            uuid, ec_group, client_ec_point, md, client_digest, digest_size, salt, salt_size, mismatch,\
             validated_keys, algo, subseed_length, all_flag, count_flag, verbose_flag)\
             private(subfound, my_rank)
         {
@@ -797,7 +810,7 @@ int main(int argc, char *argv[]) {
 
         subfound = 0;
 
-        if(algo->mode == MODE_CIPHER) {
+        if(algo->mode & MODE_CIPHER) {
 #ifndef ALWAYS_EVP_AES
             // Use a custom implementation for improved speed
             if(algo->nid == NID_aes_256_ecb) {
@@ -815,21 +828,21 @@ int main(int argc, char *argv[]) {
             v_args = cipher_validator_create(evp_cipher, client_cipher, uuid, UUID_SIZE,
                                              EVP_CIPHER_iv_length(evp_cipher) > 0 ? iv : NULL);
         }
-        else if(algo->mode == MODE_EC) {
+        else if(algo->mode & MODE_EC) {
             crypto_func = ec_crypto_func;
             crypto_cmp = ec_crypto_cmp;
             v_args = ec_validator_create(ec_group, client_ec_point);
         }
-        else if(algo->mode == MODE_HASH) {
+        else if(algo->mode & MODE_HASH) {
             if(algo->nid == NID_kang12) {
                 crypto_func = kang12_crypto_func;
                 crypto_cmp = kang12_crypto_cmp;
-                v_args = kang12_validator_create(client_digest, KANG12_SIZE, salt, salt_size);
+                v_args = kang12_validator_create(client_digest, digest_size, salt, salt_size);
             }
             else {
                 crypto_func = hash_crypto_func;
                 crypto_cmp = hash_crypto_cmp;
-                v_args = hash_validator_create(md, client_digest, salt, salt_size);
+                v_args = hash_validator_create(md, client_digest, digest_size, salt, salt_size);
             }
         }
 
@@ -869,13 +882,13 @@ int main(int argc, char *argv[]) {
         }
 
         mpz_clears(key_count, first_perm, last_perm, NULL);
-        if(algo->mode == MODE_CIPHER) {
+        if(algo->mode & MODE_CIPHER) {
             cipher_validator_destroy(v_args);
         }
-        else if(algo->mode == MODE_EC) {
+        else if(algo->mode & MODE_EC) {
             ec_validator_destroy(v_args);
         }
-        else if(algo->mode == MODE_HASH) {
+        else if(algo->mode & MODE_HASH) {
             if(algo->nid == NID_kang12) {
                 kang12_validator_destroy(v_args);
             }
@@ -887,11 +900,11 @@ int main(int argc, char *argv[]) {
 #ifdef USE_MPI
         if (subfound < 0) {
             // Cleanup
-            if(algo->mode == MODE_EC) {
+            if(algo->mode & MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
             }
-            else if(algo->mode == MODE_HASH) {
+            else if(algo->mode & MODE_HASH) {
                 if(salt_size > 0) {
                     free(salt);
                 }
@@ -921,11 +934,11 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-    if(algo->mode == MODE_EC) {
+    if(algo->mode & MODE_EC) {
         EC_POINT_free(client_ec_point);
         EC_GROUP_free(ec_group);
     }
-    else if(algo->mode == MODE_HASH) {
+    else if(algo->mode & MODE_HASH) {
         if(salt_size > 0) {
             free(salt);
         }

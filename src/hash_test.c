@@ -22,7 +22,7 @@ int generic_test(const char *name, const EVP_MD *md, const unsigned char *msg,
         return -1;
     }
 
-    if(evp_hash(digest, NULL, md, msg, msg_size, NULL, 0)) {
+    if(evp_hash(digest, NULL, NULL, md, msg, msg_size, NULL, 0)) {
         fprintf(stderr, "ERROR: evp_hash failed\n");
         free(digest);
 
