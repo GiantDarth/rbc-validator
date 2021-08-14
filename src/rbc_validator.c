@@ -843,10 +843,9 @@ int main(int argc, char* argv[]) {
                             subseed_length);
 
 #ifdef USE_MPI
-            subfound = find_matching_seed(client_seed, host_seed, first_perm, last_perm,
-                                          all_flag, count_flag ? &validated_keys : NULL, &found,
-                                          verbose_flag, my_rank, max_count, crypto_func,
-                                          crypto_cmp, v_args);
+            subfound = findMatchingSeed(client_seed, host_seed, first_perm, last_perm, all_flag,
+                                        count_flag ? &validated_keys : NULL, &found, verbose_flag,
+                                        my_rank, max_count, crypto_func, crypto_cmp, v_args);
 #else
             subfound = findMatchingSeed(client_seed, host_seed, first_perm, last_perm, all_flag,
                                         count_flag ? &sub_validated_keys : NULL, &found,
