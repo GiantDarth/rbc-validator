@@ -949,7 +949,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (subfound) {
-        fprint_hex(stdout, client_seed, SEED_SIZE);
+        fprintHex(stdout, client_seed, SEED_SIZE);
         printf("\n");
     }
 
