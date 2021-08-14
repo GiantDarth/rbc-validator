@@ -8,22 +8,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void print_hex(const unsigned char* array, size_t count) {
+void printHex(const unsigned char* array, size_t count) {
     for (size_t i = 0; i < count; i++) {
         printf("%02x", array[i]);
     }
 }
 
-int generic_test(const char* name, const EVP_MD* md, const unsigned char* msg, size_t msg_size,
-                 const unsigned char* expected_digest) {
+int genericTest(const char* name, const EVP_MD* md, const unsigned char* msg, size_t msg_size,
+                const unsigned char* expected_digest) {
     int status;
     unsigned char* digest = malloc(EVP_MD_size(md));
     if (digest == NULL) {
         return -1;
     }
 
-    if (evp_hash(digest, NULL, NULL, md, msg, msg_size, NULL, 0)) {
-        fprintf(stderr, "ERROR: evp_hash failed\n");
+    if (evpHash(digest, NULL, NULL, md, msg, msg_size, NULL, 0)) {
+        fprintf(stderr, "ERROR: evpHash failed\n");
         free(digest);
 
         return -1;
@@ -39,11 +39,11 @@ int generic_test(const char* name, const EVP_MD* md, const unsigned char* msg, s
     }
 
     printf("Expected: ");
-    print_hex(expected_digest, EVP_MD_size(md));
+    printHex(expected_digest, EVP_MD_size(md));
     printf("\n");
 
     printf("Actual:   ");
-    print_hex(digest, EVP_MD_size(md));
+    printHex(digest, EVP_MD_size(md));
     printf("\n");
 
     free(digest);
@@ -112,7 +112,7 @@ int main() {
     int status = 0;
 
     for (size_t i = 0; i < TEST_SIZE; i++) {
-        int sub_status = generic_test(names[i], mds[i], seed, sizeof(seed), expected_digests[i]);
+        int sub_status = genericTest(names[i], mds[i], seed, sizeof(seed), expected_digests[i]);
         if (sub_status < 0) {
             return EXIT_FAILURE;
         }

@@ -7,9 +7,9 @@
 #include <ctype.h>
 #include <openssl/err.h>
 
-void tolower_str(char* str);
+void tolowerStr(char* str);
 
-void tolower_str(char* str) {
+void tolowerStr(char* str) {
     if (str == NULL) {
         return;
     }
@@ -20,8 +20,8 @@ void tolower_str(char* str) {
     }
 }
 
-int get_ec_public_key(EC_POINT* point, BN_CTX* ctx, const EC_GROUP* group,
-                      const unsigned char* priv_key, size_t priv_key_size) {
+int getEcPublicKey(EC_POINT* point, BN_CTX* ctx, const EC_GROUP* group,
+                   const unsigned char* priv_key, size_t priv_key_size) {
     BN_CTX* new_ctx = NULL;
     BIGNUM* scalar;
 
@@ -56,8 +56,8 @@ int get_ec_public_key(EC_POINT* point, BN_CTX* ctx, const EC_GROUP* group,
     return 0;
 }
 
-int fprintf_ec_point(FILE* stream, const EC_GROUP* group, const EC_POINT* point,
-                     point_conversion_form_t form, BN_CTX* ctx) {
+int fprintfEcPoint(FILE* stream, const EC_GROUP* group, const EC_POINT* point,
+                   point_conversion_form_t form, BN_CTX* ctx) {
     char* hex;
 
     if (group == NULL || point == NULL) {
@@ -72,7 +72,7 @@ int fprintf_ec_point(FILE* stream, const EC_GROUP* group, const EC_POINT* point,
     }
 
     // Lowercase the hex since OpenSSL uses uppercase
-    tolower_str(hex);
+    tolowerStr(hex);
     fprintf(stream, "%s", hex);
     OPENSSL_free(hex);
 

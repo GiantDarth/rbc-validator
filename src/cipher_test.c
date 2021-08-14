@@ -10,17 +10,19 @@
 
 #include "util.h"
 
-int generic_test(const char* name, const EVP_CIPHER* evp_cipher, const unsigned char* key,
-                 const unsigned char* msg, const unsigned char* expected_cipher, size_t msg_len,
-                 const unsigned char* iv) {
+#define TEST_SIZE 2
+
+int genericTest(const char* name, const EVP_CIPHER* evp_cipher, const unsigned char* key,
+                const unsigned char* msg, const unsigned char* expected_cipher, size_t msg_len,
+                const unsigned char* iv) {
     int status;
     unsigned char* cipher = malloc(msg_len);
     if (cipher == NULL) {
         return 1;
     }
 
-    if (evp_encrypt(cipher, NULL, evp_cipher, key, (const unsigned char*)msg, msg_len, iv)) {
-        fprintf(stderr, "ERROR: evp_encrypt failed\n");
+    if (evpEncrypt(cipher, NULL, evp_cipher, key, (const unsigned char*)msg, msg_len, iv)) {
+        fprintf(stderr, "ERROR: evpEncrypt failed\n");
         return EXIT_FAILURE;
     }
 
@@ -34,19 +36,17 @@ int generic_test(const char* name, const EVP_CIPHER* evp_cipher, const unsigned 
     }
 
     printf("Expected: ");
-    fprint_hex(stdout, expected_cipher, msg_len);
+    fprintHex(stdout, expected_cipher, msg_len);
     printf("\n");
 
     printf("Actual:   ");
-    fprint_hex(stdout, cipher, msg_len);
+    fprintHex(stdout, cipher, msg_len);
     printf("\n");
 
     free(cipher);
 
     return status;
 }
-
-#define TEST_SIZE 2
 
 int main() {
     const unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
@@ -69,8 +69,8 @@ int main() {
     int status = 0;
 
     for (size_t i = 0; i < TEST_SIZE; i++) {
-        status |= generic_test(names[i], evp_ciphers[i], key, (unsigned char*)msg,
-                               expected_ciphers[i], sizeof(msg) - 1, ivs[i]);
+        status |= genericTest(names[i], evp_ciphers[i], key, (unsigned char*)msg,
+                              expected_ciphers[i], sizeof(msg) - 1, ivs[i]);
         if (i < TEST_SIZE - 1) {
             printf("\n");
         }

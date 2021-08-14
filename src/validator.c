@@ -15,18 +15,18 @@
 #include "crypto/hash.h"
 #include "seed_iter.h"
 
-int aes256_crypto_func(const unsigned char* curr_seed, void* args) {
-    cipher_validator_t* v = (cipher_validator_t*)args;
+int CryptoFunc_aes256(const unsigned char* curr_seed, void* args) {
+    CipherValidator* v = (CipherValidator*)args;
 
     if (v == NULL) {
         return -1;
     }
 
-    return aes256_ecb_encrypt(v->curr_cipher, curr_seed, v->msg, v->msg_size);
+    return aes256EcbEncrypt(v->curr_cipher, curr_seed, v->msg, v->msg_size);
 }
 
-int aes256_crypto_cmp(void* args) {
-    cipher_validator_t* v = (cipher_validator_t*)args;
+int CryptoCmp_aes256(void* args) {
+    CipherValidator* v = (CipherValidator*)args;
 
     if (v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
         return -1;
@@ -35,14 +35,14 @@ int aes256_crypto_cmp(void* args) {
     return memcmp(v->curr_cipher, v->client_cipher, v->msg_size) != 0;
 }
 
-int cipher_crypto_func(const unsigned char* curr_seed, void* args) {
-    cipher_validator_t* v = (cipher_validator_t*)args;
+int CryptoFunc_cipher(const unsigned char* curr_seed, void* args) {
+    CipherValidator* v = (CipherValidator*)args;
 
     if (v == NULL || v->ctx == NULL) {
         return 1;
     }
 
-    if (evp_encrypt(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv)) {
+    if (evpEncrypt(v->curr_cipher, v->ctx, v->evp_cipher, curr_seed, v->msg, v->msg_size, v->iv)) {
         return 1;
     }
 
@@ -55,8 +55,8 @@ int cipher_crypto_func(const unsigned char* curr_seed, void* args) {
     return 0;
 }
 
-int cipher_crypto_cmp(void* args) {
-    cipher_validator_t* v = (cipher_validator_t*)args;
+int CryptoCmp_cipher(void* args) {
+    CipherValidator* v = (CipherValidator*)args;
 
     if (v == NULL || v->curr_cipher == NULL || v->client_cipher == NULL) {
         return -1;
@@ -65,18 +65,18 @@ int cipher_crypto_cmp(void* args) {
     return memcmp(v->curr_cipher, v->client_cipher, v->msg_size) != 0;
 }
 
-int ec_crypto_func(const unsigned char* curr_seed, void* args) {
-    ec_validator_t* v = (ec_validator_t*)args;
+int CryptoFunc_ec(const unsigned char* curr_seed, void* args) {
+    EcValidator* v = (EcValidator*)args;
 
     if (v == NULL) {
         return -1;
     }
 
-    return get_ec_public_key(v->curr_point, v->ctx, v->group, curr_seed, SEED_SIZE);
+    return getEcPublicKey(v->curr_point, v->ctx, v->group, curr_seed, SEED_SIZE);
 }
 
-int ec_crypto_cmp(void* args) {
-    ec_validator_t* v = (ec_validator_t*)args;
+int CryptoCmp_ec(void* args) {
+    EcValidator* v = (EcValidator*)args;
 
     if (v == NULL) {
         return -1;
@@ -85,8 +85,8 @@ int ec_crypto_cmp(void* args) {
     return EC_POINT_cmp(v->group, v->curr_point, v->client_point, v->ctx);
 }
 
-int hash_crypto_func(const unsigned char* curr_seed, void* args) {
-    hash_validator_t* v = (hash_validator_t*)args;
+int CryptoFunc_hash(const unsigned char* curr_seed, void* args) {
+    HashValidator* v = (HashValidator*)args;
 
     if (v == NULL) {
         return -1;
@@ -95,17 +95,17 @@ int hash_crypto_func(const unsigned char* curr_seed, void* args) {
     switch (v->nid) {
 #ifndef ALWAYS_EVP_HASH
         case NID_md5:
-            return md5_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return md5Hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha1:
-            return sha1_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return sha1Hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha224:
-            return sha224_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return sha224Hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha256:
-            return sha256_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return sha256Hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha384:
-            return sha384_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return sha384Hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
         case NID_sha512:
-            return sha512_hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return sha512Hash(v->curr_digest, curr_seed, SEED_SIZE, v->salt, v->salt_size);
 #endif
 #ifndef ALWAYS_EVP_SHA3
         case NID_sha3_224:
@@ -124,16 +124,16 @@ int hash_crypto_func(const unsigned char* curr_seed, void* args) {
                                  v->salt_size);
 #endif
         case NID_kang12:
-            return kang12_hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE, v->salt,
-                               v->salt_size);
+            return kang12Hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE, v->salt,
+                              v->salt_size);
         default:
-            return evp_hash(v->curr_digest, v->is_xof ? &(v->digest_size) : NULL, v->ctx, v->md,
-                            curr_seed, SEED_SIZE, v->salt, v->salt_size);
+            return evpHash(v->curr_digest, v->is_xof ? &(v->digest_size) : NULL, v->ctx, v->md,
+                           curr_seed, SEED_SIZE, v->salt, v->salt_size);
     }
 }
 
-int hash_crypto_cmp(void* args) {
-    hash_validator_t* v = (hash_validator_t*)args;
+int CryptoCmp_hash(void* args) {
+    HashValidator* v = (HashValidator*)args;
 
     if (v == NULL) {
         return -1;
@@ -142,18 +142,18 @@ int hash_crypto_cmp(void* args) {
     return memcmp(v->curr_digest, v->client_digest, v->digest_size) != 0;
 }
 
-int kang12_crypto_func(const unsigned char* curr_seed, void* args) {
-    kang12_validator_t* v = (kang12_validator_t*)args;
+int CryptoFunc_kang12(const unsigned char* curr_seed, void* args) {
+    Kang12Validator* v = (Kang12Validator*)args;
 
     if (v == NULL) {
         return 1;
     }
 
-    return kang12_hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE, v->salt, v->salt_size);
+    return kang12Hash(v->curr_digest, v->digest_size, curr_seed, SEED_SIZE, v->salt, v->salt_size);
 }
 
-int kang12_crypto_cmp(void* args) {
-    kang12_validator_t* v = (kang12_validator_t*)args;
+int CryptoCmp_kang12(void* args) {
+    Kang12Validator* v = (Kang12Validator*)args;
 
     if (v == NULL) {
         return -1;
@@ -162,11 +162,11 @@ int kang12_crypto_cmp(void* args) {
     return memcmp(v->curr_digest, v->client_digest, v->digest_size) != 0;
 }
 
-cipher_validator_t* cipher_validator_create(const EVP_CIPHER* evp_cipher,
-                                            const unsigned char* client_cipher,
-                                            const unsigned char* msg, size_t msg_size,
-                                            const unsigned char* iv) {
-    cipher_validator_t* v = malloc(sizeof(*v));
+CipherValidator* CipherValidator_create(const EVP_CIPHER* evp_cipher,
+                                        const unsigned char* client_cipher,
+                                        const unsigned char* msg, size_t msg_size,
+                                        const unsigned char* iv) {
+    CipherValidator* v = malloc(sizeof(*v));
 
     if (v == NULL) {
         return NULL;
@@ -184,20 +184,20 @@ cipher_validator_t* cipher_validator_create(const EVP_CIPHER* evp_cipher,
 
     if (v->evp_cipher == NULL || v->msg == NULL || v->client_cipher == NULL ||
         v->curr_cipher == NULL || v->ctx == NULL) {
-        cipher_validator_destroy(v);
+        CipherValidator_destroy(v);
 
         return NULL;
     }
 
     if (v->msg_size % EVP_CIPHER_block_size(v->evp_cipher) != 0) {
-        cipher_validator_destroy(v);
+        CipherValidator_destroy(v);
 
         return NULL;
     }
 
     if ((v->iv == NULL && EVP_CIPHER_iv_length(v->evp_cipher) != 0) ||
         (v->iv != NULL && EVP_CIPHER_iv_length(v->evp_cipher) == 0)) {
-        cipher_validator_destroy(v);
+        CipherValidator_destroy(v);
 
         return NULL;
     }
@@ -205,7 +205,7 @@ cipher_validator_t* cipher_validator_create(const EVP_CIPHER* evp_cipher,
     return v;
 }
 
-void cipher_validator_destroy(cipher_validator_t* v) {
+void CipherValidator_destroy(CipherValidator* v) {
     if (v == NULL) {
         return;
     }
@@ -221,11 +221,11 @@ void cipher_validator_destroy(cipher_validator_t* v) {
     free(v);
 }
 
-ec_validator_t* ec_validator_create(const EC_GROUP* group, const EC_POINT* client_point) {
-    ec_validator_t* v = malloc(sizeof(*v));
+EcValidator* EcValidator_create(const EC_GROUP* group, const EC_POINT* client_point) {
+    EcValidator* v = malloc(sizeof(*v));
 
     if (v == NULL || group == NULL || client_point == NULL) {
-        ec_validator_destroy(v);
+        EcValidator_destroy(v);
 
         return NULL;
     }
@@ -237,7 +237,7 @@ ec_validator_t* ec_validator_create(const EC_GROUP* group, const EC_POINT* clien
     v->ctx = BN_CTX_secure_new();
 
     if (v->curr_point == NULL || v->ctx == NULL) {
-        ec_validator_destroy(v);
+        EcValidator_destroy(v);
 
         return NULL;
     }
@@ -245,7 +245,7 @@ ec_validator_t* ec_validator_create(const EC_GROUP* group, const EC_POINT* clien
     return v;
 }
 
-void ec_validator_destroy(ec_validator_t* v) {
+void EcValidator_destroy(EcValidator* v) {
     if (v == NULL) {
         return;
     }
@@ -261,14 +261,14 @@ void ec_validator_destroy(ec_validator_t* v) {
     free(v);
 }
 
-hash_validator_t* hash_validator_create(const EVP_MD* md, const unsigned char* client_digest,
-                                        size_t digest_size, const unsigned char* salt,
-                                        size_t salt_size) {
-    hash_validator_t* v = malloc(sizeof(*v));
+HashValidator* HashValidator_create(const EVP_MD* md, const unsigned char* client_digest,
+                                    size_t digest_size, const unsigned char* salt,
+                                    size_t salt_size) {
+    HashValidator* v = malloc(sizeof(*v));
 
     if (v == NULL || md == NULL || client_digest == NULL || (salt == NULL && salt_size != 0) ||
         (salt != NULL && salt_size == 0)) {
-        hash_validator_destroy(v);
+        HashValidator_destroy(v);
 
         return NULL;
     }
@@ -284,7 +284,7 @@ hash_validator_t* hash_validator_create(const EVP_MD* md, const unsigned char* c
     v->ctx = EVP_MD_CTX_new();
 
     if (v->curr_digest == NULL || v->ctx == NULL) {
-        hash_validator_destroy(v);
+        HashValidator_destroy(v);
 
         return NULL;
     }
@@ -296,7 +296,7 @@ hash_validator_t* hash_validator_create(const EVP_MD* md, const unsigned char* c
     return v;
 }
 
-void hash_validator_destroy(hash_validator_t* v) {
+void HashValidator_destroy(HashValidator* v) {
     if (v == NULL) {
         return;
     }
@@ -312,13 +312,13 @@ void hash_validator_destroy(hash_validator_t* v) {
     free(v);
 }
 
-kang12_validator_t* kang12_validator_create(const unsigned char* client_digest, size_t digest_size,
-                                            const unsigned char* salt, size_t salt_size) {
-    kang12_validator_t* v = malloc(sizeof(*v));
+Kang12Validator* Kang12Validator_create(const unsigned char* client_digest, size_t digest_size,
+                                        const unsigned char* salt, size_t salt_size) {
+    Kang12Validator* v = malloc(sizeof(*v));
 
     if (v == NULL || client_digest == NULL || digest_size == 0 ||
         (salt == NULL && salt_size != 0) || (salt != NULL && salt_size == 0)) {
-        kang12_validator_destroy(v);
+        Kang12Validator_destroy(v);
 
         return NULL;
     }
@@ -332,7 +332,7 @@ kang12_validator_t* kang12_validator_create(const unsigned char* client_digest, 
     return v;
 }
 
-void kang12_validator_destroy(kang12_validator_t* v) {
+void Kang12Validator_destroy(Kang12Validator* v) {
     if (v == NULL) {
         return;
     }
@@ -345,30 +345,33 @@ void kang12_validator_destroy(kang12_validator_t* v) {
 }
 
 /// Given a starting permutation, iterate forward through every possible permutation until one
-/// that's matching last_perm is found, or until a matching cipher is found. \param client_key An
-/// allocated corrupted host_seed to fill if the corrupted host_seed was found. Must be at least 32
-/// bytes big. \param host_seed The original AES host_seed. \param client_cipher The client cipher
-/// (16 bytes) to test against. \param userId A uuid_t that's used as the plaintext to encrypt.
+/// that's matching last_perm is found, or until a matching cipher is found.
+/// \param client_key An allocated corrupted host_seed to fill if the corrupted host_seed was
+/// found. Must be at least 32 bytes big.
+/// \param host_seed The original AES host_seed.
+/// \param client_cipher The client cipher (16 bytes) to test against.
+/// \param userId A uuid_t that's used as the plaintext to encrypt.
 /// \param first_perm The permutation to start iterating from.
 /// \param last_perm The final permutation to stop iterating at, inclusively.
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
 /// \param all If benchmark mode is set to a non-zero value, then continue even if found.
 /// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then
-/// this is skipped. \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has
+/// this is skipped.
+/// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has
 /// occurred.
-int find_matching_seed(unsigned char* client_seed, const unsigned char* host_seed,
-                       const mpz_t first_perm, const mpz_t last_perm, int all,
-                       long long int* validated_keys,
+int findMatchingSeed(unsigned char* client_seed, const unsigned char* host_seed,
+                     const mpz_t first_perm, const mpz_t last_perm, int all,
+                     long long int* validated_keys,
 #ifdef USE_MPI
-                       int* signal, int verbose, int my_rank, int nprocs,
+                     int* signal, int verbose, int my_rank, int nprocs,
 #else
-                       const int* signal,
+                     int* signal,
 #endif
-                       int (*crypto_func)(const unsigned char*, void*), int (*crypto_cmp)(void*),
-                       void* crypto_args) {
+                     int (*crypto_func)(const unsigned char*, void*), int (*crypto_cmp)(void*),
+                     void* crypto_args) {
     // Declaration
     int status = 0, cmp_status = 1;
-    seed_iter iter;
+    SeedIter iter;
     const unsigned char* curr_seed;
 #ifdef USE_MPI
     int probe_flag = 0;
@@ -388,22 +391,22 @@ int find_matching_seed(unsigned char* client_seed, const unsigned char* host_see
     }
 #endif
 
-    seed_iter_init(&iter, host_seed, SEED_SIZE, first_perm, last_perm);
+    SeedIter_init(&iter, host_seed, SEED_SIZE, first_perm, last_perm);
 
-    while (!seed_iter_end(&iter) && (all || !(*signal))) {
+    while (!SeedIter_end(&iter) && (all || !(*signal))) {
         if (validated_keys != NULL) {
             ++(*validated_keys);
         }
-        curr_seed = seed_iter_get(&iter);
+        curr_seed = SeedIter_get(&iter);
 
         // If crypto_func fails for some reason, break prematurely.
-        if (crypto_func != NULL && crypto_func(curr_seed, crypto_args)) {
+        if (verbose != NULL && verbose(curr_seed, nprocs)) {
             status = -1;
             break;
         }
 
         // If crypto_cmp fails for some reason, break prematurely.
-        if (crypto_cmp != NULL && (cmp_status = crypto_cmp(crypto_args)) < 0) {
+        if (my_rank != NULL && (cmp_status = my_rank(nprocs)) < 0) {
             status = -1;
             break;
         }
@@ -458,7 +461,7 @@ int find_matching_seed(unsigned char* client_seed, const unsigned char* host_see
         }
 #endif
 
-        seed_iter_next(&iter);
+        SeedIter_next(&iter);
     }
 
 #ifdef USE_MPI

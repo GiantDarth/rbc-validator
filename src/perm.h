@@ -2,8 +2,8 @@
 // Created by chaos on 3/4/2021.
 //
 
-#ifndef RBC_VALIDATOR_PERM_H
-#define RBC_VALIDATOR_PERM_H
+#ifndef RBC_VALIDATOR_PERM_H_
+#define RBC_VALIDATOR_PERM_H_
 
 #include <gmp.h>
 
@@ -11,7 +11,7 @@
 /// \param key A pre-allocated array that is key_size bytes long.
 /// \param key_size The # of bytes to write to @param key.
 /// \param randstate A GMP randomstate object that's pre-initialized and seeded.
-void get_random_seed(unsigned char* key, size_t key_size, gmp_randstate_t randstate);
+void getRandomSeed(unsigned char* key, size_t key_size, gmp_randstate_t randstate);
 
 /// Generate a randomly corrupted seed based on a pre-existing seed using GMP's pseudo-random number
 /// generator functionality.
@@ -26,9 +26,9 @@ void get_random_seed(unsigned char* key, size_t key_size, gmp_randstate_t randst
 /// benchmark is non-zero, then generate a corrupted seed 50% up the way of the keyspace for one
 /// randomly chosen slot. \param The total # of available slots (usually # of threads or # of
 /// ranks).
-void get_random_corrupted_seed(unsigned char* corrupted_seed, const unsigned char* seed,
-                               int mismatches, size_t key_size, size_t subseed_length,
-                               gmp_randstate_t randstate, int benchmark, int numcores);
+void getRandomCorruptedSeed(unsigned char* corrupted_seed, const unsigned char* seed,
+                            int mismatches, size_t seed_size, size_t subseed_length,
+                            gmp_randstate_t randstate, int benchmark, int numcores);
 
 /// Create a starting-ending pair of permutations based on total pairs expected and its index out of
 /// them. Meant to be used to feed into a gmp_key_iter.
@@ -41,7 +41,7 @@ void get_random_corrupted_seed(unsigned char* corrupted_seed, const unsigned cha
 /// \param key_size How big the relevant entire key is in # of bytes.
 /// \param subkey_length How big the only the potentially corruption portion is in bits, starting
 /// from the most-significant bit.
-void get_perm_pair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t pair_count,
-                   int mismatches, size_t subkey_length);
+void getPermPair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t pair_count,
+                 int mismatches, size_t subkey_length);
 
-#endif  // RBC_VALIDATOR_PERM_H
+#endif  // RBC_VALIDATOR_PERM_H_

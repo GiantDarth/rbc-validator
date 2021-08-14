@@ -7,19 +7,19 @@
 
 #define EC_CURVE NID_X9_62_prime256v1
 #define EC_PRIV_KEY_SIZE 32
-#define EC_PUB_COMP_KEY_SIZE 33
+#define EC_PUB_COMP_KEY_SIZE 32
 
-typedef struct ec_test_wrapper {
+typedef struct EcTestWrapper {
     EC_GROUP* group;
     EC_POINT* point;
     EC_POINT* expected_point;
-} ec_test_wrapper;
+} EcTestWrapper;
 
-ec_test_wrapper* ec_test_wrapper_create(int group_nid);
-void ec_test_wrapper_destroy(ec_test_wrapper* wrapper);
+EcTestWrapper* EcTestWrapper_create(int group_nid);
+void EcTestWrapper_destroy(EcTestWrapper* wrapper);
 
-ec_test_wrapper* ec_test_wrapper_create(int group_nid) {
-    ec_test_wrapper* wrapper = malloc(sizeof(*wrapper));
+EcTestWrapper* EcTestWrapper_create(int group_nid) {
+    EcTestWrapper* wrapper = malloc(sizeof(*wrapper));
 
     if (wrapper == NULL) {
         return NULL;
@@ -29,7 +29,7 @@ ec_test_wrapper* ec_test_wrapper_create(int group_nid) {
         fprintf(stderr, "ERROR: EC_GROUP_new_by_curve_name failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        ec_test_wrapper_destroy(wrapper);
+        EcTestWrapper_destroy(wrapper);
 
         return NULL;
     }
@@ -38,7 +38,7 @@ ec_test_wrapper* ec_test_wrapper_create(int group_nid) {
         fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        ec_test_wrapper_destroy(wrapper);
+        EcTestWrapper_destroy(wrapper);
 
         return NULL;
     }
@@ -47,7 +47,7 @@ ec_test_wrapper* ec_test_wrapper_create(int group_nid) {
         fprintf(stderr, "ERROR: EC_POINT_new failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        ec_test_wrapper_destroy(wrapper);
+        EcTestWrapper_destroy(wrapper);
 
         return NULL;
     }
@@ -55,7 +55,7 @@ ec_test_wrapper* ec_test_wrapper_create(int group_nid) {
     return wrapper;
 }
 
-void ec_test_wrapper_destroy(ec_test_wrapper* wrapper) {
+void EcTestWrapper_destroy(EcTestWrapper* wrapper) {
     // If wrapper is already NULL, escape early
     if (wrapper == NULL) {
         return;
@@ -91,10 +91,10 @@ int main() {
             0xc8, 0xee, 0x14, 0x24, 0xdd, 0x29, 0x7f, 0xad, 0xcb, 0x89, 0x5e, 0x35, 0x82, 0x55,
             0xd2, 0xc7, 0xd2, 0xb2};
 
-    ec_test_wrapper* test_wrapper;
+    EcTestWrapper* test_wrapper;
     int status, cmp_status;
 
-    if ((test_wrapper = ec_test_wrapper_create(EC_CURVE)) == NULL) {
+    if ((test_wrapper = EcTestWrapper_create(EC_CURVE)) == NULL) {
         return EXIT_FAILURE;
     }
 
@@ -103,20 +103,19 @@ int main() {
         fprintf(stderr, "ERROR: EC_POINT_oct2point failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        ec_test_wrapper_destroy(test_wrapper);
+        EcTestWrapper_destroy(test_wrapper);
 
         return EXIT_FAILURE;
     }
 
-    get_ec_public_key(test_wrapper->point, NULL, test_wrapper->group, private_key,
-                      EC_PRIV_KEY_SIZE);
+    getEcPublicKey(test_wrapper->point, NULL, test_wrapper->group, private_key, EC_PRIV_KEY_SIZE);
 
     if ((cmp_status = EC_POINT_cmp(test_wrapper->group, test_wrapper->point,
                                    test_wrapper->expected_point, NULL)) < 0) {
         fprintf(stderr, "ERROR: EC_POINT_cmp failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
-        ec_test_wrapper_destroy(test_wrapper);
+        EcTestWrapper_destroy(test_wrapper);
 
         status = EXIT_FAILURE;
     }
@@ -131,28 +130,28 @@ int main() {
     }
 
     printf("Expected Public Key: ");
-    if (fprintf_ec_point(stdout, test_wrapper->group, test_wrapper->point,
-                         POINT_CONVERSION_COMPRESSED, NULL)) {
+    if (fprintfEcPoint(stdout, test_wrapper->group, test_wrapper->point,
+                       POINT_CONVERSION_COMPRESSED, NULL)) {
         fprintf(stderr, "ERROR: fprintf_point failed.\n");
 
-        ec_test_wrapper_destroy(test_wrapper);
+        EcTestWrapper_destroy(test_wrapper);
 
         return EXIT_FAILURE;
     }
     printf("\n");
 
     printf("Actual Public Key:   ");
-    if (fprintf_ec_point(stdout, test_wrapper->group, test_wrapper->point,
-                         POINT_CONVERSION_COMPRESSED, NULL)) {
+    if (fprintfEcPoint(stdout, test_wrapper->group, test_wrapper->point,
+                       POINT_CONVERSION_COMPRESSED, NULL)) {
         fprintf(stderr, "ERROR: fprintf_point failed.\n");
 
-        ec_test_wrapper_destroy(test_wrapper);
+        EcTestWrapper_destroy(test_wrapper);
 
         return EXIT_FAILURE;
     }
     printf("\n");
 
-    ec_test_wrapper_destroy(test_wrapper);
+    EcTestWrapper_destroy(test_wrapper);
 
     return status;
 }

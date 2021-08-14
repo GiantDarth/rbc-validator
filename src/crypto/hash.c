@@ -9,13 +9,13 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
-int keccak_hash(unsigned char* digest, const size_t* digest_size, Keccak_HashInstance* inst,
-                const unsigned char* msg, size_t msg_size, const unsigned char* salt,
-                size_t salt_size);
+int keccakHash(unsigned char* digest, const size_t* digest_size, Keccak_HashInstance* inst,
+               const unsigned char* msg, size_t msg_size, const unsigned char* salt,
+               size_t salt_size);
 
-int evp_hash(unsigned char* digest, const size_t* digest_size, EVP_MD_CTX* ctx, const EVP_MD* md,
-             const unsigned char* msg, size_t msg_size, const unsigned char* salt,
-             size_t salt_size) {
+int evpHash(unsigned char* digest, const size_t* digest_size, EVP_MD_CTX* ctx, const EVP_MD* md,
+            const unsigned char* msg, size_t msg_size, const unsigned char* salt,
+            size_t salt_size) {
     EVP_MD_CTX* new_ctx = NULL;
 
     if (msg == NULL) {
@@ -55,8 +55,8 @@ int evp_hash(unsigned char* digest, const size_t* digest_size, EVP_MD_CTX* ctx, 
     return 0;
 }
 
-int md5_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-             const unsigned char* salt, size_t salt_size) {
+int md5Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+            const unsigned char* salt, size_t salt_size) {
     MD5_CTX ctx;
 
     if (!MD5_Init(&ctx)) {
@@ -83,8 +83,8 @@ int md5_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
     return 0;
 }
 
-int sha1_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-              const unsigned char* salt, size_t salt_size) {
+int sha1Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+             const unsigned char* salt, size_t salt_size) {
     SHA_CTX ctx;
 
     if (!SHA1_Init(&ctx)) {
@@ -111,8 +111,8 @@ int sha1_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
     return 0;
 }
 
-int sha224_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                const unsigned char* salt, size_t salt_size) {
+int sha224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+               const unsigned char* salt, size_t salt_size) {
     SHA256_CTX ctx;
 
     if (!SHA224_Init(&ctx)) {
@@ -139,8 +139,8 @@ int sha224_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size
     return 0;
 }
 
-int sha256_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                const unsigned char* salt, size_t salt_size) {
+int sha256Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+               const unsigned char* salt, size_t salt_size) {
     SHA256_CTX ctx;
 
     if (!SHA256_Init(&ctx)) {
@@ -167,8 +167,8 @@ int sha256_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size
     return 0;
 }
 
-int sha384_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                const unsigned char* salt, size_t salt_size) {
+int sha384Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+               const unsigned char* salt, size_t salt_size) {
     SHA512_CTX ctx;
 
     if (!SHA384_Init(&ctx)) {
@@ -195,8 +195,8 @@ int sha384_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size
     return 0;
 }
 
-int sha512_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                const unsigned char* salt, size_t salt_size) {
+int sha512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+               const unsigned char* salt, size_t salt_size) {
     SHA512_CTX ctx;
 
     if (!SHA512_Init(&ctx)) {
@@ -223,9 +223,9 @@ int sha512_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size
     return 0;
 }
 
-int keccak_hash(unsigned char* digest, const size_t* digest_size, Keccak_HashInstance* inst,
-                const unsigned char* msg, size_t msg_size, const unsigned char* salt,
-                size_t salt_size) {
+int keccakHash(unsigned char* digest, const size_t* digest_size, Keccak_HashInstance* inst,
+               const unsigned char* msg, size_t msg_size, const unsigned char* salt,
+               size_t salt_size) {
     if (Keccak_HashUpdate(inst, msg, msg_size * 8) == KECCAK_FAIL) {
         OPENSSL_cleanse(inst, sizeof(*inst));
         return 1;
@@ -252,74 +252,74 @@ int keccak_hash(unsigned char* digest, const size_t* digest_size, Keccak_HashIns
     return 0;
 }
 
-int sha3_224_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                  const unsigned char* salt, size_t salt_size) {
+int sha3224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+                const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
 
     if (Keccak_HashInitialize_SHA3_224(&inst) == KECCAK_FAIL) {
         return 1;
     }
 
-    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
+    return keccakHash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
-int sha3_256_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                  const unsigned char* salt, size_t salt_size) {
+int sha3_256Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+                 const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
 
     if (Keccak_HashInitialize_SHA3_256(&inst) == KECCAK_FAIL) {
         return 1;
     }
 
-    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
+    return keccakHash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
-int sha3_384_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                  const unsigned char* salt, size_t salt_size) {
+int sha3_384Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+                 const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
 
     if (Keccak_HashInitialize_SHA3_384(&inst) == KECCAK_FAIL) {
         return 1;
     }
 
-    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
+    return keccakHash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
-int sha3_512_hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
-                  const unsigned char* salt, size_t salt_size) {
+int sha3_512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
+                 const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
 
     if (Keccak_HashInitialize_SHA3_512(&inst) == KECCAK_FAIL) {
         return 1;
     }
 
-    return keccak_hash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
+    return keccakHash(digest, NULL, &inst, msg, msg_size, salt, salt_size);
 }
 
-int shake128_hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
-                  size_t msg_size, const unsigned char* salt, size_t salt_size) {
+int shake128Hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
+                 size_t msg_size, const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
 
     if (Keccak_HashInitialize_SHAKE128(&inst) == KECCAK_FAIL) {
         return 1;
     }
 
-    return keccak_hash(digest, &digest_size, &inst, msg, msg_size, salt, salt_size);
+    return keccakHash(digest, &digest_size, &inst, msg, msg_size, salt, salt_size);
 }
 
-int shake256_hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
-                  size_t msg_size, const unsigned char* salt, size_t salt_size) {
+int shake256Hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
+                 size_t msg_size, const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
 
     if (Keccak_HashInitialize_SHAKE128(&inst) == KECCAK_FAIL) {
         return 1;
     }
 
-    return keccak_hash(digest, &digest_size, &inst, msg, msg_size, salt, salt_size);
+    return keccakHash(digest, &digest_size, &inst, msg, msg_size, salt, salt_size);
 }
 
-int kang12_hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
-                size_t msg_size, const unsigned char* salt, size_t salt_size) {
+int kang12Hash(unsigned char* digest, size_t digest_size, const unsigned char* msg, size_t msg_size,
+               const unsigned char* salt, size_t salt_size) {
     KangarooTwelve_Instance inst;
 
     if (KangarooTwelve_Initialize(&inst, digest_size)) {

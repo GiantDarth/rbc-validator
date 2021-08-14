@@ -21,8 +21,8 @@ int main() {
     unsigned char cipher[AES_BLOCK_SIZE];
     int status;
 
-    if (aes256_ecb_encrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
-        fprintf(stderr, "ERROR: evp_encrypt failed\n");
+    if (aes256EcbEncrypt(cipher, key, (const unsigned char*)msg, strlen(msg))) {
+        fprintf(stderr, "ERROR: evpEncrypt failed\n");
         return EXIT_FAILURE;
     }
 
@@ -35,10 +35,10 @@ int main() {
         status = EXIT_FAILURE;
     }
 
-    fprint_hex(stdout, cipher, sizeof(cipher));
+    fprintHex(stdout, cipher, sizeof(cipher));
     printf("\n");
 
-    fprint_hex(stdout, expected_cipher, sizeof(expected_cipher));
+    fprintHex(stdout, expected_cipher, sizeof(expected_cipher));
     printf("\n");
 
     return status;

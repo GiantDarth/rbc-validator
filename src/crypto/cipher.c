@@ -4,10 +4,10 @@
 
 #include "cipher.h"
 
-int evp_encrypt(unsigned char* cipher, EVP_CIPHER_CTX* ctx, const EVP_CIPHER* evp_cipher,
-                const unsigned char* key, const unsigned char* msg, size_t msg_size,
-                const unsigned char* iv) {
-    int outlen, tmplen;
+int evpEncrypt(unsigned char* cipher, EVP_CIPHER_CTX* ctx, const EVP_CIPHER* evp_cipher,
+               const unsigned char* key, const unsigned char* msg, size_t msg_size,
+               const unsigned char* iv) {
+    int out_len, tmp_len;
     EVP_CIPHER_CTX* new_ctx = NULL;
 
     if (ctx == NULL) {
@@ -28,14 +28,14 @@ int evp_encrypt(unsigned char* cipher, EVP_CIPHER_CTX* ctx, const EVP_CIPHER* ev
         EVP_CIPHER_CTX_set_padding(ctx, 0);
     }
 
-    if (!EVP_EncryptUpdate(ctx, cipher, &outlen, msg, msg_size)) {
+    if (!EVP_EncryptUpdate(ctx, cipher, &out_len, msg, msg_size)) {
         // If new_ctx is NULL, nothing happens
         EVP_CIPHER_CTX_free(new_ctx);
 
         return 1;
     }
 
-    if (!EVP_EncryptFinal_ex(ctx, cipher + outlen, &tmplen)) {
+    if (!EVP_EncryptFinal_ex(ctx, cipher + out_len, &tmp_len)) {
         // If new_ctx is NULL, nothing happens
         EVP_CIPHER_CTX_free(new_ctx);
 
