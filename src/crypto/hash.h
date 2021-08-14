@@ -2,8 +2,8 @@
 // Created by chaos on 2/28/2021.
 //
 
-#ifndef RBC_VALIDATOR_HASH_H_
-#define RBC_VALIDATOR_HASH_H_
+#ifndef RBC_VALIDATOR_CRYPTO_HASH_H_
+#define RBC_VALIDATOR_CRYPTO_HASH_H_
 
 #include <openssl/evp.h>
 
@@ -164,4 +164,4 @@ int shake256Hash(unsigned char* digest, size_t digest_size, const unsigned char*
 int kang12Hash(unsigned char* digest, size_t digest_size, const unsigned char* msg, size_t msg_size,
                const unsigned char* salt, size_t salt_size);
 
-#endif  // RBC_VALIDATOR_HASH_H_
+#endif  // RBC_VALIDATOR_CRYPTO_HASH_H_
