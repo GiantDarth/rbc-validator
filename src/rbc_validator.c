@@ -556,10 +556,10 @@ int main(int argc, char* argv[]) {
         MPI_Bcast(host_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         MPI_Bcast(client_seed, SEED_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
-        if (Algo->mode & MODE_CIPHER) {
+        if (algo->mode & MODE_CIPHER) {
             MPI_Bcast(client_cipher, AES_BLOCK_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
             MPI_Bcast(uuid, UUID_SIZE, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        } else if (Algo->mode & MODE_EC) {
+        } else if (algo->mode & MODE_EC) {
             unsigned char client_public_key[100];
             int len;
 
@@ -581,7 +581,7 @@ int main(int argc, char* argv[]) {
             MPI_Bcast(client_public_key, len, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
             EC_POINT_oct2point(ec_group, client_ec_point, client_public_key, len, NULL);
-        } else if (Algo->mode & MODE_HASH) {
+        } else if (algo->mode & MODE_HASH) {
             MPI_Bcast(client_digest, digest_size, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
         }
 #endif
@@ -870,10 +870,10 @@ int main(int argc, char* argv[]) {
 #ifdef USE_MPI
         if (subfound < 0) {
             // Cleanup
-            if (Algo->mode & MODE_EC) {
+            if (algo->mode & MODE_EC) {
                 EC_POINT_free(client_ec_point);
                 EC_GROUP_free(ec_group);
-            } else if (Algo->mode & MODE_HASH) {
+            } else if (algo->mode & MODE_HASH) {
                 if (salt_size > 0) {
                     free(salt);
                 }
