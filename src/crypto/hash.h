@@ -27,6 +27,7 @@
 /// \return Returns a 0 on success and a 1 on failure.
 int evpHash(unsigned char* digest, const size_t* digest_size, EVP_MD_CTX* ctx, const EVP_MD* md,
             const unsigned char* msg, size_t msg_size, const unsigned char* salt, size_t salt_size);
+
 /// Perform MD5 using OpenSSL's faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 16 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -36,6 +37,7 @@ int evpHash(unsigned char* digest, const size_t* digest_size, EVP_MD_CTX* ctx, c
 /// \return Returns a 0 on success and a 1 on failure.
 int md5Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
             const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA1 using OpenSSL's faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 20 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -45,6 +47,7 @@ int md5Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
 /// \return Returns a 0 on success and a 1 on failure.
 int sha1Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
              const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA224 using OpenSSL's faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 24 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -54,6 +57,7 @@ int sha1Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
 /// \return Returns a 0 on success and a 1 on failure.
 int sha224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA256 using OpenSSL's faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 32 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -63,6 +67,7 @@ int sha224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
 /// \return Returns a 0 on success and a 1 on failure.
 int sha256Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA384 using OpenSSL's faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 48 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -72,6 +77,7 @@ int sha256Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
 /// \return Returns a 0 on success and a 1 on failure.
 int sha384Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA512 using OpenSSL's faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 64 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -81,6 +87,7 @@ int sha384Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
 /// \return Returns a 0 on success and a 1 on failure.
 int sha512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA3-224 using XKCP's (potentially) faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 24 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -90,6 +97,7 @@ int sha512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
 /// \return Returns a 0 on success and a 1 on failure.
 int sha3224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                 const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA3-256 using XKCP's (potentially) faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 32 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -99,6 +107,7 @@ int sha3224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size
 /// \return Returns a 0 on success and a 1 on failure.
 int sha3_256Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                  const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA3-384 using XKCP's (potentially) faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 48 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -108,6 +117,7 @@ int sha3_256Hash(unsigned char* digest, const unsigned char* msg, size_t msg_siz
 /// \return Returns a 0 on success and a 1 on failure.
 int sha3_384Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                  const unsigned char* salt, size_t salt_size);
+
 /// Perform SHA3-512 using XKCP's (potentially) faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least 64 bytes.
 /// \param msg The message to hash, must have at least msg_size bytes allocated.
@@ -117,6 +127,7 @@ int sha3_384Hash(unsigned char* digest, const unsigned char* msg, size_t msg_siz
 /// \return Returns a 0 on success and a 1 on failure.
 int sha3_512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                  const unsigned char* salt, size_t salt_size);
+
 /// Perform SHAKE128 using XKCP's (potentially) faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least digest_size bytes.
 /// \param digest_size How many bytes you want to fill digest with. digest must be pre-allocated
@@ -128,6 +139,7 @@ int sha3_512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_siz
 /// \return Returns a 0 on success and a 1 on failure.
 int shake128Hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
                  size_t msg_size, const unsigned char* salt, size_t salt_size);
+
 /// Perform SHAKE256 using XKCP's (potentially) faster low level functions.
 /// \param digest The output digest. It must be pre-allocated with at least digest_size bytes.
 /// \param digest_size How many bytes you want to fill digest with. digest must be pre-allocated
@@ -139,6 +151,7 @@ int shake128Hash(unsigned char* digest, size_t digest_size, const unsigned char*
 /// \return Returns a 0 on success and a 1 on failure.
 int shake256Hash(unsigned char* digest, size_t digest_size, const unsigned char* msg,
                  size_t msg_size, const unsigned char* salt, size_t salt_size);
+
 /// Perform KangarooTwelve using XKCP.
 /// \param digest The output digest. It must be pre-allocated with at least digest_size bytes.
 /// \param digest_size How many bytes you want to fill digest with. digest must be pre-allocated
