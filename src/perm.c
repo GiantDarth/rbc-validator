@@ -87,7 +87,7 @@ void assign_last_permutation(mpz_t perm, int mismatches, size_t subkey_length) {
     mpz_mul_2exp(perm, perm, subkey_length - mismatches);
 }
 
-void get_random_seed(unsigned char *key, size_t key_size, gmp_randstate_t randstate) {
+void get_random_seed(unsigned char* key, size_t key_size, gmp_randstate_t randstate) {
     mpz_t key_mpz;
     mpz_init(key_mpz);
 
@@ -98,18 +98,17 @@ void get_random_seed(unsigned char *key, size_t key_size, gmp_randstate_t randst
     mpz_clear(key_mpz);
 }
 
-void get_random_corrupted_seed(unsigned char *corrupted_seed, const unsigned char *seed, int mismatches,
-                               size_t seed_size, size_t subseed_length, gmp_randstate_t randstate,
-                               int benchmark, int numcores) {
+void get_random_corrupted_seed(unsigned char* corrupted_seed, const unsigned char* seed,
+                               int mismatches, size_t seed_size, size_t subseed_length,
+                               gmp_randstate_t randstate, int benchmark, int numcores) {
     mpz_t perm_mpz, seed_mpz, corrupted_seed_mpz;
 
     mpz_inits(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
     mpz_set_ui(corrupted_seed_mpz, 0);
 
-    if(benchmark) {
+    if (benchmark) {
         get_benchmark_permutation(perm_mpz, mismatches, subseed_length, randstate, numcores);
-    }
-    else {
+    } else {
         get_random_permutation(perm_mpz, mismatches, subseed_length, randstate);
     }
 
@@ -132,20 +131,18 @@ void get_perm_pair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t 
 
     mpz_bin_uiui(total_perms, subkey_length, mismatches);
 
-    if(pair_index == 0) {
+    if (pair_index == 0) {
         assign_first_permutation(first_perm, mismatches);
-    }
-    else {
+    } else {
         mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
         mpz_mul_ui(starting_ordinal, starting_ordinal, pair_index);
 
         decode_ordinal(first_perm, starting_ordinal, mismatches, subkey_length);
     }
 
-    if(pair_index == pair_count - 1) {
+    if (pair_index == pair_count - 1) {
         assign_last_permutation(last_perm, mismatches, subkey_length);
-    }
-    else {
+    } else {
         mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
         mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
         mpz_sub_ui(ending_ordinal, ending_ordinal, 1);

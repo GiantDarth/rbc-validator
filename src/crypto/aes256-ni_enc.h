@@ -17,7 +17,7 @@
 /// \param msg The message to be encrypted, designated to be msg_len bytes long.
 /// \param msg_len Denotes the size of the message
 /// \return Returns 0 on success or 1 on error.
-int aes256_ecb_encrypt(unsigned char *cipher, const unsigned char *key, const unsigned char *msg,
+int aes256_ecb_encrypt(unsigned char* cipher, const unsigned char* key, const unsigned char* msg,
                        size_t msg_len);
 
-#endif // RBC_AES256_NI_ENC_H
+#endif  // RBC_AES256_NI_ENC_H

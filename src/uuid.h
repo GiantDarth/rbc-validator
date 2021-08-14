@@ -8,7 +8,7 @@
 #define UUID_SIZE 16
 #define UUID_STR_LEN 36
 
-int uuid_parse(unsigned char *uuid, const char *uuid_str);
-void uuid_unparse(char *uuid_str, const unsigned char *uuid);
+int uuid_parse(unsigned char* uuid, const char* uuid_str);
+void uuid_unparse(char* uuid_str, const unsigned char* uuid);
 
-#endif //RBC_VALIDATOR_UUID_H
+#endif  // RBC_VALIDATOR_UUID_H

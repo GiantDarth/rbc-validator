@@ -5,29 +5,28 @@
 #include "ec.h"
 
 #include <ctype.h>
-
 #include <openssl/err.h>
 
-void tolower_str(char *str);
+void tolower_str(char* str);
 
-void tolower_str(char *str) {
-    if(str == NULL) {
+void tolower_str(char* str) {
+    if (str == NULL) {
         return;
     }
 
-    for(int i = 0; str[i] != '\0'; i++){
+    for (int i = 0; str[i] != '\0'; i++) {
         // Cast to unsigned char or else there is undefined behavior
         str[i] = (char)tolower((unsigned char)(str[i]));
     }
 }
 
-int get_ec_public_key(EC_POINT *point, BN_CTX *ctx, const EC_GROUP *group,
-                      const unsigned char *priv_key, size_t priv_key_size) {
-    BN_CTX *new_ctx = NULL;
-    BIGNUM *scalar;
+int get_ec_public_key(EC_POINT* point, BN_CTX* ctx, const EC_GROUP* group,
+                      const unsigned char* priv_key, size_t priv_key_size) {
+    BN_CTX* new_ctx = NULL;
+    BIGNUM* scalar;
 
-    if(ctx == NULL) {
-        if((ctx = new_ctx = BN_CTX_secure_new()) == NULL) {
+    if (ctx == NULL) {
+        if ((ctx = new_ctx = BN_CTX_secure_new()) == NULL) {
             return 1;
         }
     }
@@ -35,7 +34,7 @@ int get_ec_public_key(EC_POINT *point, BN_CTX *ctx, const EC_GROUP *group,
     BN_CTX_start(ctx);
     scalar = BN_CTX_get(ctx);
 
-    if(scalar == NULL) {
+    if (scalar == NULL) {
         BN_CTX_end(ctx);
         BN_CTX_free(new_ctx);
 
@@ -44,7 +43,7 @@ int get_ec_public_key(EC_POINT *point, BN_CTX *ctx, const EC_GROUP *group,
 
     BN_bin2bn(priv_key, priv_key_size, scalar);
 
-    if(!EC_POINT_mul(group, point, scalar, NULL, NULL, NULL)) {
+    if (!EC_POINT_mul(group, point, scalar, NULL, NULL, NULL)) {
         BN_CTX_end(ctx);
         BN_CTX_free(new_ctx);
 
@@ -57,15 +56,15 @@ int get_ec_public_key(EC_POINT *point, BN_CTX *ctx, const EC_GROUP *group,
     return 0;
 }
 
-int fprintf_ec_point(FILE *stream, const EC_GROUP *group, const EC_POINT *point,
-                     point_conversion_form_t form, BN_CTX *ctx) {
-    char *hex;
+int fprintf_ec_point(FILE* stream, const EC_GROUP* group, const EC_POINT* point,
+                     point_conversion_form_t form, BN_CTX* ctx) {
+    char* hex;
 
-    if(group == NULL || point == NULL) {
+    if (group == NULL || point == NULL) {
         return 1;
     }
 
-    if((hex = EC_POINT_point2hex(group, point, form, ctx)) == NULL) {
+    if ((hex = EC_POINT_point2hex(group, point, form, ctx)) == NULL) {
         fprintf(stderr, "ERROR: EC_POINT_point2hex failed.\nOpenSSL Error: %s\n",
                 ERR_error_string(ERR_get_error(), NULL));
 
