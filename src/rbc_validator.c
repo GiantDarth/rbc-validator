@@ -573,7 +573,7 @@ int main(int argc, char* argv[]) {
                     EC_POINT_free(client_ec_point);
                     EC_GROUP_free(ec_group);
 
-                    return ERROR_CODE_FAILURE;
+                    return SC_Failure;
                 }
             }
 
