@@ -18,13 +18,16 @@ void getRandomSeed(unsigned char* key, size_t key_size, gmp_randstate_t randstat
 /// \param corrupted_seed A pre-allocated array that is key_size bytes long. The final output of the
 /// corrupted seed.
 /// \param seed A pre-allocated array that is key_size bytes long. The starting seed that will be
-/// corrupted and saved to @param corrupted_seed. \param mismatches The # of bits to randomly flip
-/// form @param seed written to @param corrupted_seed. \param seed_size The # of bytes to read from
-/// @param seed and write to @param corrupted_seed. \param subseed_length The range of bits to
-/// corrupt starting from the most significant bit. Cannot exceed @param seed_size in bits. \param
-/// randstate A GMP randomstate object that's pre-initialized and seeded. \param benchmark If
-/// benchmark is non-zero, then generate a corrupted seed 50% up the way of the keyspace for one
-/// randomly chosen slot. \param The total # of available slots (usually # of threads or # of
+/// corrupted and saved to @param corrupted_seed.
+/// \param mismatches The # of bits to randomly flip form @param seed written to
+/// @param corrupted_seed.
+/// \param seed_size The # of bytes to read from @param seed and write to @param corrupted_seed.
+/// \param subseed_length The range of bits to corrupt starting from the most significant bit.
+/// Cannot exceed @param seed_size in bits.
+/// \param randstate A GMP randomstate object that's pre-initialized and seeded.
+/// \param benchmark If benchmark is non-zero, then generate a corrupted seed 50% up the way of the
+/// keyspace for one randomly chosen slot.
+/// \param numcores The total # of available slots (usually # of threads or # of
 /// ranks).
 void getRandomCorruptedSeed(unsigned char* corrupted_seed, const unsigned char* seed,
                             int mismatches, size_t seed_size, size_t subseed_length,
