@@ -9,17 +9,6 @@
 
 void tolowerStr(char* str);
 
-void tolowerStr(char* str) {
-    if (str == NULL) {
-        return;
-    }
-
-    for (int i = 0; str[i] != '\0'; i++) {
-        // Cast to unsigned char or else there is undefined behavior
-        str[i] = (char)tolower((unsigned char)(str[i]));
-    }
-}
-
 int getEcPublicKey(EC_POINT* point, BN_CTX* ctx, const EC_GROUP* group,
                    const unsigned char* priv_key, size_t priv_key_size) {
     BN_CTX* new_ctx = NULL;
@@ -77,4 +66,15 @@ int fprintfEcPoint(FILE* stream, const EC_GROUP* group, const EC_POINT* point,
     OPENSSL_free(hex);
 
     return 0;
+}
+
+void tolowerStr(char* str) {
+    if (str == NULL) {
+        return;
+    }
+
+    for (int i = 0; str[i] != '\0'; i++) {
+        // Cast to unsigned char or else there is undefined behavior
+        str[i] = (char)tolower((unsigned char)(str[i]));
+    }
 }
