@@ -78,6 +78,23 @@ void Kang12Validator_destroy(Kang12Validator* v);
 int CryptoFunc_kang12(const unsigned char* curr_seed, void* args);
 int CryptoCmp_kang12(void* args);
 
+/// Given a starting permutation, iterate forward through every possible permutation until one
+/// that's matching last_perm is found, or until a matching crytographic output is found.
+/// \param client_seed The output (potentially) corrupted client seed.
+/// \param host_seed The original host seed.
+/// \param first_perm The permutation to start iterating from.
+/// \param last_perm The final permutation to stop iterating at, inclusively.
+/// \param all If benchmark mode is set to a non-zero value, then continue even if found.
+/// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then
+/// this is skipped.
+/// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
+#ifdef USE_MPI
+/// \param verbose A boolean on whether to print verbose output or not
+/// \param my_rank This process's MPI rank
+/// \param nprocs How many total MPI ranks there are
+#endif
+/// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has
+/// occurred.
 int findMatchingSeed(unsigned char* client_seed, const unsigned char* host_seed,
                      const mpz_t first_perm, const mpz_t last_perm, int all,
                      long long int* validated_keys,
