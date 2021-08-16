@@ -8,23 +8,6 @@
 
 void mpn_overflowingRshift(mp_limb_t* rop, const mp_limb_t* op1, mp_size_t n, unsigned int shift);
 
-void mpn_overflowingRshift(mp_limb_t* rop, const mp_limb_t* op1, mp_size_t n, unsigned int shift) {
-    if (shift >= mp_bits_per_limb) {
-        unsigned int limb_shifts = shift / mp_bits_per_limb;
-        for (int i = (int)limb_shifts; i < n; ++i) {
-            rop[i - limb_shifts] = op1[i];
-        }
-
-        // Zero out the leading limbs
-        memset(&(rop[n - limb_shifts]), 0, limb_shifts * sizeof(mp_limb_t));
-        shift %= mp_bits_per_limb;
-    }
-
-    if (shift > 0) {
-        mpn_rshift(rop, op1, n, shift);
-    }
-}
-
 int SeedIter_init(SeedIter* iter, const unsigned char* seed, size_t seed_size,
                   const mpz_t first_perm, const mpz_t last_perm) {
     if (iter == NULL || seed == NULL || seed_size > SEED_SIZE) {
@@ -78,4 +61,21 @@ void SeedIter_next(SeedIter* iter) {
 
 const unsigned char* SeedIter_get(const SeedIter* iter) {
     return (const unsigned char*)iter->corrupted_seed_mpn;
+}
+
+void mpn_overflowingRshift(mp_limb_t* rop, const mp_limb_t* op1, mp_size_t n, unsigned int shift) {
+    if (shift >= mp_bits_per_limb) {
+        unsigned int limb_shifts = shift / mp_bits_per_limb;
+        for (int i = (int)limb_shifts; i < n; ++i) {
+            rop[i - limb_shifts] = op1[i];
+        }
+
+        // Zero out the leading limbs
+        memset(&(rop[n - limb_shifts]), 0, limb_shifts * sizeof(mp_limb_t));
+        shift %= mp_bits_per_limb;
+    }
+
+    if (shift > 0) {
+        mpn_rshift(rop, op1, n, shift);
+    }
 }
