@@ -9,6 +9,25 @@
 /// \param ordinal The ordinal as the input.
 /// \param mismatches How many bits to set.
 /// \param subkey_length How big the actual bit string is in bits
+void decodeOrdinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subkey_length);
+
+/// Assigns the first possible permutation for a given # of mismatches.
+/// \param perm A pre-allocated mpz_t to fill the permutation to.
+/// \param mismatches The hamming distance that you want to base the permutation on.
+void assignFirstPermutation(mpz_t perm, int mismatches);
+
+/// Assigns the first possible permutation for a given # of mismatches and key size
+/// \param perm A pre-allocated mpz_t to fill the permutation to.
+/// \param mismatches The hamming distance that you want to base the permutation on.
+/// \param subkey_length How big the relevant key is in # of bits.
+void assignLastPermutation(mpz_t perm, int mismatches, size_t subkey_length);
+
+void getRandomPermutation(mpz_t perm, int mismatches, size_t subkey_length,
+                          gmp_randstate_t randstate);
+
+void getBenchmarkPermutation(mpz_t perm, int mismatches, size_t subkey_length,
+                             gmp_randstate_t randstate, int numcores);
+
 void decodeOrdinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subkey_length) {
     mpz_t binom, curr_ordinal;
     mpz_inits(binom, curr_ordinal, NULL);
@@ -26,6 +45,23 @@ void decodeOrdinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subke
     }
 
     mpz_clears(binom, curr_ordinal, NULL);
+}
+
+void assignFirstPermutation(mpz_t perm, int mismatches) {
+    // Set perm to first key
+    // Equivalent to: (perm << mismatches) - 1
+    mpz_set_ui(perm, 1);
+    mpz_mul_2exp(perm, perm, mismatches);
+    mpz_sub_ui(perm, perm, 1);
+}
+
+void assignLastPermutation(mpz_t perm, int mismatches, size_t subkey_length) {
+    // First set the value to the first permutation.
+    assignFirstPermutation(perm, mismatches);
+    // Equivalent to: perm << (subkey_length - mismatches)
+    // E.g. if subkey_length = 256 and mismatches = 5
+    // Then we want to shift left 256 - 5 = 251 times.
+    mpz_mul_2exp(perm, perm, subkey_length - mismatches);
 }
 
 void getRandomPermutation(mpz_t perm, int mismatches, size_t subkey_length,
@@ -61,30 +97,6 @@ void getBenchmarkPermutation(mpz_t perm, int mismatches, size_t subkey_length,
     decodeOrdinal(perm, ordinal, mismatches, subkey_length);
 
     mpz_clears(ordinal, binom, rank, cores, NULL);
-}
-
-/// Assigns the first possible permutation for a given # of mismatches.
-/// \param perm A pre-allocated mpz_t to fill the permutation to.
-/// \param mismatches The hamming distance that you want to base the permutation on.
-void assignFirstPermutation(mpz_t perm, int mismatches) {
-    // Set perm to first key
-    // Equivalent to: (perm << mismatches) - 1
-    mpz_set_ui(perm, 1);
-    mpz_mul_2exp(perm, perm, mismatches);
-    mpz_sub_ui(perm, perm, 1);
-}
-
-/// Assigns the first possible permutation for a given # of mismatches and key size
-/// \param perm A pre-allocated mpz_t to fill the permutation to.
-/// \param mismatches The hamming distance that you want to base the permutation on.
-/// \param subkey_length How big the relevant key is in # of bits.
-void assignLastPermutation(mpz_t perm, int mismatches, size_t subkey_length) {
-    // First set the value to the first permutation.
-    assignFirstPermutation(perm, mismatches);
-    // Equivalent to: perm << (subkey_length - mismatches)
-    // E.g. if subkey_length = 256 and mismatches = 5
-    // Then we want to shift left 256 - 5 = 251 times.
-    mpz_mul_2exp(perm, perm, subkey_length - mismatches);
 }
 
 void getRandomSeed(unsigned char* key, size_t key_size, gmp_randstate_t randstate) {
