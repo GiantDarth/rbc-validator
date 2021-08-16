@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define TEST_SIZE 10
+
 void printHex(const unsigned char* array, size_t count) {
     for (size_t i = 0; i < count; i++) {
         printf("%02x", array[i]);
@@ -50,8 +52,6 @@ int genericTest(const char* name, const EVP_MD* md, const unsigned char* msg, si
 
     return status;
 }
-
-#define TEST_SIZE 10
 
 int main() {
     const unsigned char seed[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
