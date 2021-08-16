@@ -223,35 +223,6 @@ int sha512Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
     return 0;
 }
 
-int keccakHash(unsigned char* digest, const size_t* digest_size, Keccak_HashInstance* inst,
-               const unsigned char* msg, size_t msg_size, const unsigned char* salt,
-               size_t salt_size) {
-    if (Keccak_HashUpdate(inst, msg, msg_size * 8) == KECCAK_FAIL) {
-        OPENSSL_cleanse(inst, sizeof(*inst));
-        return 1;
-    }
-
-    if (salt != NULL && Keccak_HashUpdate(inst, salt, salt_size * 8) == KECCAK_FAIL) {
-        OPENSSL_cleanse(inst, sizeof(*inst));
-        return 1;
-    }
-
-    if (Keccak_HashFinal(inst, digest) == KECCAK_FAIL) {
-        OPENSSL_cleanse(inst, sizeof(*inst));
-        return 1;
-    }
-
-    // Perform an XOF
-    if (digest_size != NULL && Keccak_HashSqueeze(inst, digest, *digest_size) == KECCAK_FAIL) {
-        OPENSSL_cleanse(inst, sizeof(*inst));
-        return 1;
-    }
-
-    OPENSSL_cleanse(inst, sizeof(*inst));
-
-    return 0;
-}
-
 int sha3224Hash(unsigned char* digest, const unsigned char* msg, size_t msg_size,
                 const unsigned char* salt, size_t salt_size) {
     Keccak_HashInstance inst;
@@ -342,6 +313,35 @@ int kang12Hash(unsigned char* digest, size_t digest_size, const unsigned char* m
     }
 
     OPENSSL_cleanse(&inst, sizeof(inst));
+
+    return 0;
+}
+
+int keccakHash(unsigned char* digest, const size_t* digest_size, Keccak_HashInstance* inst,
+               const unsigned char* msg, size_t msg_size, const unsigned char* salt,
+               size_t salt_size) {
+    if (Keccak_HashUpdate(inst, msg, msg_size * 8) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    if (salt != NULL && Keccak_HashUpdate(inst, salt, salt_size * 8) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    if (Keccak_HashFinal(inst, digest) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    // Perform an XOF
+    if (digest_size != NULL && Keccak_HashSqueeze(inst, digest, *digest_size) == KECCAK_FAIL) {
+        OPENSSL_cleanse(inst, sizeof(*inst));
+        return 1;
+    }
+
+    OPENSSL_cleanse(inst, sizeof(*inst));
 
     return 0;
 }
