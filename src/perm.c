@@ -28,6 +28,72 @@ void getRandomPermutation(mpz_t perm, int mismatches, size_t subkey_length,
 void getBenchmarkPermutation(mpz_t perm, int mismatches, size_t subkey_length,
                              gmp_randstate_t randstate, int numcores);
 
+void getRandomSeed(unsigned char* key, size_t key_size, gmp_randstate_t randstate) {
+    mpz_t key_mpz;
+    mpz_init(key_mpz);
+
+    mpz_urandomb(key_mpz, randstate, key_size * 8);
+
+    mpz_export(key, NULL, -1, sizeof(*key), 0, 0, key_mpz);
+
+    mpz_clear(key_mpz);
+}
+
+void getRandomCorruptedSeed(unsigned char* corrupted_seed, const unsigned char* seed,
+                            int mismatches, size_t seed_size, size_t subseed_length,
+                            gmp_randstate_t randstate, int benchmark, int numcores) {
+    mpz_t perm_mpz, seed_mpz, corrupted_seed_mpz;
+
+    mpz_inits(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
+    mpz_set_ui(corrupted_seed_mpz, 0);
+
+    if (benchmark) {
+        getBenchmarkPermutation(perm_mpz, mismatches, subseed_length, randstate, numcores);
+    } else {
+        getRandomPermutation(perm_mpz, mismatches, subseed_length, randstate);
+    }
+
+    mpz_import(seed_mpz, seed_size, -1, sizeof(*seed), 0, 0, seed);
+
+    // Perform an XOR operation between the permutation and the seed.
+    // If a bit is set in permutation, then flip the bit in the seed.
+    // Otherwise, leave it as is.
+    mpz_xor(corrupted_seed_mpz, seed_mpz, perm_mpz);
+
+    mpz_export(corrupted_seed, NULL, -1, sizeof(*corrupted_seed), 0, 0, corrupted_seed_mpz);
+
+    mpz_clears(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
+}
+
+void getPermPair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t pair_count,
+                 int mismatches, size_t subkey_length) {
+    mpz_t total_perms, starting_ordinal, ending_ordinal;
+    mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
+
+    mpz_bin_uiui(total_perms, subkey_length, mismatches);
+
+    if (pair_index == 0) {
+        assignFirstPermutation(first_perm, mismatches);
+    } else {
+        mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
+        mpz_mul_ui(starting_ordinal, starting_ordinal, pair_index);
+
+        decodeOrdinal(first_perm, starting_ordinal, mismatches, subkey_length);
+    }
+
+    if (pair_index == pair_count - 1) {
+        assignLastPermutation(last_perm, mismatches, subkey_length);
+    } else {
+        mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
+        mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
+        mpz_sub_ui(ending_ordinal, ending_ordinal, 1);
+
+        decodeOrdinal(last_perm, ending_ordinal, mismatches, subkey_length);
+    }
+
+    mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
+}
+
 void decodeOrdinal(mpz_t perm, const mpz_t ordinal, int mismatches, size_t subkey_length) {
     mpz_t binom, curr_ordinal;
     mpz_inits(binom, curr_ordinal, NULL);
@@ -97,70 +163,4 @@ void getBenchmarkPermutation(mpz_t perm, int mismatches, size_t subkey_length,
     decodeOrdinal(perm, ordinal, mismatches, subkey_length);
 
     mpz_clears(ordinal, binom, rank, cores, NULL);
-}
-
-void getRandomSeed(unsigned char* key, size_t key_size, gmp_randstate_t randstate) {
-    mpz_t key_mpz;
-    mpz_init(key_mpz);
-
-    mpz_urandomb(key_mpz, randstate, key_size * 8);
-
-    mpz_export(key, NULL, -1, sizeof(*key), 0, 0, key_mpz);
-
-    mpz_clear(key_mpz);
-}
-
-void getRandomCorruptedSeed(unsigned char* corrupted_seed, const unsigned char* seed,
-                            int mismatches, size_t seed_size, size_t subseed_length,
-                            gmp_randstate_t randstate, int benchmark, int numcores) {
-    mpz_t perm_mpz, seed_mpz, corrupted_seed_mpz;
-
-    mpz_inits(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
-    mpz_set_ui(corrupted_seed_mpz, 0);
-
-    if (benchmark) {
-        getBenchmarkPermutation(perm_mpz, mismatches, subseed_length, randstate, numcores);
-    } else {
-        getRandomPermutation(perm_mpz, mismatches, subseed_length, randstate);
-    }
-
-    mpz_import(seed_mpz, seed_size, -1, sizeof(*seed), 0, 0, seed);
-
-    // Perform an XOR operation between the permutation and the seed.
-    // If a bit is set in permutation, then flip the bit in the seed.
-    // Otherwise, leave it as is.
-    mpz_xor(corrupted_seed_mpz, seed_mpz, perm_mpz);
-
-    mpz_export(corrupted_seed, NULL, -1, sizeof(*corrupted_seed), 0, 0, corrupted_seed_mpz);
-
-    mpz_clears(perm_mpz, seed_mpz, corrupted_seed_mpz, NULL);
-}
-
-void getPermPair(mpz_t first_perm, mpz_t last_perm, size_t pair_index, size_t pair_count,
-                 int mismatches, size_t subkey_length) {
-    mpz_t total_perms, starting_ordinal, ending_ordinal;
-    mpz_inits(total_perms, starting_ordinal, ending_ordinal, NULL);
-
-    mpz_bin_uiui(total_perms, subkey_length, mismatches);
-
-    if (pair_index == 0) {
-        assignFirstPermutation(first_perm, mismatches);
-    } else {
-        mpz_tdiv_q_ui(starting_ordinal, total_perms, pair_count);
-        mpz_mul_ui(starting_ordinal, starting_ordinal, pair_index);
-
-        decodeOrdinal(first_perm, starting_ordinal, mismatches, subkey_length);
-    }
-
-    if (pair_index == pair_count - 1) {
-        assignLastPermutation(last_perm, mismatches, subkey_length);
-    } else {
-        mpz_tdiv_q_ui(ending_ordinal, total_perms, pair_count);
-        mpz_mul_ui(ending_ordinal, ending_ordinal, pair_index + 1);
-        mpz_sub_ui(ending_ordinal, ending_ordinal, 1);
-
-        decodeOrdinal(last_perm, ending_ordinal, mismatches, subkey_length);
-    }
-
-    mpz_clears(total_perms, starting_ordinal, ending_ordinal, NULL);
 }
