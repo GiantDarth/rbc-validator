@@ -88,11 +88,9 @@ int CryptoCmp_kang12(void* args);
 /// \param validated_keys A counter to keep track of how many keys were traversed. If NULL, then
 /// this is skipped.
 /// \param signal A pointer to a shared value. Used to signal the function to prematurely leave.
-#ifdef USE_MPI
-/// \param verbose A boolean on whether to print verbose output or not
-/// \param my_rank This process's MPI rank
-/// \param nprocs How many total MPI ranks there are
-#endif
+/// \param verbose (MPI only) A boolean on whether to print verbose output or not
+/// \param my_rank (MPI only) This process's MPI rank
+/// \param nprocs (MPI only) How many total MPI ranks there are
 /// \return Returns a 1 if found or a 0 if not. Returns a -1 if an error has
 /// occurred.
 int findMatchingSeed(unsigned char* client_seed, const unsigned char* host_seed,
