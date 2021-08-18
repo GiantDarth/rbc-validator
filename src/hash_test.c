@@ -62,13 +62,29 @@ int main() {
     };
 
     const EVP_MD* mds[TEST_SIZE] = {
-            EVP_md5(),    EVP_sha1(),     EVP_sha224(),   EVP_sha256(),   EVP_sha384(),
-            EVP_sha512(), EVP_sha3_224(), EVP_sha3_256(), EVP_sha3_384(), EVP_sha3_512(),
+            // clang-format off
+            // MD5
+            EVP_md5(),
+            // SHA1
+            EVP_sha1(),
+            // SHA2
+            EVP_sha224(),   EVP_sha256(),   EVP_sha384(),   EVP_sha512(),
+            // SHA3
+            EVP_sha3_224(), EVP_sha3_256(), EVP_sha3_384(), EVP_sha3_512(),
+            // clang-format on
     };
 
     const char* names[TEST_SIZE] = {
-            "MD5",    "SHA1",     "SHA224",   "SHA256",   "SHA384",
-            "SHA512", "SHA3-224", "SHA3-256", "SHA3-384", "SHA3-512",
+            // clang-format off
+            // MD5
+            "MD5",
+            // SHA1
+            "SHA1",
+            // SHA2
+            "SHA224",   "SHA256",   "SHA384",   "SHA512",
+            // SHA3
+            "SHA3-224", "SHA3-256", "SHA3-384", "SHA3-512",
+            // clang-format on
     };
 
     const unsigned char expected_digests[TEST_SIZE][MAX_DIGEST_SIZE] = {
