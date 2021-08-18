@@ -11,6 +11,7 @@
 #include "util.h"
 
 #define TEST_SIZE 2
+#define MAX_CIPHER_SIZE 16
 
 int genericTest(const char* name, const EVP_CIPHER* evp_cipher, const unsigned char* key,
                 const unsigned char* msg, const unsigned char* expected_cipher, size_t msg_len,
@@ -57,7 +58,7 @@ int main() {
 
     const EVP_CIPHER* evp_ciphers[TEST_SIZE] = {EVP_aes_256_ecb(), EVP_chacha20()};
     const char* names[TEST_SIZE] = {"AES-256-ECB", "ChaCha20"};
-    const unsigned char expected_ciphers[TEST_SIZE][sizeof(msg) - 1] = {
+    const unsigned char expected_ciphers[TEST_SIZE][MAX_CIPHER_SIZE] = {
             {0x00, 0x80, 0xb5, 0xcd, 0x7d, 0x63, 0x1b, 0x04, 0x25, 0x8a, 0xa4, 0x38, 0x55, 0x33,
              0x1b, 0x3e},
             {0x8f, 0xba, 0x63, 0x2c, 0x58, 0x8c, 0xec, 0xbe, 0x91, 0x2d, 0xd1, 0x6a, 0xcd, 0x24,
