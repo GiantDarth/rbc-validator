@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #define TEST_SIZE 10
+#define MAX_DIGEST_SIZE 64
 
 void printHex(const unsigned char* array, size_t count) {
     for (size_t i = 0; i < count; i++) {
@@ -65,7 +66,7 @@ int main() {
     const char* names[TEST_SIZE] = {"MD5",    "SHA1",     "SHA224",   "SHA256",   "SHA384",
                                     "SHA512", "SHA3-224", "SHA3-256", "SHA3-384", "SHA3-512"};
 
-    const unsigned char expected_digests[TEST_SIZE][100] = {
+    const unsigned char expected_digests[TEST_SIZE][MAX_DIGEST_SIZE] = {
             // MD5
             {0xb4, 0xff, 0xcb, 0x23, 0x73, 0x7c, 0xec, 0x31, 0x5a, 0x4a, 0x4d, 0x1a, 0xa2, 0xa6,
              0x20, 0xce},
