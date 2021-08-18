@@ -63,7 +63,6 @@ typedef struct Algo {
     int mode;
 } Algo;
 
-// clang-format off
 const Algo supportedAlgos[] = {
         {"none", "None", 0, MODE_NONE},
         // Cipher algorithms
@@ -85,9 +84,8 @@ const Algo supportedAlgos[] = {
         {"shake128", "SHAKE128", NID_shake128, MODE_HASH | MODE_XOF},
         {"shake256", "SHAKE256", NID_shake256, MODE_HASH | MODE_XOF},
         {"kang12", "KangarooTwelve", NID_kang12, MODE_HASH | MODE_XOF},
-        {0}
+        {0},
 };
-// clang-format on
 
 struct Params {
     char *seed_hex, *client_crypto_hex, *uuid_hex, *iv_hex, *salt_hex;
