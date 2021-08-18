@@ -11,12 +11,8 @@
 
 #if defined(USE_MPI)
 #include <mpi.h>
-
-#include "cmdline/cmdline_mpi.h"
 #else
 #include <omp.h>
-
-#include "cmdline/cmdline_omp.h"
 #endif
 
 #include "crypto/cipher.h"
@@ -27,6 +23,12 @@
 #include "util.h"
 #include "uuid.h"
 #include "validator.h"
+
+#if defined(USE_MPI)
+#include "cmdline/cmdline_mpi.h"
+#else
+#include "cmdline/cmdline_omp.h"
+#endif
 
 enum StatusCode { SC_Found = 0, SC_NotFound = 1, SC_Failure = 2 };
 
