@@ -385,7 +385,7 @@ int findMatchingSeed(unsigned char* client_seed, const unsigned char* host_seed,
         curr_seed = SeedIter_get(&iter);
 
         // If crypto_func fails for some reason, break prematurely.
-        if (crypto_func  != NULL && crypto_func (curr_seed, crypto_args)) {
+        if (crypto_func != NULL && crypto_func(curr_seed, crypto_args)) {
             status = -1;
             break;
         }
