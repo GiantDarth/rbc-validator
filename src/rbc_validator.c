@@ -758,6 +758,7 @@ int main(int argc, char* argv[]) {
     start_time = omp_get_wtime();
 #endif
 
+    // clang-format off
     for (; mismatch <= ending_mismatch && !found; mismatch++) {
         if (verbose_flag
 #ifdef USE_MPI
@@ -990,3 +991,4 @@ int main(int argc, char* argv[]) {
     return found || algo->mode == MODE_NONE ? SC_Found : SC_NotFound;
 #endif
 }
+    // clang-format on
