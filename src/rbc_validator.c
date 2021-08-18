@@ -61,27 +61,31 @@ typedef struct Algo {
     int mode;
 } Algo;
 
-const Algo supportedAlgos[] = {{"none", "None", 0, MODE_NONE},
-                               // Cipher algorithms
-                               {"aes", "AES-256-ECB", NID_aes_256_ecb, MODE_CIPHER},
-                               {"chacha20", "ChaCha20", NID_chacha20, MODE_CIPHER},
-                               // EC algorithms
-                               {"ecc", "Secp256r1", NID_X9_62_prime256v1, MODE_EC},
-                               // Hashing algorithms
-                               {"md5", "MD5", NID_md5, MODE_HASH},
-                               {"sha1", "SHA1", NID_sha1, MODE_HASH},
-                               {"sha224", "SHA2-224", NID_sha224, MODE_HASH},
-                               {"sha256", "SHA2-256", NID_sha256, MODE_HASH},
-                               {"sha384", "SHA2-384", NID_sha384, MODE_HASH},
-                               {"sha512", "SHA2-512", NID_sha512, MODE_HASH},
-                               {"sha3-224", "SHA3-224", NID_sha3_224, MODE_HASH},
-                               {"sha3-256", "SHA3-256", NID_sha3_256, MODE_HASH},
-                               {"sha3-384", "SHA3-384", NID_sha3_384, MODE_HASH},
-                               {"sha3-512", "SHA3-512", NID_sha3_512, MODE_HASH},
-                               {"shake128", "SHAKE128", NID_shake128, MODE_HASH | MODE_XOF},
-                               {"shake256", "SHAKE256", NID_shake256, MODE_HASH | MODE_XOF},
-                               {"kang12", "KangarooTwelve", NID_kang12, MODE_HASH | MODE_XOF},
-                               {0}};
+// clang-format off
+const Algo supportedAlgos[] = {
+        {"none", "None", 0, MODE_NONE},
+        // Cipher algorithms
+        {"aes", "AES-256-ECB", NID_aes_256_ecb, MODE_CIPHER},
+        {"chacha20", "ChaCha20", NID_chacha20, MODE_CIPHER},
+        // EC algorithms
+        {"ecc", "Secp256r1", NID_X9_62_prime256v1, MODE_EC},
+        // Hashing algorithms
+        {"md5", "MD5", NID_md5, MODE_HASH},
+        {"sha1", "SHA1", NID_sha1, MODE_HASH},
+        {"sha224", "SHA2-224", NID_sha224, MODE_HASH},
+        {"sha256", "SHA2-256", NID_sha256, MODE_HASH},
+        {"sha384", "SHA2-384", NID_sha384, MODE_HASH},
+        {"sha512", "SHA2-512", NID_sha512, MODE_HASH},
+        {"sha3-224", "SHA3-224", NID_sha3_224, MODE_HASH},
+        {"sha3-256", "SHA3-256", NID_sha3_256, MODE_HASH},
+        {"sha3-384", "SHA3-384", NID_sha3_384, MODE_HASH},
+        {"sha3-512", "SHA3-512", NID_sha3_512, MODE_HASH},
+        {"shake128", "SHAKE128", NID_shake128, MODE_HASH | MODE_XOF},
+        {"shake256", "SHAKE256", NID_shake256, MODE_HASH | MODE_XOF},
+        {"kang12", "KangarooTwelve", NID_kang12, MODE_HASH | MODE_XOF},
+        {0}
+};
+// clang-format on
 
 struct Params {
     char *seed_hex, *client_crypto_hex, *uuid_hex, *iv_hex, *salt_hex;
