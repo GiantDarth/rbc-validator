@@ -13,7 +13,7 @@
 // How many rounds do for AES-256 encryption/decryption
 #define NUM_OF_ROUNDS 14
 
-static inline void KEY_256_ASSIST_1(__m128i *tmp1, __m128i *tmp2) {
+static inline void key256Assist1(__m128i* tmp1, __m128i* tmp2) {
     __m128i tmp4;
 
     *tmp2 = _mm_shuffle_epi32(*tmp2, 0xff);
@@ -29,7 +29,7 @@ static inline void KEY_256_ASSIST_1(__m128i *tmp1, __m128i *tmp2) {
     *tmp1 = _mm_xor_si128(*tmp1, *tmp2);
 }
 
-static inline void KEY_256_ASSIST_2(__m128i *tmp1, __m128i *tmp3) {
+static inline void key256Assist2(__m128i* tmp1, __m128i* tmp3) {
     __m128i tmp2, tmp4;
 
     tmp4 = _mm_aeskeygenassist_si128(*tmp1, 0x0);
@@ -46,7 +46,7 @@ static inline void KEY_256_ASSIST_2(__m128i *tmp1, __m128i *tmp3) {
     *tmp3 = _mm_xor_si128(*tmp3, tmp2);
 }
 
-void aes256_enc_key_expansion(__m128i *key_schedule, const unsigned char *key) {
+void aes256EncKeyExpansion(__m128i* key_schedule, const unsigned char* key) {
     __m128i tmp1, tmp2, tmp3;
 
     tmp1 = _mm_loadu_si128((const __m128i*)key);
@@ -56,70 +56,70 @@ void aes256_enc_key_expansion(__m128i *key_schedule, const unsigned char *key) {
     key_schedule[1] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x01);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[2] = tmp1;
 
-    KEY_256_ASSIST_2(&tmp1, &tmp3);
+    key256Assist2(&tmp1, &tmp3);
     key_schedule[3] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x02);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[4] = tmp1;
 
-    KEY_256_ASSIST_2(&tmp1, &tmp3);
+    key256Assist2(&tmp1, &tmp3);
     key_schedule[5] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x04);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[6] = tmp1;
 
-    KEY_256_ASSIST_2(&tmp1, &tmp3);
+    key256Assist2(&tmp1, &tmp3);
     key_schedule[7] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x08);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[8] = tmp1;
 
-    KEY_256_ASSIST_2(&tmp1, &tmp3);
+    key256Assist2(&tmp1, &tmp3);
     key_schedule[9] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x10);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[10] = tmp1;
 
-    KEY_256_ASSIST_2(&tmp1, &tmp3);
+    key256Assist2(&tmp1, &tmp3);
     key_schedule[11] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x20);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[12] = tmp1;
 
-    KEY_256_ASSIST_2(&tmp1, &tmp3);
+    key256Assist2(&tmp1, &tmp3);
     key_schedule[13] = tmp3;
 
     tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x40);
-    KEY_256_ASSIST_1(&tmp1, &tmp2);
+    key256Assist1(&tmp1, &tmp2);
     key_schedule[14] = tmp1;
 }
 
-int aes256_ecb_encrypt(unsigned char *cipher, const unsigned char *key, const unsigned char *msg,
-                        size_t msg_len) {
+int aes256EcbEncrypt(unsigned char* cipher, const unsigned char* key, const unsigned char* msg,
+                     size_t msg_len) {
     __m128i tmp;
     size_t block_count = msg_len / AES_BLOCK_SIZE;
 
     __m128i scheduler[sizeof(__m128i) * (NUM_OF_ROUNDS + 1)];
 
-    if(msg_len % AES_BLOCK_SIZE) {
+    if (msg_len % AES_BLOCK_SIZE) {
         return 1;
     }
 
-    aes256_enc_key_expansion(scheduler, key);
+    aes256EncKeyExpansion(scheduler, key);
 
-    for(size_t i = 0; i < block_count; ++i) {
+    for (size_t i = 0; i < block_count; ++i) {
         tmp = _mm_loadu_si128(&((__m128i*)msg)[i]);
         tmp = _mm_xor_si128(tmp, scheduler[0]);
 
-        for(int j = 1; j < NUM_OF_ROUNDS; ++j) {
+        for (int j = 1; j < NUM_OF_ROUNDS; ++j) {
             tmp = _mm_aesenc_si128(tmp, scheduler[j]);
         }
 
