@@ -17,6 +17,8 @@ jobs:
             openmpi-bin \
             libgmp-dev
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - name: CMake Configure
         run: |
           which cmake
@@ -65,6 +67,8 @@ jobs:
             openmpi-bin \
             libgmp-dev
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - name: CMake Configure
         run: |
           which cmake
@@ -117,6 +121,8 @@ jobs:
             gmp-devel
             openssl-devel
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - name: CMake Configure
         run: |
           which cmake
