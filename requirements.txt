@@ -1,2 +1,2 @@
 bitarray==2.1.0
-pycryptodome==3.10.1
+pycryptodome==3.19.1
